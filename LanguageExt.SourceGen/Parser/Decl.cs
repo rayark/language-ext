@@ -16,6 +16,21 @@ internal record Decl
     
     static Decl()
     {
+        usingParser = from u in usingKeyword
+                      from n in fqn
+                      select Using(n);
+        
+        namespaceParser = from u in namespaceKeyword
+                          from n in fqn
+                          select Namespace(n);
+        
+        //aliasParser = from u in namespaceKeyword
+         //             from n in fqn
+          //            select Namespace(n);
+          
+        var typeSpec = from id in ident
+                       from gs in optional(generics) 
+        
     }
 
 
@@ -29,6 +44,22 @@ internal record Decl
             "record"    => recordParser.Parse(b.Body, b.Path),
             _           => throw new InvalidProgramException()
         }).ToSeq();
+
+    public static Decl Using(FQN name) =>
+        new UsingDecl(name);
+    
+    public static Decl Namespace(FQN name) =>
+        new NamespaceDecl(name);
+    
+    public static Decl Alias(string name, Ty x, Ty y) =>
+        new AliasDecl(name, x, y);
+    
+    public static Decl Union(string name, TyUnion ty, Seq<Deriving> derivings) =>
+        new UnionDecl(name, ty, derivings);
+    
+    public static Decl Record(string name, TyRecord ty, Seq<Deriving> derivings) =>
+        new RecordDecl(name, ty, derivings);
+
 }
 
 /// <summary>
@@ -36,6 +67,12 @@ internal record Decl
 /// </summary>
 /// <param name="Name">Fully qualified namespace</param>
 internal record NamespaceDecl(FQN Name) : Decl;
+
+/// <summary>
+/// using An.Example;
+/// </summary>
+/// <param name="Name">Fully qualified namespace</param>
+internal record UsingDecl(FQN Name) : Decl;
 
 /// <summary>
 /// alias Name X = Y

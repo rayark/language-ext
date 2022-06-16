@@ -7,6 +7,8 @@ namespace LanguageExt.SourceGen.Parser;
 
 internal static class Prim
 {
+    private static string[] keywords = {"using", "namespace", "alias", "union", "record"};
+    
     static Prim()
     {
         any = new Parser<char>(state =>
@@ -44,17 +46,46 @@ internal static class Prim
                 {
                     if (nstate.IsEOS) return sb.Length == 0 
                                                 ? Result.EOS<string>(state)
-                                                : Result.Success(nstate, sb.ToString());
+                                                : sb.ToString() switch
+                                                    {
+                                                        var x when keywords.Contains(x) => Result.Expected<string>(state, x, "identifier"),
+                                                        var x => Result.Success(nstate, x)
+                                                    };
 
                     var c = nstate.Value;
                     if(!char.IsLetterOrDigit(c)) return sb.Length == 0 
                                                     ? Result.Expected<string>(state, $"{c}", "identifier")
-                                                    : Result.Success(nstate, sb.ToString());
+                                                    : sb.ToString() switch
+                                                        {
+                                                            var x when keywords.Contains(x) => Result.Expected<string>(state, x, "identifier"),
+                                                            var x => Result.Success(nstate, x)
+                                                        };
 
                     sb.Append(c);
                     nstate = nstate.Next();
                 }
             });
+
+        dot = token(ch('.')).Map(static _ => default(Unit));
+        comma = token(ch(',')).Map(static _ => default(Unit));
+
+        openParen = token(ch('(')).Map(static _ => default(Unit));
+        openBracket = token(ch('[')).Map(static _ => default(Unit));
+        openBrace = token(ch('{')).Map(static _ => default(Unit));
+        openAngle = token(ch('<')).Map(static _ => default(Unit));
+
+        closeParen = token(ch(')')).Map(static _ => default(Unit));
+        closeBracket = token(ch(']')).Map(static _ => default(Unit));
+        closeBrace = token(ch('}')).Map(static _ => default(Unit));
+        closeAngle = token(ch('>')).Map(static _ => default(Unit));
+
+        usingKeyword = token(str("using")).Map(static _ => default(Unit));
+        namespaceKeyword = token(str("namespace")).Map(static _ => default(Unit));
+        aliasKeyword = token(str("alias")).Map(static _ => default(Unit));
+        unionKeyword = token(str("union")).Map(static _ => default(Unit));
+        recordKeyword = token(str("record")).Map(static _ => default(Unit));
+
+        fqn = sepBy1(dot, ident).Map(FQN.New);
     }
 
     public static readonly Parser<char> any;
@@ -63,7 +94,22 @@ internal static class Prim
     public static readonly Parser<Unit> eos;
     public static readonly Parser<string> path;
     public static readonly Parser<string> ident;
-    public static readonly Parser<string> fqn;
+    public static readonly Parser<Unit> usingKeyword;
+    public static readonly Parser<Unit> namespaceKeyword;
+    public static readonly Parser<Unit> aliasKeyword;
+    public static readonly Parser<Unit> unionKeyword;
+    public static readonly Parser<Unit> recordKeyword;
+    public static readonly Parser<FQN> fqn;
+    public static readonly Parser<Unit> dot;
+    public static readonly Parser<Unit> comma;
+    public static readonly Parser<Unit> openParen;
+    public static readonly Parser<Unit> openBracket;
+    public static readonly Parser<Unit> openBrace;
+    public static readonly Parser<Unit> openAngle;
+    public static readonly Parser<Unit> closeParen;
+    public static readonly Parser<Unit> closeBracket;
+    public static readonly Parser<Unit> closeBrace;
+    public static readonly Parser<Unit> closeAngle;
 
     public static Parser<A> result<A>(A value) =>
         new(s => Result.Success(s, value));
@@ -184,22 +230,83 @@ internal static class Prim
                 var xs = new List<A>();
 
                 var x = item.F(s);
-                if (x.IsEmpty) return x.Cast<Seq<A>>();
+                if (x.IsFail) return x.Cast<Seq<A>>();
+                if (x.IsEmpty) throw new InvalidOperationException("Parser within `sepBy1` can return 'empty', this isn't allowed [item]");
                 xs.Add(x.Value);
                 s = x.State;
                 
                 while (true)
                 {
                     var sr = sep.F(s);
-                    if (sr.IsEmpty) return Result.Success(s, xs.ToSeq());
+                    if (sr.IsFail) return Result.Success(s, xs.ToSeq());
+                    if (sr.IsEmpty) throw new InvalidOperationException("Parser within `sepBy1` can return 'empty', this isn't allowed [sep]");
                     s = sr.State;
                     x = item.F(s);
-                    if (sr.IsEmpty) return x.Cast<Seq<A>>();
+                    if (sr.IsFail) return x.Cast<Seq<A>>();
+                    if (sr.IsEmpty) throw new InvalidOperationException("Parser within `sepBy1` can return 'empty', this isn't allowed [item]");
                     xs.Add(x.Value);
                     s = sr.State;
                 }
             });
 
+    public static Parser<Seq<A>> sepBy<S, A>(Parser<S> sep, Parser<A> item) =>
+        new(state =>
+        {
+            if (state.IsEOS) return Result.Success(state, Seq<A>.Empty);
+
+            var s = state;
+            var xs = new List<A>();
+                
+            while (true)
+            {
+                var sr = sep.F(s);
+                if (sr.IsFail) return Result.Success(s, xs.ToSeq());
+                if (sr.IsEmpty) throw new InvalidOperationException("Parser within `sepBy` can return 'empty', this isn't allowed [sep]");
+                s = sr.State;
+                var x = item.F(s);
+                if (sr.IsFail) return x.Cast<Seq<A>>();
+                if (sr.IsEmpty) throw new InvalidOperationException("Parser within `sepBy` can return 'empty', this isn't allowed [item]");
+                xs.Add(x.Value);
+                s = sr.State;
+            }
+        });    
+
+    public static Parser<A> parens<A>(Parser<A> p) =>
+        from o in openParen
+        from x in p
+        from c in closeParen
+        select x;
+
+    public static Parser<A> brackets<A>(Parser<A> p) =>
+        from o in openBracket
+        from x in p
+        from c in closeBracket
+        select x;
+
+    public static Parser<A> braces<A>(Parser<A> p) =>
+        from o in openBrace
+        from x in p
+        from c in closeBrace
+        select x;
+
+    public static Parser<A> angles<A>(Parser<A> p) =>
+        from o in openAngle
+        from x in p
+        from c in closeAngle
+        select x;
+
+    public static Parser<Seq<A>> array1<A>(Parser<A> p) =>
+        brackets(sepBy1(comma, p));
+
+    public static Parser<Seq<A>> tuple1<A>(Parser<A> p) =>
+        parens(sepBy1(comma, p));
+
+    public static Parser<Seq<A>> array<A>(Parser<A> p) =>
+        brackets(sepBy(comma, p));
+
+    public static Parser<Seq<A>> tuple<A>(Parser<A> p) =>
+        parens(sepBy(comma, p));
+    
     public static Parser<A> token<A>(Parser<A> p) =>
         new(state =>
         {

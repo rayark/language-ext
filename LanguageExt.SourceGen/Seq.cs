@@ -25,6 +25,8 @@ internal static class Seq
 
 public class Seq<A> : IEnumerable<A>, IEquatable<Seq<A>>
 {
+    public static readonly Seq<A> Empty = new (Array.Empty<A>(), 0, 0);
+    
     readonly A[] items;
     readonly int start;
     readonly int Count;
