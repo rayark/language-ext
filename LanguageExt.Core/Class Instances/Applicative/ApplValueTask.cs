@@ -9,6 +9,15 @@ using LanguageExt.Common;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureValueTask<A> : 
+        ApplicativePureAsync<ValueTask<A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public async ValueTask<A> PureAsync(Task<A> x) =>
+            await x.ConfigureAwait(false);
+    }
+    
     public readonly struct ApplValueTask<A, B> : 
         BiFunctorAsync<ValueTask<A>, ValueTask<B>, Error, A, Error, B>,
         ApplicativeAsync<ValueTask<Func<A, B>>, ValueTask<A>, ValueTask<B>, A, B>

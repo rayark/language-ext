@@ -16,7 +16,6 @@ namespace LanguageExt.ClassInstances
     /// <typeparam name="A">Bound value type</typeparam>
     public struct MArr<A> :
         Monad<Arr<A>, A>,
-        Eq<Arr<A>>,
         Ord<Arr<A>>,
         Monoid<Arr<A>>
    {
@@ -79,12 +78,12 @@ namespace LanguageExt.ClassInstances
             ma + mb;
 
         [Pure]
-        public Arr<A> Return(Func<Unit, A> f) =>
+        public Arr<A> Lift(Func<Unit, A> f) =>
             Arr.create(f(unit));
 
         [Pure]
-        public Arr<A> Return(A x) =>
-            Return(_ => x);
+        public Arr<A> Pure(A x) =>
+            Lift(_ => x);
 
         [Pure]
         public Arr<A> Zero() =>

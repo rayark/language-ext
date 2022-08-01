@@ -13,16 +13,9 @@ namespace LanguageExt.TypeClasses
     [Typeclass("M*Async")]
     public interface MonadAsync<MA, A> :
         MonadAsync<Unit, Unit, MA, A>, 
-        FoldableAsync<MA, A>,
-        Typeclass
+        ApplicativePureAsync<MA, A>,
+        FoldableAsync<MA, A>
     {
-        /// <summary>
-        /// Monad constructor function.  Provide the bound value A to construct
-        /// a new monad of type MA.
-        /// </summary>
-        /// <param name="x">Value to bind</param>
-        /// <returns>Monad of type MA</returns>
-        MA ReturnAsync(Task<A> x);
     }
 
     /// <summary>
@@ -34,8 +27,7 @@ namespace LanguageExt.TypeClasses
     /// <typeparam name="A">The data-type bound value</typeparam>
     [Typeclass("M*Async")]
     public interface MonadAsync<Env, Out, MA, A> : 
-        FoldableAsync<Env, MA, A>,
-        Typeclass
+        FoldableAsync<Env, MA, A>
     {
         /// <summary>
         /// Monadic bind
@@ -86,7 +78,7 @@ namespace LanguageExt.TypeClasses
         /// </remarks>
         /// <param name="x">Value to bind</param>
         /// <returns>Monad of type `MA`</returns>
-        MA ReturnAsync(Func<Env, Task<A>> f);
+        MA LiftAsync(Func<Env, Task<A>> f);
 
         /// <summary>
         /// Used for double dispatch by the bind function for monadic types that

@@ -113,38 +113,5 @@ namespace LanguageExt.Tests
                 Fail: ex => Assert.True(false)
             );
         }
-
-
-        [Fact]
-        public void ApplicativeLawHolds()
-        {
-            var first = tryadd
-                .Apply(three)
-                .Apply(four);
-
-            var second = three
-                .ParMap(add)
-                .Apply(four);
-
-            Assert.Equal(first.Try(), second.Try());
-        }
-
-        [Fact]
-        public void ApplicativeLawHoldsF()
-        {
-            var first = apply(apply(tryadd, three), four);
-            var second = apply(parmap(three, add), four);
-
-            Assert.Equal(first.Try(), second.Try());
-        }
-
-        [Fact]
-        public void ApplicativeLawHoldsF2()
-        {
-            var first = apply(tryadd, three, four);
-            var second = apply(parmap(three, add), four);
-
-            Assert.Equal(first.Try(), second.Try());
-        }
     }
 }

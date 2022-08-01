@@ -30,7 +30,7 @@
     <ItemGroup>
         <None Include="..\Images\lang-ext-small.png">
             <Pack>True</Pack>
-            <PackagePath/>
+            <PackagePath />
         </None>
         <None Update="HKT\AsyncSync\HKT.AsyncSync.Extensions.tt">
           <Generator>TextTemplatingFileGenerator</Generator>

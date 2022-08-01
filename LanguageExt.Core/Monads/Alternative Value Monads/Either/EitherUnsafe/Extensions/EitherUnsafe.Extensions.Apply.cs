@@ -52,6 +52,23 @@ public static partial class EitherUnsafeExtensions
     /// <returns>Bound result of the application of the function to the argument</returns>
     public static EitherUnsafe<L, B> Apply<L, A, B>(this Func<A, B> ff, EitherUnsafe<L, A> fx) =>
         default(ApplEitherUnsafe<L, A, B>).Apply(ff, fx);
+        
+    /// <summary>
+    /// Applicative apply
+    /// </summary>
+    /// <remarks>
+    /// Applies the bound function to the bound arguments, returning a bound result. 
+    /// </remarks>
+    /// <param name="ff">Bound function</param>
+    /// <param name="fx">Bound argument</param>
+    /// <param name="fy">Bound argument</param>
+    /// <typeparam name="L">Alternative value</typeparam>
+    /// <typeparam name="A">Input bound value type</typeparam>
+    /// <typeparam name="B">Intermediate bound value type</typeparam>
+    /// <typeparam name="C">Output bound value type</typeparam>
+    /// <returns>Bound result of the application of the function to the argument</returns>
+    public static EitherUnsafe<L, C> Apply<L, A, B, C>(this EitherUnsafe<L, Func<A, B, C>> ff, EitherUnsafe<L, A> fx, EitherUnsafe<L, B> fy) =>
+        ff.Map(curry).Apply(fx).Apply(fy);
 
     /// <summary>
     /// Applicative apply

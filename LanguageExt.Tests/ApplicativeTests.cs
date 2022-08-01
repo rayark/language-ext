@@ -24,11 +24,10 @@ namespace LanguageExt.Tests
         [Fact]
         public async void ApplyTryAsync2()
         {
-            var op = apply(
+            var op = apply(apply(
                 TryAsync<Func<int, int, int>>((x, y) => x + y),
-                GetValueOne(),
-                GetValueTwo()
-            );
+                GetValueOne()),
+                GetValueTwo());
 
             var res = await op.IfFail(0);
 
@@ -38,11 +37,9 @@ namespace LanguageExt.Tests
         [Fact]
         public void ApplyTryAsync1()
         {
-            var op = ApplTryAsync<int>.Inst.Apply(
-                TryAsync<Func<int, Func<int, int>>>(x => y => x + y),
-                GetValueOne(),
-                GetValueTwo()
-            );
+            var op = default(ApplTryAsync<int, Func<int, int>>)
+                        .Apply(TryAsync<Func<int, Func<int, int>>>(x => y => x + y), GetValueOne())
+                        .Apply(GetValueTwo());
 
             var res = op.IfFail(0).Result;
 
@@ -54,10 +51,10 @@ namespace LanguageExt.Tests
         public void ApplyTryAsyncException1()
         {
             var op = apply(
-                TryAsync<Func<int, int, int>>((x, y) => x + y),
-                GetValueOne(),
-                GetException()
-            );
+                        apply(
+                            TryAsync<Func<int, int, int>>((x, y) => x + y),
+                            GetValueOne()),
+                            GetException());
 
             var res = op.IfFail(0).Result;
 
@@ -84,9 +81,8 @@ namespace LanguageExt.Tests
         // and will then apply them using the CombineAndOrder function.
         public TryAsync<IEnumerable<int>> GetRemoteListsAndCombine() =>
             apply(
-                CombineAndOrder,
-                GetListOneFromRemote(),
-                GetListTwoFromRemote());
+                apply(curry<Lst<int>, Lst<int>, IEnumerable<int>>(CombineAndOrder), GetListOneFromRemote()),
+                    GetListTwoFromRemote());
 
         [Fact]
         public async void ListCombineTest()

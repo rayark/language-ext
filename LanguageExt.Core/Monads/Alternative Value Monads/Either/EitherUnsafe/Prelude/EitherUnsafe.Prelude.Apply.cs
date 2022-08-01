@@ -3,10 +3,12 @@ using LanguageExt;
 using static LanguageExt.Prelude;
 using LanguageExt.ClassInstances;
 
+namespace LanguageExt;
+
 /// <summary>
 /// Extension methods for `EitherUnsafe`
 /// </summary>
-public static partial class EitherUnsafeExtensions
+public static partial class Prelude
 {
     /// <summary>
     /// Applicative action
@@ -37,7 +39,24 @@ public static partial class EitherUnsafeExtensions
     /// <returns>Bound result of the application of the function to the argument</returns>
     public static EitherUnsafe<L, B> apply<L, A, B>(EitherUnsafe<L, Func<A, B>> ff, EitherUnsafe<L, A> fx) =>
         default(ApplEitherUnsafe<L, A, B>).Apply(ff, fx);
-    
+        
+    /// <summary>
+    /// Applicative apply
+    /// </summary>
+    /// <remarks>
+    /// Applies the bound function to the bound arguments, returning a bound result. 
+    /// </remarks>
+    /// <param name="ff">Bound function</param>
+    /// <param name="fx">Bound argument</param>
+    /// <param name="fy">Bound argument</param>
+    /// <typeparam name="L">Alternative value</typeparam>
+    /// <typeparam name="A">Input bound value type</typeparam>
+    /// <typeparam name="B">Intermediate bound value type</typeparam>
+    /// <typeparam name="C">Output bound value type</typeparam>
+    /// <returns>Bound result of the application of the function to the argument</returns>
+    public static EitherUnsafe<L, C> apply<L, A, B, C>(EitherUnsafe<L, Func<A, B, C>> ff, EitherUnsafe<L, A> fx, EitherUnsafe<L, B> fy) =>
+        ff.Map(curry).Apply(fx).Apply(fy);
+
     /// <summary>
     /// Applicative apply
     /// </summary>

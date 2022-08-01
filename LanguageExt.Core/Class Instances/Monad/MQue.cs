@@ -68,7 +68,7 @@ namespace LanguageExt.ClassInstances
             ma + mb;
 
         [Pure]
-        public Que<A> Return(Func<Unit, A> f) =>
+        public Que<A> Lift(Func<Unit, A> f) =>
             Queue(f(unit));
 
         [Pure]
@@ -88,7 +88,7 @@ namespace LanguageExt.ClassInstances
             mb;
 
         [Pure]
-        public Que<A> Return(A x) =>
+        public Que<A> Pure(A x) =>
             Queue(x);
 
         [Pure]

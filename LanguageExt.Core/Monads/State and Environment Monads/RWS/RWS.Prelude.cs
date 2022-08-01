@@ -188,7 +188,7 @@ namespace LanguageExt
         [Pure]
         public static RWS<MonoidW, R, W, S, A> gets<MonoidW, R, W, S, A>(Func<S, A> f)
            where MonoidW : struct, Monoid<W> => (env, state) =>
-           default(MRWS<MonoidW, R, W, S, A>).Return(input => f(input.State))(env, state);
+           default(MRWS<MonoidW, R, W, S, A>).Lift(input => f(input.State))(env, state);
 
         /// <summary>
         /// Retrieves the reader monad environment.
@@ -213,7 +213,7 @@ namespace LanguageExt
         [Pure]
         public static RWS<MonoidW, R, W, S, A> asks<MonoidW, R, W, S, A>(Func<R, A> f)
             where MonoidW : struct, Monoid<W> => default(MRWS<MonoidW, R, W, S, A>)
-                .Return(input => f(input.Env));
+                .Lift(input => f(input.Env));
 
         /// <summary>
         /// Executes a computation in a modified environment

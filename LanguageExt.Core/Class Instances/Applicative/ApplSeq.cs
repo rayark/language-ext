@@ -8,6 +8,14 @@ using System.Runtime.CompilerServices;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureSeq<A> : ApplicativePure<Seq<A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Seq<A> Pure(A x) =>
+            Prelude.Seq1(x);
+    }
+    
     public readonly struct ApplSeq<A, B> : Applicative<Seq<Func<A, B>>, Seq<A>, Seq<B>, A, B>
     {
         public static readonly ApplSeq<A, B> Inst = default;
@@ -46,6 +54,6 @@ namespace LanguageExt.ClassInstances
         [Pure]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Seq<A> Pure(A x) =>
-            Seq.create(x);
+            Prelude.Seq1(x);
     }
 }

@@ -63,7 +63,7 @@ namespace LanguageExt.ClassInstances
         /// <param name="x">The bound monad value</param>
         /// <returns>Monad of A</returns>
         [Pure]
-        public Try<A> Return(Func<Unit, A> f) =>
+        public Try<A> Lift(Func<Unit, A> f) =>
             () => f(unit);
 
         [Pure]
@@ -171,11 +171,11 @@ namespace LanguageExt.ClassInstances
 
         [Pure]
         public Try<A> Some(A value) =>
-            Return(value);
+            Pure(value);
 
         [Pure]
         public Try<A> Optional(A value) =>
-            Return(value);
+            Pure(value);
 
         [Pure]
         public Try<A> Run(Func<Unit, Try<A>> ma) =>
@@ -186,7 +186,7 @@ namespace LanguageExt.ClassInstances
             mb;
 
         [Pure]
-        public Try<A> Return(A x) =>
+        public Try<A> Pure(A x) =>
             () => x;
 
         [Pure]

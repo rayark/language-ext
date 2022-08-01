@@ -14,7 +14,7 @@ namespace LanguageExt.Tests.Transformer.Traverse.EitherUnsafeT.Collections
 
             var mb = ma.Sequence();
 
-            Assert.True(mb == RightUnsafe(Lst<int>.Empty));
+            Assert.True(mb == RightUnsafe<Error, Lst<int>>(Lst<int>.Empty));
         }
         
         [Fact]
@@ -24,7 +24,7 @@ namespace LanguageExt.Tests.Transformer.Traverse.EitherUnsafeT.Collections
 
             var mb = ma.Sequence();
 
-            Assert.True(mb == RightUnsafe(List(1, 2, 3)));
+            Assert.True(mb == RightUnsafe<Error, Lst<int>>(List(1, 2, 3)));
         }
         
         [Fact]
@@ -34,7 +34,7 @@ namespace LanguageExt.Tests.Transformer.Traverse.EitherUnsafeT.Collections
 
             var mb = ma.Sequence();
 
-            Assert.True(mb == LeftUnsafe(Error.New("alternative")));
+            Assert.True(mb == LeftUnsafe<Error, Lst<int>>(Error.New("alternative")));
         }
     }
 }

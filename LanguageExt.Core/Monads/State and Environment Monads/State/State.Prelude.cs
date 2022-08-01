@@ -23,7 +23,7 @@ namespace LanguageExt
         /// <returns>State monad</returns>
         [Pure]
         public static State<S, A> State<S, A>(A value) =>
-            default(MState<S, A>).Return(_ => value);
+            default(MState<S, A>).Lift(_ => value);
 
         /// <summary>
         /// State monad constructor
@@ -98,7 +98,7 @@ namespace LanguageExt
         /// </summary>
         [Pure]
         public static State<S, A> gets<S, A>(Func<S, A> f) =>
-            default(MState<S, A>).Return(s => f(s));
+            default(MState<S, A>).Lift(s => f(s));
 
         /// <summary>
         /// Chooses the first monad result that has a Some(x) for the value

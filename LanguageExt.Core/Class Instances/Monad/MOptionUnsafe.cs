@@ -43,7 +43,7 @@ namespace LanguageExt.ClassInstances
                 : b;
 
         [Pure]
-        public OptionUnsafe<A> Return(Func<Unit, A> f) =>
+        public OptionUnsafe<A> Lift(Func<Unit, A> f) =>
             OptionUnsafe<A>.Some(f(unit));
 
         [Pure]
@@ -109,7 +109,7 @@ namespace LanguageExt.ClassInstances
             mb;
 
         [Pure]
-        public OptionUnsafe<A> Return(A x) =>
+        public OptionUnsafe<A> Pure(A x) =>
             OptionUnsafe<A>.Some(x);
 
         [Pure]

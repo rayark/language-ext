@@ -15,7 +15,7 @@
             Func<A, B, C> project) =>
             ma.BindT(a =>
                 bind(a).BindT(b =>
-                    default(M_INNER_C).Return(project(a, b))));
+                    default(M_INNER_C).Pure(project(a, b))));
 
         /// <summary>
         /// Filter operation.  Applies the bound value to the predicate `f`. If
@@ -28,7 +28,7 @@
         [Pure]
         public static OUTER_A Where<GENS, A>(this OUTER_A ma, Func<A, bool> f)
         {
-            OUTER_A Do(INNER_A a) => default(M_OUTER_A).ReturnAsync(_ => a.Filter(f).AsTask());
+            OUTER_A Do(INNER_A a) => default(M_OUTER_A).LiftAsync(_ => a.Filter(f).AsTask());
             return ma.Bind(Do);
         }
 
@@ -43,5 +43,5 @@
         /// <returns>`OUTER_B` which is the result of performing `f(a)`</returns>
         [Pure]
         public static OUTER_B Select<GENS, A, B>(this OUTER_A ma, Func<A, B> f) =>
-            ma.BindT(a => default(M_OUTER_B).ReturnAsync(_ => default(M_INNER_B).Return(f(a)).AsTask()));
+            ma.BindT(a => default(M_OUTER_B).LiftAsync(_ => default(M_INNER_B).Pure(f(a)).AsTask()));
 

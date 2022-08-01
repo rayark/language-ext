@@ -47,17 +47,17 @@ namespace LanguageExt.Pipes
         }
 
         [Pure]
-        public static Aff<RT, Unit> RunEffectUnit<RT>(this Proxy<RT, Void, Unit, Unit, Void, Unit> ma) where RT : struct, HasCancel<RT> =>
-            ma.RunEffect<RT, Unit>() | @catch(Errors.SequenceEmpty, unitEff);
+        public static Aff<RT, Unit> MkEffectUnit<RT>(this Proxy<RT, Void, Unit, Unit, Void, Unit> ma) where RT : struct, HasCancel<RT> =>
+            ma.MkEffect() | @catch(Errors.SequenceEmpty, unitEff);
 
         [Pure]
-        public static Aff<RT, R> RunEffect<RT, R>(this Proxy<RT, Void, Unit, Unit, Void, R> ma) where RT : struct, HasCancel<RT> =>
+        public static Aff<RT, R> MkEffect<RT, R>(this Proxy<RT, Void, Unit, Unit, Void, R> ma) where RT : struct, HasCancel<RT> =>
             AffMaybe<RT, R>(async env =>
                             {
                                 var disps = new ConcurrentDictionary<object, IDisposable>(new ReferenceEqualityComparer<object>());
                                 try
                                 {
-                                    return await RunEffect(ma, disps).Run(env);
+                                    return await MkEffect(ma, disps).Run(env);
                                 }
                                 finally
                                 {
@@ -69,7 +69,7 @@ namespace LanguageExt.Pipes
                             });
 
         [Pure]
-        static Aff<RT, R> RunEffect<RT, R>(this Proxy<RT, Void, Unit, Unit, Void, R> ma, ConcurrentDictionary<object, IDisposable> disps) where RT : struct, HasCancel<RT> =>
+        static Aff<RT, R> MkEffect<RT, R>(this Proxy<RT, Void, Unit, Unit, Void, R> ma, ConcurrentDictionary<object, IDisposable> disps) where RT : struct, HasCancel<RT> =>
             AffMaybe<RT, R>(async env =>
                             {
                                 var p = ma;
@@ -88,7 +88,7 @@ namespace LanguageExt.Pipes
                                             break;
 
                                         case Repeat<RT, Void, Unit, Unit, Void, R> (var inner):
-                                            var effect = inner.RunEffect<RT, R>(disps);
+                                            var effect = inner.MkEffect<RT, R>(disps);
                                             while (!env.CancellationToken.IsCancellationRequested)
                                             {
                                                 var fi = await effect.Run(env).ConfigureAwait(false);
@@ -110,7 +110,7 @@ namespace LanguageExt.Pipes
                                                     await foreach (var f in me.MakeEffectsAsync().ConfigureAwait(false))
                                                     {
                                                         if (env.CancellationToken.IsCancellationRequested) return Errors.Cancelled;
-                                                        lastResult = await f.RunEffect(disps).Run(env).ConfigureAwait(false);
+                                                        lastResult = await f.MkEffect(disps).Run(env).ConfigureAwait(false);
                                                         if (lastResult.IsFail) return lastResult.Error;
                                                     }
 
@@ -120,7 +120,7 @@ namespace LanguageExt.Pipes
                                                     foreach (var f in me.MakeEffects())
                                                     {
                                                         if (env.CancellationToken.IsCancellationRequested) return Errors.Cancelled;
-                                                        lastResult = await f.RunEffect(disps).Run(env).ConfigureAwait(false);
+                                                        lastResult = await f.MkEffect(disps).Run(env).ConfigureAwait(false);
                                                         if (lastResult.IsFail) return lastResult.Error;
                                                     }
 
@@ -131,7 +131,7 @@ namespace LanguageExt.Pipes
                                                     var    lastTask = unit.AsValueTask();
                                                     Fin<R> last     = Errors.Cancelled;
 
-                                                    using (var sub = me.Subscribe(onNext: fx => lastTask = fx.RunEffect(disps).Run(env).Iter(r => last = r),
+                                                    using (var sub = me.Subscribe(onNext: fx => lastTask = fx.MkEffect(disps).Run(env).Iter(r => last = r),
                                                                                   onError: err =>
                                                                                            {
                                                                                                last = err;
@@ -182,5 +182,16 @@ namespace LanguageExt.Pipes
         [Pure, MethodImpl(Proxy.mops)]
         public static Effect<RT, R> lift<RT, R>(Eff<RT, R> ma) where RT : struct, HasCancel<RT> =>
             lift<RT, Void, Unit, Unit, Void, R>(ma).ToEffect();
+
+        [Pure]
+        [Obsolete("Use MkEffectUnit instead")]
+        public static Aff<RT, Unit> RunEffectUnit<RT>(this Proxy<RT, Void, Unit, Unit, Void, Unit> ma) where RT : struct, HasCancel<RT> =>
+            MkEffectUnit(ma);
+
+        [Pure]
+        [Obsolete("Use MkEffect instead")]
+        public static Aff<RT, R> RunEffect<RT, R>(this Proxy<RT, Void, Unit, Unit, Void, R> ma)
+            where RT : struct, HasCancel<RT> =>
+            MkEffect(ma);
     }
 }

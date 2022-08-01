@@ -8,6 +8,14 @@ using System.Runtime.CompilerServices;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureSet<A> : ApplicativePure<Set<A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Set<A> Pure(A x) =>
+            Prelude.Set(x);
+    }
+    
     public readonly struct ApplSet<A, B> : Applicative<Set<Func<A, B>>, Set<A>, Set<B>, A, B>
     {
         public static readonly ApplSet<A, B> Inst = default;

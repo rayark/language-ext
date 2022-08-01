@@ -1,10 +1,7 @@
 ﻿using System;
 using Xunit;
-using LanguageExt;
-using LanguageExt.TypeClasses;
 using static LanguageExt.Prelude;
 using static LanguageExt.TypeClass;
-using LanguageExt.ClassInstances;
 
 namespace LanguageExt.Tests
 {

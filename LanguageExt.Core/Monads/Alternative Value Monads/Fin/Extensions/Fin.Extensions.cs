@@ -1,21 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using LanguageExt;
 using static LanguageExt.Prelude;
-using static LanguageExt.TypeClass;
-using static LanguageExt.Choice;
-using System.ComponentModel;
 using System.Diagnostics.Contracts;
-using System.Threading.Tasks;
 using LanguageExt.TypeClasses;
-using LanguageExt.ClassInstances;
 using LanguageExt.Common;
 
 /// <summary>
 /// Extension methods for Fin
 /// </summary>
-public static class FinExtensions
+public static partial class FinExtensions
 {
     /// <summary>
     /// Monadic join
@@ -83,125 +77,6 @@ public static class FinExtensions
         from a in x
         from b in y
         select default(NUM).Divide(a, b);
-
-    /// <summary>
-    /// Apply
-    /// </summary>
-    /// <param name="fab">Function to apply the applicative to</param>
-    /// <param name="fa">Applicative to apply</param>
-    /// <returns>Applicative of type FB derived from Applicative of B</returns>
-    [Pure]
-    public static Fin<B> Apply<A, B>(this Fin<Func<A, B>> fab, Fin<A> fa)
-    {
-        if (fab.IsFail) return Fin<B>.Fail(fab.Error);
-        if (fa.IsFail) return Fin<B>.Fail(fa.Error);
-        return fab.Value(fa.Value);
-    }
-
-    /// <summary>
-    /// Apply
-    /// </summary>
-    /// <param name="fab">Function to apply the applicative to</param>
-    /// <param name="fa">Applicative to apply</param>
-    /// <returns>Applicative of type FB derived from Applicative of B</returns>
-    [Pure]
-    public static Fin<B> Apply<A, B>(this Func<A, B> fab, Fin<A> fa) =>
-        fa.Map(fab); 
-
-    /// <summary>
-    /// Apply
-    /// </summary>
-    /// <param name="fab">Function to apply the applicative to</param>
-    /// <param name="fa">Applicative a to apply</param>
-    /// <param name="fb">Applicative b to apply</param>
-    /// <returns>Applicative of type FC derived from Applicative of C</returns>
-    [Pure]
-    public static Fin<C> Apply<A, B, C>(this Fin<Func<A, B, C>> fabc, Fin<A> fa, Fin<B> fb)
-    {
-        if (fabc.IsFail) return Fin<C>.Fail(fabc.Error);
-        if (fa.IsFail) return Fin<C>.Fail(fa.Error);
-        if (fb.IsFail) return Fin<C>.Fail(fb.Error);
-        return fabc.Value(fa.Value, fb.Value);
-    }
-
-    /// <summary>
-    /// Apply
-    /// </summary>
-    /// <param name="fab">Function to apply the applicative to</param>
-    /// <param name="fa">Applicative a to apply</param>
-    /// <param name="fb">Applicative b to apply</param>
-    /// <returns>Applicative of type FC derived from Applicative of C</returns>
-    [Pure]
-    public static Fin<C> Apply<A, B, C>(this Func<A, B, C> fabc, Fin<A> fa, Fin<B> fb)
-    {
-        if (fa.IsFail) return Fin<C>.Fail(fa.Error);
-        if (fb.IsFail) return Fin<C>.Fail(fb.Error);
-        return fabc(fa.Value, fb.Value);
-    }
-
-    /// <summary>
-    /// Apply
-    /// </summary>
-    /// <param name="fab">Function to apply the applicative to</param>
-    /// <param name="fa">Applicative to apply</param>
-    /// <returns>Applicative of type f(b -> c) derived from Applicative of Func<B, C></returns>
-    [Pure]
-    public static Fin<Func<B, C>> Apply<A, B, C>(this Fin<Func<A, B, C>> fabc, Fin<A> fa)
-    {
-        if (fabc.IsFail) return Fin<Func<B, C>>.Fail(fabc.Error);
-        if (fa.IsFail) return Fin<Func<B, C>>.Fail(fa.Error);
-        return curry(fabc.Value)(fa.Value);
-    }
-
-    /// <summary>
-    /// Apply
-    /// </summary>
-    /// <param name="fab">Function to apply the applicative to</param>
-    /// <param name="fa">Applicative to apply</param>
-    /// <returns>Applicative of type f(b -> c) derived from Applicative of Func<B, C></returns>
-    [Pure]
-    public static Fin<Func<B, C>> Apply<A, B, C>(this Func<A, B, C> fabc, Fin<A> fa)
-    {
-        if (fa.IsFail) return Fin<Func<B, C>>.Fail(fa.Error);
-        return curry(fabc)(fa.Value);
-    }
-
-    /// <summary>
-    /// Apply
-    /// </summary>
-    /// <param name="fab">Function to apply the applicative to</param>
-    /// <param name="fa">Applicative to apply</param>
-    /// <returns>Applicative of type f(b -> c) derived from Applicative of Func<B, C></returns>
-    [Pure]
-    public static Fin<Func<B, C>> Apply<A, B, C>(this Fin<Func<A, Func<B, C>>> fabc, Fin<A> fa)
-    {
-        if (fabc.IsFail) return Fin<Func<B, C>>.Fail(fabc.Error);
-        if (fa.IsFail) return Fin<Func<B, C>>.Fail(fa.Error);
-        return fabc.Value(fa.Value);
-    }
-
-    /// <summary>
-    /// Apply
-    /// </summary>
-    /// <param name="fab">Function to apply the applicative to</param>
-    /// <param name="fa">Applicative to apply</param>
-    /// <returns>Applicative of type f(b -> c) derived from Applicative of Func<B, C></returns>
-    [Pure]
-    public static Fin<Func<B, C>> Apply<A, B, C>(this Func<A, Func<B, C>> fabc, Fin<A> fa)
-    {
-        if (fa.IsFail) return Fin<Func<B, C>>.Fail(fa.Error);
-        return fabc(fa.Value);
-    }
-
-    /// <summary>
-    /// Evaluate fa, then fb, ignoring the result of fa
-    /// </summary>
-    /// <param name="fa">Applicative to evaluate first</param>
-    /// <param name="fb">Applicative to evaluate second and then return</param>
-    /// <returns>Applicative of type Fin<B></returns>
-    [Pure]
-    public static Fin<B> Action<A, B>(this Fin<A> fa, Fin<B> fb) =>
-        fb;
 
     /// <summary>
     /// Extracts from a list of Fins all the Succ elements.

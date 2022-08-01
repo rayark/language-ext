@@ -19,7 +19,7 @@ namespace LanguageExt
         /// <returns>Monad of A</returns>
         [Pure]
         public static MA Return<MONAD, MA, A>(A x) where MONAD : struct, Monad<MA, A> =>
-            default(MONAD).Return(_ => x);
+            default(MONAD).Lift(_ => x);
 
         [Pure]
         public static MB traverse<MonadA, MonadB, MA, MB, A, B>(MA ma, Func<A, B> f)
@@ -37,7 +37,7 @@ namespace LanguageExt
         public static Func<Env, MB> traverse<Env, Out, MonadA, MonadB, MA, MB, A, B>(MA ma, Func<A, B> f)
             where MonadA : struct, Monad<Env, Out, MA, A>
             where MonadB : struct, Monad<Env, Out, MB, B> =>
-            default(MonadA).Fold(ma, default(MonadB).Zero(), (s, a) => default(MonadB).Plus(s, default(MonadB).Return(_ => f(a))));
+            default(MonadA).Fold(ma, default(MonadB).Zero(), (s, a) => default(MonadB).Plus(s, default(MonadB).Lift(_ => f(a))));
 
         [Pure]
         public static Func<Env, MB> traverse<Env, Out, MonadA, MonadB, MA, MB, A, B>(MA ma, Func<A, MB> f)
@@ -94,7 +94,7 @@ namespace LanguageExt
                 default(MONADA).Bind<MONADD, MD, D>(self,  x =>
                 default(MONADB).Bind<MONADD, MD, D>(inner, y =>
                     default(EQ).Equals(outerKeyMap(x), innerKeyMap(y))
-                        ? default(MONADD).Return(_ => project(x, y))
+                        ? default(MONADD).Lift(_ => project(x, y))
                         : default(MONADD).Fail()));
 
         /// <summary>
@@ -110,7 +110,7 @@ namespace LanguageExt
             where MONADC : struct, Monad<MC, C> =>
                 default(MONADA).Bind<MONADC, MC, C>( self,    t => 
                 default(MONADB).Bind<MONADC, MC, C>( bind(t), u => 
-                default(MONADC).Return(project(t, u))));
+                default(MONADC).Pure(project(t, u))));
 
         [Pure]
         public static IEnumerable<C> SelectMany<MONADA, MA, A, B, C>(

@@ -287,12 +287,26 @@
         [Pure]
         public static OUTER_B ApplyT<GENS, A, B>(this Func<A, B> fab, OUTER_A fa) =>
             default(APPL_INNER_AB).Apply(
-                default(M_INNER_FUNC_AB).Return(
+                default(M_INNER_FUNC_AB).Pure(
                     (INNER_A a) => 
                         default(APPL_AB).Apply(
                             default(M_FUNC_AB).ReturnAsync(fab.AsTask()), 
                             a)),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `OUTER_A`</param>
+        /// <returns>`OUTER_B` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static OUTER_B ApplyT<GENS, A, B>(this OUTER_FUNC_AB fab, OUTER_A fa) =>
+            default(M_OUTER_FUNC_AB).Bind<M_OUTER_B, OUTER_B, INNER_B>(fab, f =>
+                default(M_OUTER_A).Bind<M_OUTER_B, OUTER_B, INNER_B>(fa, a => 
+                    default(M_OUTER_B).Pure(default(APPL_AB).Apply(f, a))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -305,9 +319,4 @@
         /// <returns>`OUTER_B` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static OUTER_C ApplyT<GENS, A, B, C>(this Func<A, B, C> fabc, OUTER_A fa, OUTER_B fb) =>
-            default(APPL_INNER_ABC).Apply(
-                default(M_INNER_FUNC_ABC).Return(
-                    (INNER_A a) =>
-                        (INNER_B b) =>
-                            default(APPL_ABC).Apply(
-                                default(M_FUNC_ABC).ReturnAsync(curry(fabc).AsTask()), a, b)), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);

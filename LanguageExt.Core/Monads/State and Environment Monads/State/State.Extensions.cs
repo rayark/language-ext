@@ -176,7 +176,7 @@ public static class StateExtensions
     [Pure]
     public static State<S, B> Select<S, A, B>(this State<S, A> self, Func<A, B> f) =>
         default(MState<S, A>).Bind<MState<S, B>, State<S, B>, B>(self, a =>
-        default(MState<S, B>).Return(_ => f(a)));
+        default(MState<S, B>).Lift(_ => f(a)));
 
     [Pure]
     public static State<S, C> SelectMany<S, A, B, C>(
@@ -185,7 +185,7 @@ public static class StateExtensions
         Func<A, B, C> project) =>
             default(MState<S, A>).Bind<MState<S, C>, State<S, C>, C>(self, a =>
             default(MState<S, B>).Bind<MState<S, C>, State<S, C>, C>(bind(a), b =>
-            default(MState<S, C>).Return(_ => project(a, b))));
+            default(MState<S, C>).Lift(_ => project(a, b))));
 
     [Pure]
     public static State<S, A> Filter<S, A>(this State<S, A> self, Func<A, bool> pred) =>

@@ -15,7 +15,7 @@
             Func<A, B, C> project) =>
             default(TRANS<M_OUTER_A, OUTER_A, M_INNER_A, INNER_A, A>).Bind<M_OUTER_C, OUTER_C, M_INNER_C, INNER_C, C>(ma, a =>
             default(TRANS<M_OUTER_B, OUTER_B, M_INNER_B, INNER_B, B>).Bind<M_OUTER_C, OUTER_C, M_INNER_C, INNER_C, C>(bind(a), b =>
-            default(M_INNER_C).ReturnAsync(project(a, b).AsTask())));
+            default(M_INNER_C).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -34,7 +34,7 @@
             Func<A, B, Task<C>> project) =>
             default(TRANS<M_OUTER_A, OUTER_A, M_INNER_A, INNER_A, A>).Bind<M_OUTER_C, OUTER_C, M_INNER_C, INNER_C, C>(ma, a =>
             default(TRANS<M_OUTER_B, OUTER_B, M_INNER_B, INNER_B, B>).Bind<M_OUTER_C, OUTER_C, M_INNER_C, INNER_C, C>(bind(a), b =>
-            default(M_INNER_C).ReturnAsync(project(a, b))));
+            default(M_INNER_C).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -49,7 +49,7 @@
         public static OUTER_A Where<GENS, A>(this OUTER_A ma, Func<A, bool> pred) =>
             default(TRANS<M_OUTER_A, OUTER_A, M_INNER_A, INNER_A, A>).Bind<M_OUTER_A, OUTER_A, M_INNER_A, INNER_A, A>(ma, 
                 a => pred(a)
-                    ? default(M_INNER_A).ReturnAsync(a.AsTask())
+                    ? default(M_INNER_A).PureAsync(a.AsTask())
                     : default(M_INNER_A).Zero());
 
         /// <summary>
@@ -64,7 +64,7 @@
         public static OUTER_A Where<GENS, A>(this OUTER_A ma, Func<A, Task<bool>> pred) =>
             default(TRANS<M_OUTER_A, OUTER_A, M_INNER_A, INNER_A, A>).BindAsync<M_OUTER_A, OUTER_A, M_INNER_A, INNER_A, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(M_INNER_A).ReturnAsync(a.AsTask())
+                    ? default(M_INNER_A).PureAsync(a.AsTask())
                     : default(M_INNER_A).Zero());
 
         /// <summary>

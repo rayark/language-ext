@@ -43,7 +43,7 @@ namespace LanguageExt.ClassInstances
             a.IsSucc ? a : b;
 
         [Pure]
-        public Fin<A> Return(Func<Unit, A> f) =>
+        public Fin<A> Lift(Func<Unit, A> f) =>
             Fin<A>.Succ(f(unit));
 
         [Pure]
@@ -81,7 +81,7 @@ namespace LanguageExt.ClassInstances
             mb;
 
         [Pure]
-        public Fin<A> Return(A x) =>
+        public Fin<A> Pure(A x) =>
             x;
 
         [Pure]

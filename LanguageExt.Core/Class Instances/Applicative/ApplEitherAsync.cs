@@ -9,6 +9,15 @@ using LanguageExt.DataTypes.Serialisation;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureEitherAsync<L, A> :
+        ApplicativePureAsync<EitherAsync<L, A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public EitherAsync<L, A> PureAsync(Task<A> x) =>
+            EitherAsync<L, A>.RightAsync(x);
+    }    
+    
     public readonly struct ApplEitherAsync<L, A, B> :
         BiFunctorAsync<EitherAsync<L, A>, EitherAsync<L, B>, L, A, L, B>,
         ApplicativeAsync<EitherAsync<L, Func<A, B>>, EitherAsync<L, A>, EitherAsync<L, B>, A, B>

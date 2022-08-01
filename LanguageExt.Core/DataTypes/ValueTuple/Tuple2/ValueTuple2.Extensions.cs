@@ -407,22 +407,24 @@ public static class ValueTuple2Extensions
     /// Flip the tuple monads from inside the tuple to outside and apply a transformation function
     /// </summary>
     [Pure]
-    public static OptionAsync<(C, D)> Traverse<A, B, C, D>(this (OptionAsync<A> ma, OptionAsync<B> mb) tuple, Func<(A a, B b), (C c, D d)> f) =>
-        apply((a, b) => f((a, b)), tuple.ma, tuple.mb);
+    public static OptionAsync<(C, D)> Traverse<A, B, C, D>(
+        this (OptionAsync<A> ma, OptionAsync<B> mb) tuple,
+        Func<(A a, B b), (C c, D d)> f) =>
+            new((tuple.ma.Effect, tuple.mb.Effect).Sequence().Map(f));  
 
     /// <summary>
     /// Flip the tuple monads from inside the tuple to outside and apply a transformation function
     /// </summary>
     [Pure]
     public static OptionAsync<(C, D)> Traverse<A, B, C, D>(this (OptionAsync<A> ma, OptionAsync<B> mb) tuple, Func<A, B, (C c, D d)> f) =>
-        apply((a, b) => f(a, b), tuple.ma, tuple.mb);
+        new((tuple.ma.Effect, tuple.mb.Effect).Sequence().Map(p => f(p.Item1, p.Item2)));  
 
     /// <summary>
     /// Flip the tuple monads from inside the tuple to outside and apply a transformation function
     /// </summary>
     [Pure]
     public static OptionAsync<(A, B)> Sequence<A, B>(this (OptionAsync<A> ma, OptionAsync<B> mb) tuple) =>
-        apply((a, b) => (a, b), tuple.ma, tuple.mb);
+        new((tuple.ma.Effect, tuple.mb.Effect).Sequence());  
 
     /// <summary>
     /// Flip the tuple monads from inside the tuple to outside and apply a transformation function
@@ -566,21 +568,21 @@ public static class ValueTuple2Extensions
     /// </summary>
     [Pure]
     public static TryAsync<(C, D)> Traverse<A, B, C, D>(this (TryAsync<A> ma, TryAsync<B> mb) tuple, Func<(A a, B b), (C c, D d)> f) =>
-        apply((a, b) => f((a, b)), tuple.ma, tuple.mb);
+        TryAsyncSucc<Func<A, B, (C, D)>>((a, b) => f((a, b))).Apply(tuple.ma).Apply(tuple.mb);
 
     /// <summary>
     /// Flip the tuple monads from inside the tuple to outside and apply a transformation function
     /// </summary>
     [Pure]
     public static TryAsync<(C, D)> Traverse<A, B, C, D>(this (TryAsync<A> ma, TryAsync<B> mb) tuple, Func<A, B, (C c, D d)> f) =>
-        apply((a, b) => f(a, b), tuple.ma, tuple.mb);
+        TryAsyncSucc<Func<A, B, (C, D)>>((a, b) => f(a, b)).Apply(tuple.ma).Apply(tuple.mb);
 
     /// <summary>
     /// Flip the tuple monads from inside the tuple to outside and apply a transformation function
     /// </summary>
     [Pure]
     public static TryAsync<(A, B)> Sequence<A, B>(this (TryAsync<A> ma, TryAsync<B> mb) tuple) =>
-        apply((a, b) => (a, b), tuple.ma, tuple.mb);
+        TryAsyncSucc<Func<A, B, (A, B)>>((a, b) => (a, b)).Apply(tuple.ma).Apply(tuple.mb);
 
     /// <summary>
     /// Flip the tuple monads from inside the tuple to outside and apply a transformation function
@@ -616,21 +618,21 @@ public static class ValueTuple2Extensions
     /// </summary>
     [Pure]
     public static TryOptionAsync<(C, D)> Traverse<A, B, C, D>(this (TryOptionAsync<A> ma, TryOptionAsync<B> mb) tuple, Func<(A a, B b), (C c, D d)> f) =>
-        apply((a, b) => f((a, b)), tuple.ma, tuple.mb);
+        TryOptionAsyncSucc<Func<A, B, (C, D)>>((a, b) => f((a, b))).Apply(tuple.ma).Apply(tuple.mb);
 
     /// <summary>
     /// Flip the tuple monads from inside the tuple to outside and apply a transformation function
     /// </summary>
     [Pure]
     public static TryOptionAsync<(C, D)> Traverse<A, B, C, D>(this (TryOptionAsync<A> ma, TryOptionAsync<B> mb) tuple, Func<A, B, (C c, D d)> f) =>
-        apply((a, b) => f(a, b), tuple.ma, tuple.mb);
+        TryOptionAsyncSucc<Func<A, B, (C, D)>>((a, b) => f(a, b)).Apply(tuple.ma).Apply(tuple.mb);
 
     /// <summary>
     /// Flip the tuple monads from inside the tuple to outside and apply a transformation function
     /// </summary>
     [Pure]
     public static TryOptionAsync<(A, B)> Sequence<A, B>(this (TryOptionAsync<A> ma, TryOptionAsync<B> mb) tuple) =>
-        apply((a, b) => (a, b), tuple.ma, tuple.mb);
+        TryOptionAsyncSucc<Func<A, B, (A, B)>>((a, b) => (a, b)).Apply(tuple.ma).Apply(tuple.mb);
 
     /// <summary>
     /// Flip the tuple monads from inside the tuple to outside and apply a transformation function

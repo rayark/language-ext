@@ -8,6 +8,15 @@ using System.Runtime.CompilerServices;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureEitherUnsafe<L, A> : 
+        ApplicativePure<EitherUnsafe<L, A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public EitherUnsafe<L, A> Pure(A x) =>
+            RightUnsafe<L, A>(x);
+    }
+    
     public readonly struct ApplEitherUnsafe<L, A, B> : 
         BiFunctor<EitherUnsafe<L, A>, EitherUnsafe<L, B>, L, A, L, B>,
         Applicative<EitherUnsafe<L, Func<A, B>>, EitherUnsafe<L, A>, EitherUnsafe<L, B>, A, B>

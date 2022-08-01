@@ -112,7 +112,7 @@ namespace LanguageExt.ClassInstances
         };
 
         [Pure]
-        public RWS<MonoidW, R, W, S, A> Return(Func<(R Env, S State), A> f) =>
+        public RWS<MonoidW, R, W, S, A> Lift(Func<(R Env, S State), A> f) =>
             (env, state) =>
                 RWSResult<MonoidW, R, W, S, A>.New(state, f((env, state)));
 

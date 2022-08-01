@@ -8,6 +8,15 @@ using System.Runtime.CompilerServices;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureValidation<FAIL, A> : 
+        ApplicativePure<Validation<FAIL, A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Validation<FAIL, A> Pure(A x) =>
+            Success<FAIL, A>(x);
+    }
+    
     public readonly struct ApplValidation<FAIL, A, B> : 
         BiFunctor<Validation<FAIL, A>, Validation<FAIL, B>, Seq<FAIL>, A, Seq<FAIL>, B>,
         Applicative<Validation<FAIL, Func<A, B>>, Validation<FAIL, A>, Validation<FAIL, B>, A, B>

@@ -39,6 +39,26 @@ public static partial class ValidationExtensions
     public static Validation<MonoidFAIL, FAIL, B> Apply<MonoidFAIL, FAIL, A, B>(this Validation<MonoidFAIL, FAIL, Func<A, B>> ff, Validation<MonoidFAIL, FAIL, A> fx) 
         where MonoidFAIL : struct, Monoid<FAIL>, Eq<FAIL> =>
         default(ApplValidation<MonoidFAIL, FAIL, A, B>).Apply(ff, fx);
+                
+    /// <summary>
+    /// Applicative apply
+    /// </summary>
+    /// <remarks>
+    /// Applies the bound function to the bound arguments, returning a bound result. 
+    /// </remarks>
+    /// <param name="ff">Bound function</param>
+    /// <param name="fx">Bound argument</param>
+    /// <param name="fy">Bound argument</param>
+    /// <typeparam name="A">Input bound value type</typeparam>
+    /// <typeparam name="B">Intermediate bound value type</typeparam>
+    /// <typeparam name="C">Output bound value type</typeparam>
+    /// <returns>Bound result of the application of the function to the argument</returns>
+    public static Validation<MonoidFAIL, FAIL, C> Apply<MonoidFAIL, FAIL, A, B, C>(
+        this Validation<MonoidFAIL, FAIL, Func<A, B, C>> ff, 
+        Validation<MonoidFAIL, FAIL, A> fx, 
+        Validation<MonoidFAIL, FAIL, B> fy)
+        where MonoidFAIL : struct, Monoid<FAIL>, Eq<FAIL> =>
+        ff.Map(curry).Apply(fx).Apply(fy);
     
     /// <summary>
     /// Applicative apply

@@ -48,7 +48,7 @@ namespace LanguageExt.ClassInstances
             (unit, state, false);
 
         [Pure]
-        public State<S, A> Return(Func<S, A> f) => state =>
+        public State<S, A> Lift(Func<S, A> f) => state =>
             (f(state), state, false);
 
         [Pure]

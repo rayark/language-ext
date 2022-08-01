@@ -48,7 +48,7 @@ namespace LanguageExt.ClassInstances
             ma(f(env));
 
         [Pure]
-        public Reader<Env, A> Return(Func<Env, A> f) => env =>
+        public Reader<Env, A> Lift(Func<Env, A> f) => env =>
             ReaderResult<A>.New(f(env));
 
         [Pure]

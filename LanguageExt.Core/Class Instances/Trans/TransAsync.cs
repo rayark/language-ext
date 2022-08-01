@@ -29,14 +29,14 @@ namespace LanguageExt
             where NewOuterMonad : struct, MonadAsync<NewOuterType, NewInnerType>
             where NewInnerMonad : struct, MonadAsync<NewInnerType, B> =>
                 MOuter.Bind<NewOuterMonad, NewOuterType, NewInnerType>(ma, inner =>
-                    default(NewOuterMonad).ReturnAsync(
+                    default(NewOuterMonad).PureAsync(
                         MInner.Bind<NewInnerMonad, NewInnerType, B>(inner, f).AsTask()));
 
         public NewOuterType BindAsync<NewOuterMonad, NewOuterType, NewInnerMonad, NewInnerType, B>(OuterType ma, Func<A, Task<NewInnerType>> f)
             where NewOuterMonad : struct, MonadAsync<NewOuterType, NewInnerType>
             where NewInnerMonad : struct, MonadAsync<NewInnerType, B> =>
                 MOuter.Bind<NewOuterMonad, NewOuterType, NewInnerType>(ma, inner =>
-                    default(NewOuterMonad).ReturnAsync(
+                    default(NewOuterMonad).PureAsync(
                         MInner.BindAsync<NewInnerMonad, NewInnerType, B>(inner, f).AsTask()));
 
         public NewOuterType Bind<NewOuterMonad, NewOuterType, NewInnerMonad, NewInnerType, B>(OuterType ma, Func<A, NewOuterType> f)
@@ -58,18 +58,18 @@ namespace LanguageExt
             where NewInnerMonad : struct, MonadAsync<NewInnerType, B> =>
                 MOuter.Bind<NewOuterMonad, NewOuterType, NewInnerType>(ma,
                     inner =>
-                        default(NewOuterMonad).ReturnAsync(
+                        default(NewOuterMonad).PureAsync(
                             MInner.Bind<NewInnerMonad, NewInnerType, B>(inner,
-                                a => default(NewInnerMonad).ReturnAsync(f(a).AsTask())).AsTask()));
+                                a => default(NewInnerMonad).PureAsync(f(a).AsTask())).AsTask()));
 
         public NewOuterType MapAsync<NewOuterMonad, NewOuterType, NewInnerMonad, NewInnerType, B>(OuterType ma, Func<A, Task<B>> f)
             where NewOuterMonad : struct, MonadAsync<NewOuterType, NewInnerType>
             where NewInnerMonad : struct, MonadAsync<NewInnerType, B> =>
                 MOuter.Bind<NewOuterMonad, NewOuterType, NewInnerType>(ma,
                     inner =>
-                        default(NewOuterMonad).ReturnAsync(
+                        default(NewOuterMonad).PureAsync(
                             MInner.Bind<NewInnerMonad, NewInnerType, B>(inner,
-                                a => default(NewInnerMonad).ReturnAsync(f(a))).AsTask()));
+                                a => default(NewInnerMonad).PureAsync(f(a))).AsTask()));
 
         public Task<S> Fold<S>(OuterType ma, S state, Func<S, A, S> f) =>
             MOuter.FoldAsync(ma, state, async (s, inner) =>
@@ -100,25 +100,25 @@ namespace LanguageExt
             where NewOuterMonad : struct, MonadAsync<NewOuterType, NewInnerType>
             where NewInnerMonad : struct, MonadAsync<NewInnerType, B> =>
                 default(NewOuterMonad).RunAsync( _ =>
-                    MOuter.Fold(ma, default(NewOuterMonad).ReturnAsync(default(NewInnerMonad).Zero().AsTask()), (outerState, innerA) =>
+                    MOuter.Fold(ma, default(NewOuterMonad).PureAsync(default(NewInnerMonad).Zero().AsTask()), (outerState, innerA) =>
                         TransAsync<NewOuterMonad, NewOuterType, NewInnerMonad, NewInnerType, B>.Inst.Plus(outerState,
                             MInner.Bind<NewOuterMonad, NewOuterType, NewInnerType>(innerA, a =>
-                                default(NewOuterMonad).ReturnAsync(default(NewInnerMonad).ReturnAsync(f(a).AsTask()).AsTask()))))(unit));
+                                default(NewOuterMonad).PureAsync(default(NewInnerMonad).PureAsync(f(a).AsTask()).AsTask()))))(unit));
 
         public NewOuterType TraverseAsync<NewOuterMonad, NewOuterType, NewInnerMonad, NewInnerType, B>(OuterType ma, Func<A, Task<B>> f)
             where NewOuterMonad : struct, MonadAsync<NewOuterType, NewInnerType>
             where NewInnerMonad : struct, MonadAsync<NewInnerType, B> =>
                 default(NewOuterMonad).RunAsync(_ =>
-                   MOuter.Fold(ma, default(NewOuterMonad).ReturnAsync(default(NewInnerMonad).Zero().AsTask()), (outerState, innerA) =>
+                   MOuter.Fold(ma, default(NewOuterMonad).PureAsync(default(NewInnerMonad).Zero().AsTask()), (outerState, innerA) =>
                        TransAsync<NewOuterMonad, NewOuterType, NewInnerMonad, NewInnerType, B>.Inst.Plus(outerState,
                            MInner.Bind<NewOuterMonad, NewOuterType, NewInnerType>(innerA, a =>
-                               default(NewOuterMonad).ReturnAsync(default(NewInnerMonad).ReturnAsync(f(a)).AsTask()))))(unit));
+                               default(NewOuterMonad).PureAsync(default(NewInnerMonad).PureAsync(f(a)).AsTask()))))(unit));
 
         public OuterType Plus(OuterType ma, OuterType mb) =>
             MOuter.Apply(MInner.Plus, ma, mb);
 
         public OuterType Zero() =>
-            MOuter.ReturnAsync(MInner.Zero().AsTask());
+            MOuter.PureAsync(MInner.Zero().AsTask());
     }
 
     public struct TransAsync<OuterMonad, OuterType, InnerMonad, InnerType, NumA, A>

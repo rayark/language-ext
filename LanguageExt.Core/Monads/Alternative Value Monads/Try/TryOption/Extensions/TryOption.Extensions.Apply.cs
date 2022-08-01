@@ -36,6 +36,22 @@ public static partial class TryOptionExtensions
     /// <returns>Bound result of the application of the function to the argument</returns>
     public static TryOption<B> Apply<A, B>(this TryOption<Func<A, B>> ff, TryOption<A> fx) =>
         default(ApplTryOption<A, B>).Apply(ff, fx);
+            
+    /// <summary>
+    /// Applicative apply
+    /// </summary>
+    /// <remarks>
+    /// Applies the bound function to the bound arguments, returning a bound result. 
+    /// </remarks>
+    /// <param name="ff">Bound function</param>
+    /// <param name="fx">Bound argument</param>
+    /// <param name="fy">Bound argument</param>
+    /// <typeparam name="A">Input bound value type</typeparam>
+    /// <typeparam name="B">Intermediate bound value type</typeparam>
+    /// <typeparam name="C">Output bound value type</typeparam>
+    /// <returns>Bound result of the application of the function to the argument</returns>
+    public static TryOption<C> Apply<A, B, C>(this TryOption<Func<A, B, C>> ff, TryOption<A> fx, TryOption<B> fy) =>
+        ff.Map(curry).Apply(fx).Apply(fy);
     
     /// <summary>
     /// Applicative apply

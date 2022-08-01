@@ -32,7 +32,7 @@ namespace LanguageExt.Tests
         [Fact]
         public void ApplySuccArgsF2()
         {
-            var comp = apply(tryadd, three, four);
+            var comp = apply(apply(tryadd, three), four);
             Assert.Equal(seven.Try(), comp.Try());
         }
 
@@ -63,7 +63,7 @@ namespace LanguageExt.Tests
         [Fact]
         public void ApplyNoneArgsF2()
         {
-            var comp = apply(tryadd, fail, four);
+            var comp = apply(apply(tryadd, fail), four);
 
             comp.Match(
                 Succ: x => Assert.True(false),
@@ -97,7 +97,7 @@ namespace LanguageExt.Tests
         [Fact]
         public void ApplicativeLawHoldsF2()
         {
-            var first = apply(tryadd, three, four);
+            var first = apply(apply(tryadd, three), four);
             var second = apply(parmap(three, add), four);
 
             Assert.Equal(first.Try(), second.Try());

@@ -128,7 +128,7 @@ namespace LanguageExt.ClassInstances
             Empty();
 
         [Pure]
-        public IEnumerable<A> Return(Func<Unit, A> f) =>
+        public IEnumerable<A> Lift(Func<Unit, A> f) =>
             new[] { f(unit) };
 
         [Pure]
@@ -144,14 +144,14 @@ namespace LanguageExt.ClassInstances
             mb;
 
         [Pure]
-        public IEnumerable<A> Return(A x) =>
-            Return(_ => x);
+        public IEnumerable<A> Pure(A x) =>
+            Lift(_ => x);
 
         [Pure]
         public MB Apply<MonadB, MB, B>(Func<A, A, B> faab, IEnumerable<A> fa, IEnumerable<A> fb) where MonadB : struct, Monad<Unit, Unit, MB, B> =>
             default(MEnumerable<A>).Bind<MonadB, MB, B>(fa, a =>
             default(MEnumerable<A>).Bind<MonadB, MB, B>(fb, b =>
-            default(MonadB).Return(_ => faab(a, b))));
+            default(MonadB).Lift(_ => faab(a, b))));
 
         [Pure]
         public IEnumerable<A> Apply(Func<A, A, A> f, IEnumerable<A> fa, IEnumerable<A> fb) =>

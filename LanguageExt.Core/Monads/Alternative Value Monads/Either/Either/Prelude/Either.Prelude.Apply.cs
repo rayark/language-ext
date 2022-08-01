@@ -5,10 +5,12 @@ using LanguageExt;
 using static LanguageExt.Prelude;
 using LanguageExt.ClassInstances;
 
+namespace LanguageExt;
+
 /// <summary>
 /// Extension methods for `Either`
 /// </summary>
-public static partial class EitherExtensions
+public static partial class Prelude
 {
     /// <summary>
     /// Applicative action
@@ -39,6 +41,23 @@ public static partial class EitherExtensions
     /// <returns>Bound result of the application of the function to the argument</returns>
     public static Either<L, B> apply<L, A, B>(Either<L, Func<A, B>> ff, Either<L, A> fx) =>
         default(ApplEither<L, A, B>).Apply(ff, fx);
+    
+    /// <summary>
+    /// Applicative apply
+    /// </summary>
+    /// <remarks>
+    /// Applies the bound function to the bound arguments, returning a bound result. 
+    /// </remarks>
+    /// <param name="ff">Bound function</param>
+    /// <param name="fx">Bound argument</param>
+    /// <param name="fy">Bound argument</param>
+    /// <typeparam name="L">Alternative value</typeparam>
+    /// <typeparam name="A">Input bound value type</typeparam>
+    /// <typeparam name="B">Intermediate bound value type</typeparam>
+    /// <typeparam name="C">Output bound value type</typeparam>
+    /// <returns>Bound result of the application of the function to the argument</returns>
+    public static Either<L, C> apply<L, A, B, C>(Either<L, Func<A, B, C>> ff, Either<L, A> fx, Either<L, B> fy) =>
+        ff.Map(curry).Apply(fx).Apply(fy);
     
     /// <summary>
     /// Applicative apply

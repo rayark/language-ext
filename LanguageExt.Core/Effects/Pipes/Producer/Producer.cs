@@ -415,7 +415,7 @@ namespace LanguageExt.Pipes
 
                 // Run the producing effects
                 // We should NOT be awaiting these 
-                var mmt = mme.Map(m => m.RunEffect().Run(env).AsTask());
+                var mmt = mme.Map(m => m.MkEffect().Run(env).AsTask());
 
                 // When all tasks are done, we're done
                 // We should NOT be awaiting this 

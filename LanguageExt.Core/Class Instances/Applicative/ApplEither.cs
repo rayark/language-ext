@@ -8,6 +8,15 @@ using System.Runtime.CompilerServices;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureEither<L, A> : 
+        ApplicativePure<Either<L, A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Either<L, A> Pure(A x) =>
+            Right<L, A>(x);
+    }    
+    
     public readonly struct ApplEither<L, A, B> : 
         BiFunctor<Either<L, A>, Either<L, B>, L, A, L, B>,
         Applicative<Either<L, Func<A, B>>, Either<L, A>, Either<L, B>, A, B>

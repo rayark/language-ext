@@ -23,7 +23,7 @@ namespace LanguageExt
         /// <returns>Reader monad</returns>
         [Pure]
         public static Reader<Env, A> Reader<Env, A>(A value) =>
-            default(MReader<Env, A>).Return(_ => value);
+            default(MReader<Env, A>).Lift(_ => value);
 
         /// <summary>
         /// Reader monad constructor
@@ -34,7 +34,7 @@ namespace LanguageExt
         /// <returns>Reader monad</returns>
         [Pure]
         public static Reader<Env, A> Reader<Env, A>(Func<Env, A> f) =>
-            default(MReader<Env, A>).Return(f);
+            default(MReader<Env, A>).Lift(f);
 
         /// <summary>
         /// Reader failure

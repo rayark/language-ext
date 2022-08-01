@@ -82,7 +82,7 @@ namespace LanguageExt.ClassInstances
             ma + mb;
 
         [Pure]
-        public Lst<A> Return(Func<Unit, A> f) =>
+        public Lst<A> Lift(Func<Unit, A> f) =>
             List(f(unit));
 
         [Pure]
@@ -102,8 +102,8 @@ namespace LanguageExt.ClassInstances
             mb;
 
         [Pure]
-        public Lst<A> Return(A x) =>
-            Return(_ => x);
+        public Lst<A> Pure(A x) =>
+            Lift(_ => x);
 
         [Pure]
         public Lst<A> Apply(Func<A, A, A> f, Lst<A> fa, Lst<A> fb) =>

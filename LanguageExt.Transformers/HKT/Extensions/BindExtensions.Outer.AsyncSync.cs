@@ -109,7 +109,7 @@ namespace LanguageExt
                                                                   Fail: ex => (false, Arr<B>.Empty, ex)).ConfigureAwait(false);
 
                         if (!success && e == null) return TryOptionAsync(Option<Arr<B>>.None);
-                        if (!success && e != null) return TryOptionAsync<Arr<B>>(e);
+                        if (!success) return TryOptionAsync<Arr<B>>(e);
                         foreach (var ib in imb)
                         {
                             results.Add(ib);
@@ -218,7 +218,7 @@ namespace LanguageExt
                                                                   Fail: ex => (false, HashSet<B>.Empty, ex)).ConfigureAwait(false);
 
                         if (!success && e == null) return TryOptionAsync(Option<HashSet<B>>.None);
-                        if (!success && e != null) return TryOptionAsync<HashSet<B>>(e);
+                        if (!success) return TryOptionAsync<HashSet<B>>(e);
                         foreach (var ib in imb)
                         {
                             results.Add(ib);
@@ -326,7 +326,7 @@ namespace LanguageExt
                                                                   Fail: ex => (false, Lst<B>.Empty, ex)).ConfigureAwait(false);
 
                         if (!success && e == null) return TryOptionAsync(Option<Lst<B>>.None);
-                        if (!success && e != null) return TryOptionAsync<Lst<B>>(e);
+                        if (!success) return TryOptionAsync<Lst<B>>(e);
                         foreach (var ib in imb)
                         {
                             results.Add(ib);

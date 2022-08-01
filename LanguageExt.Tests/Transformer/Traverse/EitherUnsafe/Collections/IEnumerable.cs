@@ -40,7 +40,7 @@ namespace LanguageExt.Tests.Transformer.Traverse.EitherUnsafeT.Collections
 
             var mb = ma.Sequence();
 
-            Assert.True(mb == LeftUnsafe(Error.New("alternative")));
+            Assert.True(mb == LeftUnsafe<Error, IEnumerable<int>>(Error.New("alternative")));
         }
     }
 }

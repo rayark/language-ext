@@ -140,7 +140,7 @@ namespace LanguageExt
         /// <returns>Returns an `Eff Unit` as its bound value.  If it runs, it will cancel the
         /// forked child expression</returns>
         public static Eff<RT, Eff<Unit>> fork<RT, A>(Effect<RT, A> ma) where RT : struct, HasCancel<RT> =>
-            ma.RunEffect().Fork();
+            ma.MkEffect().Fork();
 
         /// <summary>
         /// Launch the async computation without awaiting the result

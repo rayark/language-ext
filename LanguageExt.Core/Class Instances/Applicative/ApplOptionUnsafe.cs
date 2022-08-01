@@ -7,6 +7,14 @@ using System.Runtime.CompilerServices;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureOptionUnsafe<A> : ApplicativePure<OptionUnsafe<A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public OptionUnsafe<A> Pure(A x) =>
+            x;
+    }
+    
     public readonly struct ApplOptionUnsafe<A, B> : Applicative<OptionUnsafe<Func<A, B>>, OptionUnsafe<A>, OptionUnsafe<B>, A, B>
     {
         public static readonly ApplOptionUnsafe<A, B> Inst = default;

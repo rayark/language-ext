@@ -78,7 +78,7 @@ namespace LanguageExt.ClassInstances
             Empty();
 
         [Pure]
-        public Seq<A> Return(Func<Unit, A> f) =>
+        public Seq<A> Lift(Func<Unit, A> f) =>
             f(unit).Cons();
 
         [Pure]
@@ -94,7 +94,7 @@ namespace LanguageExt.ClassInstances
             mb;
 
         [Pure]
-        public Seq<A> Return(A x) =>
+        public Seq<A> Pure(A x) =>
             x.Cons();
 
         [Pure]

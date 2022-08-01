@@ -10,11 +10,11 @@ namespace LanguageExt.Tests.Transformer.Traverse.EitherUnsafeT.Collections
         [Fact]
         public void EmptySeqIsRightEmptySeq()
         {
-            Seq<Either<Error, int>> ma = Empty;
+            Seq<EitherUnsafe<Error, int>> ma = Empty;
 
             var mb = ma.Sequence();
 
-            Assert.True(mb == RightUnsafe(Seq<int>.Empty));
+            Assert.True(mb == RightUnsafe<Error, Seq<int>>(Seq<int>.Empty));
         }
         
         [Fact]
@@ -24,7 +24,7 @@ namespace LanguageExt.Tests.Transformer.Traverse.EitherUnsafeT.Collections
 
             var mb = ma.Sequence();
 
-            Assert.True(mb == RightUnsafe(Seq(1, 2, 3)));
+            Assert.True(mb == RightUnsafe<Error, Seq<int>>(Seq(1, 2, 3)));
         }
         
         [Fact]
@@ -34,7 +34,7 @@ namespace LanguageExt.Tests.Transformer.Traverse.EitherUnsafeT.Collections
 
             var mb = ma.Sequence();
 
-            Assert.True(mb == LeftUnsafe(Error.New("alternative")));
+            Assert.True(mb == LeftUnsafe<Error, Seq<int>>(Error.New("alternative")));
         }
     }
 }

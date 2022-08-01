@@ -1,4 +1,5 @@
-﻿using LanguageExt;
+﻿#nullable enable
+using LanguageExt;
 using LanguageExt.ClassInstances;
 using LanguageExt.TypeClasses;
 using System;
@@ -8,7 +9,7 @@ using System.Linq;
 using static LanguageExt.Prelude;
 using static LanguageExt.TypeClass;
 
-public static class SeqExtensions
+public static partial class SeqExtensions
 {
     /// <summary>
     /// Monadic join
@@ -52,18 +53,18 @@ public static class SeqExtensions
     /// </summary>
     [Pure]
     [Obsolete("Please use Seq<A> directly.  ISeq<A> is less performant than Seq<A> and will go away eventually")]
-    public static A FirstOrDefault<A>(this ISeq<A> seq) =>
+    public static A? FirstOrDefault<A>(this ISeq<A> seq) =>
         seq.IsEmpty
-            ? default(A)
+            ? default
             : seq.Head;
 
     /// <summary>
     /// Get the head item in the sequence
     /// </summary>
     [Pure]
-    public static A FirstOrDefault<A>(this Seq<A> seq) =>
+    public static A? FirstOrDefault<A>(this Seq<A> seq) =>
         seq.IsEmpty
-            ? default(A)
+            ? default
             : seq.Head;
 
     /// <summary>
@@ -477,80 +478,6 @@ public static class SeqExtensions
     [Pure]
     public static Seq<T> Distinct<T, K>(this Seq<T> list, Func<T, K> keySelector, Option<Func<K, K, bool>> compare = default(Option<Func<K, K, bool>>)) =>
         toSeq(Enumerable.Distinct(list, new EqCompare<T>((a, b) => compare.IfNone(default(EqDefault<K>).Equals)(keySelector(a), keySelector(b)), a => keySelector(a)?.GetHashCode() ?? 0)));
-
-    /// <summary>
-    /// Apply a sequence of values to a sequence of functions
-    /// </summary>
-    /// <param name="fabc">sequence of functions</param>
-    /// <param name="fa">sequence of argument values</param>
-    /// <returns>Returns the result of applying the sequence argument values to the sequence functions</returns>
-    [Pure]
-    public static Seq<B> Apply<A, B>(this Seq<Func<A, B>> fabc, Seq<A> fa) =>
-        ApplSeq<A, B>.Inst.Apply(fabc, fa);
-
-    /// <summary>
-    /// Apply a sequence of values to a sequence of functions
-    /// </summary>
-    /// <param name="fabc">sequence of functions</param>
-    /// <param name="fa">sequence of argument values</param>
-    /// <returns>Returns the result of applying the sequence argument values to the sequence functions</returns>
-    [Pure]
-    public static Seq<B> Apply<A, B>(this Func<A, B> fabc, Seq<A> fa) =>
-        ApplSeq<A, B>.Inst.Apply(fabc.Cons(), fa);
-
-    /// <summary>
-    /// Apply a sequence of values to a sequence of functions of arity 2
-    /// </summary>
-    /// <param name="fabc">sequence of functions</param>
-    /// <param name="fa">sequence argument values</param>
-    /// <returns>Returns the result of applying the sequence of argument values to the 
-    /// IEnumerable of functions: a sequence of functions of arity 1</returns>
-    [Pure]
-    public static Seq<Func<B, C>> Apply<A, B, C>(this Seq<Func<A, B, C>> fabc, Seq<A> fa) =>
-        default(ApplSeq<A, Func<B, C>>).Apply(fabc.Map(curry), fa);
-
-    /// <summary>
-    /// Apply a sequence of values to a sequence of functions of arity 2
-    /// </summary>
-    /// <param name="fabc">sequence of functions</param>
-    /// <param name="fa">sequence argument values</param>
-    /// <returns>Returns the result of applying the sequence of argument values to the 
-    /// sequence of functions: a sequence of functions of arity 1</returns>
-    [Pure]
-    public static Seq<Func<B, C>> Apply<A, B, C>(this Func<A, B, C> fabc, Seq<A> fa) =>
-        Apply(Seq1(fabc), fa);
-
-    /// <summary>
-    /// Apply sequence of values to a sequence of functions of arity 2
-    /// </summary>
-    /// <param name="fabc">sequence of functions</param>
-    /// <param name="fa">sequence argument values</param>
-    /// <param name="fb">sequence argument values</param>
-    /// <returns>Returns the result of applying the sequence of arguments to the sequence of functions</returns>
-    [Pure]
-    public static Seq<C> Apply<A, B, C>(this Seq<Func<A, B, C>> fabc, Seq<A> fa, Seq<B> fb) =>
-        default(ApplSeq<B, C>).Apply(default(ApplSeq<A, Func<B, C>>).Apply(fabc.Map(curry), fa), fb);
-
-    /// <summary>
-    /// Apply sequence of values to an sequence of functions of arity 2
-    /// </summary>
-    /// <param name="fabc">sequence of functions</param>
-    /// <param name="fa">sequence argument values</param>
-    /// <param name="fb">sequence argument values</param>
-    /// <returns>Returns the result of applying the sequence of arguments to the sequence of functions</returns>
-    [Pure]
-    public static Seq<C> Apply<A, B, C>(this Func<A, B, C> fabc, Seq<A> fa, Seq<B> fb) =>
-        Apply(Seq1(fabc), fa, fb);
-
-    /// <summary>
-    /// Evaluate fa, then fb, ignoring the result of fa
-    /// </summary>
-    /// <param name="fa">Applicative to evaluate first</param>
-    /// <param name="fb">Applicative to evaluate second and then return</param>
-    /// <returns>Applicative of type FB derived from Applicative of B</returns>
-    [Pure]
-    public static Seq<B> Action<A, B>(this Seq<A> fa, Seq<B> fb) =>
-        default(ApplSeq<A, B>).Action(fa, fb);
 
     /// <summary>
     /// The tails function returns all final segments of the argument, longest first. For example:

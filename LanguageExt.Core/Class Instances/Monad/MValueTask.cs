@@ -21,7 +21,6 @@ namespace LanguageExt.ClassInstances
         OptionalAsync<ValueTask<A>, A>,
         OptionalUnsafeAsync<ValueTask<A>, A>,
         MonadAsync<ValueTask<A>, A>,
-        FoldableAsync<ValueTask<A>, A>,
         BiFoldableAsync<ValueTask<A>, A, Unit>
     {
         public static readonly MValueTask<A> Inst = default(MValueTask<A>);
@@ -71,7 +70,7 @@ namespace LanguageExt.ClassInstances
         /// <param name="x">The bound monad value</param>
         /// <returns>Monad of A</returns>
         [Pure]
-        public ValueTask<A> ReturnAsync(Task<A> x) =>
+        public ValueTask<A> PureAsync(Task<A> x) =>
             x.ToValue();
 
         /// <summary>
@@ -80,7 +79,7 @@ namespace LanguageExt.ClassInstances
         /// <typeparam name="A">Type of the bound monad value</typeparam>
         /// <returns>Monad of A</returns>
         [Pure]
-        public async ValueTask<A> ReturnAsync(Func<Unit, Task<A>> f) =>
+        public async ValueTask<A> LiftAsync(Func<Unit, Task<A>> f) =>
             await f(unit).ConfigureAwait(false);
 
         [Pure]

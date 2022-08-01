@@ -46,7 +46,7 @@ namespace LanguageExt.ClassInstances
                     : b);
 
         [Pure]
-        public OptionAsync<A> ReturnAsync(Func<Unit, Task<A>> f) =>
+        public OptionAsync<A> LiftAsync(Func<Unit, Task<A>> f) =>
             OptionAsync<A>.SomeAsync(f(unit));
 
         [Pure]
@@ -199,8 +199,8 @@ namespace LanguageExt.ClassInstances
             mb;
 
         [Pure]
-        public OptionAsync<A> ReturnAsync(Task<A> x) =>
-            ReturnAsync(_ => x);
+        public OptionAsync<A> PureAsync(Task<A> x) =>
+            LiftAsync(_ => x);
 
         [Pure]
         public OptionAsync<A> RunAsync(Func<Unit, Task<OptionAsync<A>>> ma)

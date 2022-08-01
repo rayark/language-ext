@@ -13,16 +13,9 @@ namespace LanguageExt.TypeClasses
     [Typeclass("M*")]
     public interface Monad<MA, A> : 
         Monad<Unit, Unit, MA, A>, 
-        Foldable<MA, A>,
-        Typeclass
+        ApplicativePure<MA, A>,
+        Foldable<MA, A>
     {
-        /// <summary>
-        /// Monad constructor function.  Provide the bound value A to construct
-        /// a new monad of type MA.
-        /// </summary>
-        /// <param name="x">Value to bind</param>
-        /// <returns>Monad of type MA</returns>
-        MA Return(A x);
     }
 
     /// <summary>
@@ -34,8 +27,7 @@ namespace LanguageExt.TypeClasses
     /// <typeparam name="A">The data-type bound value</typeparam>
     [Typeclass("M*")]
     public interface Monad<Env, Out, MA, A> : 
-        Foldable<Env, MA, A>,
-        Typeclass
+        Foldable<Env, MA, A>
     {
         /// <summary>
         /// Monadic bind
@@ -77,7 +69,7 @@ namespace LanguageExt.TypeClasses
         /// </remarks>
         /// <param name="x">Value to bind</param>
         /// <returns>Monad of type `MA`</returns>
-        MA Return(Func<Env, A> f);
+        MA Lift(Func<Env, A> f);
 
         /// <summary>
         /// Used for double dispatch by the bind function for monadic types that

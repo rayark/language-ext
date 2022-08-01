@@ -23,7 +23,7 @@ namespace LanguageExt
             where NewOuterMonad : struct, Monad<NewOuterType, NewInnerType>
             where NewInnerMonad : struct, Monad<NewInnerType, B> =>
                 MOuter.Bind<NewOuterMonad, NewOuterType, NewInnerType>(ma, inner =>
-                    default(NewOuterMonad).Return(
+                    default(NewOuterMonad).Pure(
                         MInner.Bind<NewInnerMonad, NewInnerType, B>(inner, f)));
 
         public NewOuterType Bind<NewOuterMonad, NewOuterType, NewInnerMonad, NewInnerType, B>(OuterType ma, Func<A, NewOuterType> f)
@@ -45,9 +45,9 @@ namespace LanguageExt
             where NewInnerMonad : struct, Monad<NewInnerType, B> =>
                 MOuter.Bind<NewOuterMonad, NewOuterType, NewInnerType>(ma,
                     inner =>
-                        default(NewOuterMonad).Return(
+                        default(NewOuterMonad).Pure(
                             MInner.Bind<NewInnerMonad, NewInnerType, B>(inner,
-                                a => default(NewInnerMonad).Return(f(a)))));
+                                a => default(NewInnerMonad).Pure(f(a)))));
 
         public S Fold<S>(OuterType ma, S state, Func<S, A, S> f) =>
             MOuter.Fold(ma, state, (s, inner) =>
@@ -72,7 +72,7 @@ namespace LanguageExt
                 MOuter.Fold(ma, default(NewOuterMonad).Zero(), (outerState, innerA) =>
                     SeqTrans<NewOuterMonad, NewOuterType, NewInnerMonad, NewInnerType, B>.Inst.Plus(outerState,
                         MInner.Bind<NewOuterMonad, NewOuterType, NewInnerType>(innerA, a =>
-                            default(NewOuterMonad).Return(default(NewInnerMonad).Return(f(a))))))(unit);
+                            default(NewOuterMonad).Pure(default(NewInnerMonad).Pure(f(a))))))(unit);
 
         public OuterType Plus(OuterType ma, OuterType mb) =>
             MOuter.Plus(ma, mb);

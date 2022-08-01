@@ -46,7 +46,7 @@ namespace LanguageExt.ClassInstances
             a.IsSome ? a : b;
 
         [Pure]
-        public Option<A> Return(Func<Unit, A> f) =>
+        public Option<A> Lift(Func<Unit, A> f) =>
             Option<A>.Some(f(unit));
 
         [Pure]
@@ -119,7 +119,7 @@ namespace LanguageExt.ClassInstances
             mb;
 
         [Pure]
-        public Option<A> Return(A x) =>
+        public Option<A> Pure(A x) =>
             Some(x);
 
         [Pure]

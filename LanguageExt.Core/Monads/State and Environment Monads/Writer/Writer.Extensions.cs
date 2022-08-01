@@ -272,7 +272,7 @@ public static class WriterExtensions
                 default(MWriter<MonoidW, W, A>)
                     .Bind<MWriter<MonoidW, W, (A, Func<W, W>)>, Writer<MonoidW, W, (A, Func<W, W>)>, (A, Func<W, W>)>(self, a =>
                         default(MWriter<MonoidW, W, (A, Func<W, W>)>)
-                            .Return(_ => (a, f))));
+                            .Lift(_ => (a, f))));
 
 
     [Pure]
@@ -293,7 +293,7 @@ public static class WriterExtensions
     public static Writer<MonoidW, W, B> Select<MonoidW, W, A, B>(this Writer<MonoidW, W, A> self, Func<A, B> f)
         where MonoidW : struct, Monoid<W> =>
             default(MWriter<MonoidW, W, A>).Bind<MWriter<MonoidW, W, B>, Writer<MonoidW, W, B>, B>(self, a =>
-            default(MWriter<MonoidW, W, B>).Return(_ => f(a)));
+            default(MWriter<MonoidW, W, B>).Lift(_ => f(a)));
 
     [Pure]
     public static Writer<MSeq<W>, Seq<W>, C> SelectMany<W, A, B, C>(
@@ -310,7 +310,7 @@ public static class WriterExtensions
             where MonoidW : struct, Monoid<W> =>
                 default(MWriter<MonoidW, W, A>).Bind<MWriter<MonoidW, W, C>, Writer<MonoidW, W, C>, C>(self, a =>
                 default(MWriter<MonoidW, W, B>).Bind<MWriter<MonoidW, W, C>, Writer<MonoidW, W, C>, C>(bind(a), b =>
-                default(MWriter<MonoidW, W, C>).Return(_ => project(a, b))));
+                default(MWriter<MonoidW, W, C>).Lift(_ => project(a, b))));
 
     [Pure]
     public static Writer<MSeq<W>, Seq<W>, A> Filter<W, A>(this Writer<MSeq<W>, Seq<W>, A> self, Func<A, bool> pred) =>

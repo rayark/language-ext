@@ -19,7 +19,7 @@ namespace EffectsExamples
         HasConsole<RT>
     {
         public static Aff<RT, Unit> main =>
-            mainEffect.RunEffect();
+            mainEffect.MkEffect();
         
         /// <summary>
         /// Compose the client and server together to make an enclosed effect

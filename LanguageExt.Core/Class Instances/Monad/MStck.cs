@@ -67,7 +67,7 @@ namespace LanguageExt.ClassInstances
             ma + mb;
 
         [Pure]
-        public Stck<A> Return(Func<Unit, A> f) =>
+        public Stck<A> Lift(Func<Unit, A> f) =>
             Stack(f(unit));
 
         [Pure]
@@ -87,7 +87,7 @@ namespace LanguageExt.ClassInstances
             mb;
 
         [Pure]
-        public Stck<A> Return(A x) =>
+        public Stck<A> Pure(A x) =>
             Stack(x);
 
         [Pure]

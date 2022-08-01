@@ -8,6 +8,15 @@ using LanguageExt.Common;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureTry<A> : 
+        ApplicativePure<Try<A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Try<A> Pure(A x) =>
+            () => x;
+    }
+    
     public readonly struct ApplTry<A, B> : 
         BiFunctor<Try<A>, Try<B>, Error, A, Error, B>,
         Applicative<Try<Func<A, B>>, Try<A>, Try<B>, A, B>

@@ -36,7 +36,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MOptionAsync<OptionAsync<A>>, OptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MOptionAsync<OptionAsync<C>>, OptionAsync<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(ma, a =>
             default(TransAsync<MOptionAsync<OptionAsync<B>>, OptionAsync<OptionAsync<B>>, MOptionAsync<B>, OptionAsync<B>, B>).Bind<MOptionAsync<OptionAsync<C>>, OptionAsync<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(bind(a), b =>
-            default(MOptionAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MOptionAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -55,7 +55,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MOptionAsync<OptionAsync<A>>, OptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MOptionAsync<OptionAsync<C>>, OptionAsync<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(ma, a =>
             default(TransAsync<MOptionAsync<OptionAsync<B>>, OptionAsync<OptionAsync<B>>, MOptionAsync<B>, OptionAsync<B>, B>).Bind<MOptionAsync<OptionAsync<C>>, OptionAsync<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(bind(a), b =>
-            default(MOptionAsync<C>).ReturnAsync(project(a, b))));
+            default(MOptionAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -70,7 +70,7 @@ namespace LanguageExt
         public static OptionAsync<OptionAsync<A>> Where< A>(this OptionAsync<OptionAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MOptionAsync<OptionAsync<A>>, OptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MOptionAsync<OptionAsync<A>>, OptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -85,7 +85,7 @@ namespace LanguageExt
         public static OptionAsync<OptionAsync<A>> Where< A>(this OptionAsync<OptionAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MOptionAsync<OptionAsync<A>>, OptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).BindAsync<MOptionAsync<OptionAsync<A>>, OptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -302,7 +302,7 @@ namespace LanguageExt
             default(TransAsync<MOptionAsync<OptionAsync<A>>, OptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>)
                 .Bind<MOptionAsync<OptionAsync<A>>, OptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -318,7 +318,7 @@ namespace LanguageExt
             default(TransAsync<MOptionAsync<OptionAsync<A>>, OptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>)
                 .BindAsync<MOptionAsync<OptionAsync<A>>, OptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -416,12 +416,26 @@ namespace LanguageExt
         [Pure]
         public static OptionAsync<OptionAsync<B>> ApplyT< A, B>(this Func<A, B> fab, OptionAsync<OptionAsync<A>> fa) =>
             default(ApplOptionAsync< OptionAsync<A>, OptionAsync<B>>).Apply(
-                default(MOptionAsync< Func<OptionAsync<A>, OptionAsync<B>>>).ReturnAsync(
+                default(MOptionAsync< Func<OptionAsync<A>, OptionAsync<B>>>).PureAsync(
                     Task.FromResult<Func<OptionAsync<A>, OptionAsync<B>>>((OptionAsync<A> a) => 
                         default(ApplOptionAsync< A, B>).Apply(
-                            default(MOptionAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MOptionAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `OptionAsync&lt;OptionAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`OptionAsync&lt;OptionAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static OptionAsync<OptionAsync<B>> ApplyT< A, B>(this OptionAsync<OptionAsync<Func<A, B>>> fab, OptionAsync<OptionAsync<A>> fa) =>
+            default(MOptionAsync<OptionAsync<Func<A, B>>>).Bind<MOptionAsync<OptionAsync<B>>, OptionAsync<OptionAsync<B>>, OptionAsync<B>>(fab, f =>
+                default(MOptionAsync<OptionAsync<A>>).Bind<MOptionAsync<OptionAsync<B>>, OptionAsync<OptionAsync<B>>, OptionAsync<B>>(fa, a => 
+                    default(MOptionAsync<OptionAsync<B>>).PureAsync(Task.FromResult(default(ApplOptionAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -434,12 +448,7 @@ namespace LanguageExt
         /// <returns>`OptionAsync&lt;OptionAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static OptionAsync<OptionAsync<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, OptionAsync<OptionAsync<A>> fa, OptionAsync<OptionAsync<B>> fb) =>
-            default(ApplOptionAsync< OptionAsync<A>, OptionAsync<B>, OptionAsync<C>>).Apply(
-                default(MOptionAsync< Func<OptionAsync<A>, Func<OptionAsync<B>, OptionAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<OptionAsync<A>, Func<OptionAsync<B>, OptionAsync<C>>>>((OptionAsync<A> a) =>
-                        (OptionAsync<B> b) =>
-                            default(ApplOptionAsync< A, B, C>).Apply(
-                                default(MOptionAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -458,7 +467,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MEitherAsync<L, OptionAsync<A>>, EitherAsync<L, OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MEitherAsync<L, OptionAsync<C>>, EitherAsync<L, OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(ma, a =>
             default(TransAsync<MEitherAsync<L, OptionAsync<B>>, EitherAsync<L, OptionAsync<B>>, MOptionAsync<B>, OptionAsync<B>, B>).Bind<MEitherAsync<L, OptionAsync<C>>, EitherAsync<L, OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(bind(a), b =>
-            default(MOptionAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MOptionAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -477,7 +486,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MEitherAsync<L, OptionAsync<A>>, EitherAsync<L, OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MEitherAsync<L, OptionAsync<C>>, EitherAsync<L, OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(ma, a =>
             default(TransAsync<MEitherAsync<L, OptionAsync<B>>, EitherAsync<L, OptionAsync<B>>, MOptionAsync<B>, OptionAsync<B>, B>).Bind<MEitherAsync<L, OptionAsync<C>>, EitherAsync<L, OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(bind(a), b =>
-            default(MOptionAsync<C>).ReturnAsync(project(a, b))));
+            default(MOptionAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -492,7 +501,7 @@ namespace LanguageExt
         public static EitherAsync<L, OptionAsync<A>> Where<L, A>(this EitherAsync<L, OptionAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MEitherAsync<L, OptionAsync<A>>, EitherAsync<L, OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MEitherAsync<L, OptionAsync<A>>, EitherAsync<L, OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -507,7 +516,7 @@ namespace LanguageExt
         public static EitherAsync<L, OptionAsync<A>> Where<L, A>(this EitherAsync<L, OptionAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MEitherAsync<L, OptionAsync<A>>, EitherAsync<L, OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).BindAsync<MEitherAsync<L, OptionAsync<A>>, EitherAsync<L, OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -724,7 +733,7 @@ namespace LanguageExt
             default(TransAsync<MEitherAsync<L, OptionAsync<A>>, EitherAsync<L, OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>)
                 .Bind<MEitherAsync<L, OptionAsync<A>>, EitherAsync<L, OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -740,7 +749,7 @@ namespace LanguageExt
             default(TransAsync<MEitherAsync<L, OptionAsync<A>>, EitherAsync<L, OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>)
                 .BindAsync<MEitherAsync<L, OptionAsync<A>>, EitherAsync<L, OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -838,12 +847,26 @@ namespace LanguageExt
         [Pure]
         public static EitherAsync<L, OptionAsync<B>> ApplyT<L, A, B>(this Func<A, B> fab, EitherAsync<L, OptionAsync<A>> fa) =>
             default(ApplEitherAsync<L, OptionAsync<A>, OptionAsync<B>>).Apply(
-                default(MEitherAsync<L, Func<OptionAsync<A>, OptionAsync<B>>>).ReturnAsync(
+                default(MEitherAsync<L, Func<OptionAsync<A>, OptionAsync<B>>>).PureAsync(
                     Task.FromResult<Func<OptionAsync<A>, OptionAsync<B>>>((OptionAsync<A> a) => 
                         default(ApplOptionAsync< A, B>).Apply(
-                            default(MOptionAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MOptionAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `EitherAsync&lt;L, OptionAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`EitherAsync&lt;L, OptionAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static EitherAsync<L, OptionAsync<B>> ApplyT<L, A, B>(this EitherAsync<L, OptionAsync<Func<A, B>>> fab, EitherAsync<L, OptionAsync<A>> fa) =>
+            default(MEitherAsync<L, OptionAsync<Func<A, B>>>).Bind<MEitherAsync<L, OptionAsync<B>>, EitherAsync<L, OptionAsync<B>>, OptionAsync<B>>(fab, f =>
+                default(MEitherAsync<L, OptionAsync<A>>).Bind<MEitherAsync<L, OptionAsync<B>>, EitherAsync<L, OptionAsync<B>>, OptionAsync<B>>(fa, a => 
+                    default(MEitherAsync<L, OptionAsync<B>>).PureAsync(Task.FromResult(default(ApplOptionAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -856,12 +879,7 @@ namespace LanguageExt
         /// <returns>`EitherAsync&lt;L, OptionAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static EitherAsync<L, OptionAsync<C>> ApplyT<L, A, B, C>(this Func<A, B, C> fabc, EitherAsync<L, OptionAsync<A>> fa, EitherAsync<L, OptionAsync<B>> fb) =>
-            default(ApplEitherAsync<L, OptionAsync<A>, OptionAsync<B>, OptionAsync<C>>).Apply(
-                default(MEitherAsync<L, Func<OptionAsync<A>, Func<OptionAsync<B>, OptionAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<OptionAsync<A>, Func<OptionAsync<B>, OptionAsync<C>>>>((OptionAsync<A> a) =>
-                        (OptionAsync<B> b) =>
-                            default(ApplOptionAsync< A, B, C>).Apply(
-                                default(MOptionAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -880,7 +898,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTask<OptionAsync<A>>, Task<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MTask<OptionAsync<C>>, Task<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(ma, a =>
             default(TransAsync<MTask<OptionAsync<B>>, Task<OptionAsync<B>>, MOptionAsync<B>, OptionAsync<B>, B>).Bind<MTask<OptionAsync<C>>, Task<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(bind(a), b =>
-            default(MOptionAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MOptionAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -899,7 +917,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTask<OptionAsync<A>>, Task<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MTask<OptionAsync<C>>, Task<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(ma, a =>
             default(TransAsync<MTask<OptionAsync<B>>, Task<OptionAsync<B>>, MOptionAsync<B>, OptionAsync<B>, B>).Bind<MTask<OptionAsync<C>>, Task<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(bind(a), b =>
-            default(MOptionAsync<C>).ReturnAsync(project(a, b))));
+            default(MOptionAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -914,7 +932,7 @@ namespace LanguageExt
         public static Task<OptionAsync<A>> Where< A>(this Task<OptionAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTask<OptionAsync<A>>, Task<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MTask<OptionAsync<A>>, Task<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -929,7 +947,7 @@ namespace LanguageExt
         public static Task<OptionAsync<A>> Where< A>(this Task<OptionAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTask<OptionAsync<A>>, Task<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).BindAsync<MTask<OptionAsync<A>>, Task<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -1146,7 +1164,7 @@ namespace LanguageExt
             default(TransAsync<MTask<OptionAsync<A>>, Task<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>)
                 .Bind<MTask<OptionAsync<A>>, Task<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -1162,7 +1180,7 @@ namespace LanguageExt
             default(TransAsync<MTask<OptionAsync<A>>, Task<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>)
                 .BindAsync<MTask<OptionAsync<A>>, Task<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -1260,12 +1278,26 @@ namespace LanguageExt
         [Pure]
         public static Task<OptionAsync<B>> ApplyT< A, B>(this Func<A, B> fab, Task<OptionAsync<A>> fa) =>
             default(ApplTask< OptionAsync<A>, OptionAsync<B>>).Apply(
-                default(MTask< Func<OptionAsync<A>, OptionAsync<B>>>).ReturnAsync(
+                default(MTask< Func<OptionAsync<A>, OptionAsync<B>>>).PureAsync(
                     Task.FromResult<Func<OptionAsync<A>, OptionAsync<B>>>((OptionAsync<A> a) => 
                         default(ApplOptionAsync< A, B>).Apply(
-                            default(MOptionAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MOptionAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `Task&lt;OptionAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`Task&lt;OptionAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static Task<OptionAsync<B>> ApplyT< A, B>(this Task<OptionAsync<Func<A, B>>> fab, Task<OptionAsync<A>> fa) =>
+            default(MTask<OptionAsync<Func<A, B>>>).Bind<MTask<OptionAsync<B>>, Task<OptionAsync<B>>, OptionAsync<B>>(fab, f =>
+                default(MTask<OptionAsync<A>>).Bind<MTask<OptionAsync<B>>, Task<OptionAsync<B>>, OptionAsync<B>>(fa, a => 
+                    default(MTask<OptionAsync<B>>).PureAsync(Task.FromResult(default(ApplOptionAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -1278,12 +1310,7 @@ namespace LanguageExt
         /// <returns>`Task&lt;OptionAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static Task<OptionAsync<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, Task<OptionAsync<A>> fa, Task<OptionAsync<B>> fb) =>
-            default(ApplTask< OptionAsync<A>, OptionAsync<B>, OptionAsync<C>>).Apply(
-                default(MTask< Func<OptionAsync<A>, Func<OptionAsync<B>, OptionAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<OptionAsync<A>, Func<OptionAsync<B>, OptionAsync<C>>>>((OptionAsync<A> a) =>
-                        (OptionAsync<B> b) =>
-                            default(ApplOptionAsync< A, B, C>).Apply(
-                                default(MOptionAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -1302,7 +1329,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MValueTask<OptionAsync<A>>, ValueTask<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MValueTask<OptionAsync<C>>, ValueTask<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(ma, a =>
             default(TransAsync<MValueTask<OptionAsync<B>>, ValueTask<OptionAsync<B>>, MOptionAsync<B>, OptionAsync<B>, B>).Bind<MValueTask<OptionAsync<C>>, ValueTask<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(bind(a), b =>
-            default(MOptionAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MOptionAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -1321,7 +1348,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MValueTask<OptionAsync<A>>, ValueTask<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MValueTask<OptionAsync<C>>, ValueTask<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(ma, a =>
             default(TransAsync<MValueTask<OptionAsync<B>>, ValueTask<OptionAsync<B>>, MOptionAsync<B>, OptionAsync<B>, B>).Bind<MValueTask<OptionAsync<C>>, ValueTask<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(bind(a), b =>
-            default(MOptionAsync<C>).ReturnAsync(project(a, b))));
+            default(MOptionAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -1336,7 +1363,7 @@ namespace LanguageExt
         public static ValueTask<OptionAsync<A>> Where< A>(this ValueTask<OptionAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MValueTask<OptionAsync<A>>, ValueTask<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MValueTask<OptionAsync<A>>, ValueTask<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -1351,7 +1378,7 @@ namespace LanguageExt
         public static ValueTask<OptionAsync<A>> Where< A>(this ValueTask<OptionAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MValueTask<OptionAsync<A>>, ValueTask<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).BindAsync<MValueTask<OptionAsync<A>>, ValueTask<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -1568,7 +1595,7 @@ namespace LanguageExt
             default(TransAsync<MValueTask<OptionAsync<A>>, ValueTask<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>)
                 .Bind<MValueTask<OptionAsync<A>>, ValueTask<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -1584,7 +1611,7 @@ namespace LanguageExt
             default(TransAsync<MValueTask<OptionAsync<A>>, ValueTask<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>)
                 .BindAsync<MValueTask<OptionAsync<A>>, ValueTask<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -1682,12 +1709,26 @@ namespace LanguageExt
         [Pure]
         public static ValueTask<OptionAsync<B>> ApplyT< A, B>(this Func<A, B> fab, ValueTask<OptionAsync<A>> fa) =>
             default(ApplValueTask< OptionAsync<A>, OptionAsync<B>>).Apply(
-                default(MValueTask< Func<OptionAsync<A>, OptionAsync<B>>>).ReturnAsync(
+                default(MValueTask< Func<OptionAsync<A>, OptionAsync<B>>>).PureAsync(
                     Task.FromResult<Func<OptionAsync<A>, OptionAsync<B>>>((OptionAsync<A> a) => 
                         default(ApplOptionAsync< A, B>).Apply(
-                            default(MOptionAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MOptionAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `ValueTask&lt;OptionAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`ValueTask&lt;OptionAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static ValueTask<OptionAsync<B>> ApplyT< A, B>(this ValueTask<OptionAsync<Func<A, B>>> fab, ValueTask<OptionAsync<A>> fa) =>
+            default(MValueTask<OptionAsync<Func<A, B>>>).Bind<MValueTask<OptionAsync<B>>, ValueTask<OptionAsync<B>>, OptionAsync<B>>(fab, f =>
+                default(MValueTask<OptionAsync<A>>).Bind<MValueTask<OptionAsync<B>>, ValueTask<OptionAsync<B>>, OptionAsync<B>>(fa, a => 
+                    default(MValueTask<OptionAsync<B>>).PureAsync(Task.FromResult(default(ApplOptionAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -1700,12 +1741,7 @@ namespace LanguageExt
         /// <returns>`ValueTask&lt;OptionAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static ValueTask<OptionAsync<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, ValueTask<OptionAsync<A>> fa, ValueTask<OptionAsync<B>> fb) =>
-            default(ApplValueTask< OptionAsync<A>, OptionAsync<B>, OptionAsync<C>>).Apply(
-                default(MValueTask< Func<OptionAsync<A>, Func<OptionAsync<B>, OptionAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<OptionAsync<A>, Func<OptionAsync<B>, OptionAsync<C>>>>((OptionAsync<A> a) =>
-                        (OptionAsync<B> b) =>
-                            default(ApplOptionAsync< A, B, C>).Apply(
-                                default(MOptionAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -1724,7 +1760,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTryAsync<OptionAsync<A>>, TryAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MTryAsync<OptionAsync<C>>, TryAsync<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(ma, a =>
             default(TransAsync<MTryAsync<OptionAsync<B>>, TryAsync<OptionAsync<B>>, MOptionAsync<B>, OptionAsync<B>, B>).Bind<MTryAsync<OptionAsync<C>>, TryAsync<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(bind(a), b =>
-            default(MOptionAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MOptionAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -1743,7 +1779,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTryAsync<OptionAsync<A>>, TryAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MTryAsync<OptionAsync<C>>, TryAsync<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(ma, a =>
             default(TransAsync<MTryAsync<OptionAsync<B>>, TryAsync<OptionAsync<B>>, MOptionAsync<B>, OptionAsync<B>, B>).Bind<MTryAsync<OptionAsync<C>>, TryAsync<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(bind(a), b =>
-            default(MOptionAsync<C>).ReturnAsync(project(a, b))));
+            default(MOptionAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -1758,7 +1794,7 @@ namespace LanguageExt
         public static TryAsync<OptionAsync<A>> Where< A>(this TryAsync<OptionAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTryAsync<OptionAsync<A>>, TryAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MTryAsync<OptionAsync<A>>, TryAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -1773,7 +1809,7 @@ namespace LanguageExt
         public static TryAsync<OptionAsync<A>> Where< A>(this TryAsync<OptionAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTryAsync<OptionAsync<A>>, TryAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).BindAsync<MTryAsync<OptionAsync<A>>, TryAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -1990,7 +2026,7 @@ namespace LanguageExt
             default(TransAsync<MTryAsync<OptionAsync<A>>, TryAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>)
                 .Bind<MTryAsync<OptionAsync<A>>, TryAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -2006,7 +2042,7 @@ namespace LanguageExt
             default(TransAsync<MTryAsync<OptionAsync<A>>, TryAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>)
                 .BindAsync<MTryAsync<OptionAsync<A>>, TryAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -2104,12 +2140,26 @@ namespace LanguageExt
         [Pure]
         public static TryAsync<OptionAsync<B>> ApplyT< A, B>(this Func<A, B> fab, TryAsync<OptionAsync<A>> fa) =>
             default(ApplTryAsync< OptionAsync<A>, OptionAsync<B>>).Apply(
-                default(MTryAsync< Func<OptionAsync<A>, OptionAsync<B>>>).ReturnAsync(
+                default(MTryAsync< Func<OptionAsync<A>, OptionAsync<B>>>).PureAsync(
                     Task.FromResult<Func<OptionAsync<A>, OptionAsync<B>>>((OptionAsync<A> a) => 
                         default(ApplOptionAsync< A, B>).Apply(
-                            default(MOptionAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MOptionAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `TryAsync&lt;OptionAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`TryAsync&lt;OptionAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static TryAsync<OptionAsync<B>> ApplyT< A, B>(this TryAsync<OptionAsync<Func<A, B>>> fab, TryAsync<OptionAsync<A>> fa) =>
+            default(MTryAsync<OptionAsync<Func<A, B>>>).Bind<MTryAsync<OptionAsync<B>>, TryAsync<OptionAsync<B>>, OptionAsync<B>>(fab, f =>
+                default(MTryAsync<OptionAsync<A>>).Bind<MTryAsync<OptionAsync<B>>, TryAsync<OptionAsync<B>>, OptionAsync<B>>(fa, a => 
+                    default(MTryAsync<OptionAsync<B>>).PureAsync(Task.FromResult(default(ApplOptionAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -2122,12 +2172,7 @@ namespace LanguageExt
         /// <returns>`TryAsync&lt;OptionAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static TryAsync<OptionAsync<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, TryAsync<OptionAsync<A>> fa, TryAsync<OptionAsync<B>> fb) =>
-            default(ApplTryAsync< OptionAsync<A>, OptionAsync<B>, OptionAsync<C>>).Apply(
-                default(MTryAsync< Func<OptionAsync<A>, Func<OptionAsync<B>, OptionAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<OptionAsync<A>, Func<OptionAsync<B>, OptionAsync<C>>>>((OptionAsync<A> a) =>
-                        (OptionAsync<B> b) =>
-                            default(ApplOptionAsync< A, B, C>).Apply(
-                                default(MOptionAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -2146,7 +2191,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTryOptionAsync<OptionAsync<A>>, TryOptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MTryOptionAsync<OptionAsync<C>>, TryOptionAsync<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(ma, a =>
             default(TransAsync<MTryOptionAsync<OptionAsync<B>>, TryOptionAsync<OptionAsync<B>>, MOptionAsync<B>, OptionAsync<B>, B>).Bind<MTryOptionAsync<OptionAsync<C>>, TryOptionAsync<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(bind(a), b =>
-            default(MOptionAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MOptionAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -2165,7 +2210,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTryOptionAsync<OptionAsync<A>>, TryOptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MTryOptionAsync<OptionAsync<C>>, TryOptionAsync<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(ma, a =>
             default(TransAsync<MTryOptionAsync<OptionAsync<B>>, TryOptionAsync<OptionAsync<B>>, MOptionAsync<B>, OptionAsync<B>, B>).Bind<MTryOptionAsync<OptionAsync<C>>, TryOptionAsync<OptionAsync<C>>, MOptionAsync<C>, OptionAsync<C>, C>(bind(a), b =>
-            default(MOptionAsync<C>).ReturnAsync(project(a, b))));
+            default(MOptionAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -2180,7 +2225,7 @@ namespace LanguageExt
         public static TryOptionAsync<OptionAsync<A>> Where< A>(this TryOptionAsync<OptionAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTryOptionAsync<OptionAsync<A>>, TryOptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).Bind<MTryOptionAsync<OptionAsync<A>>, TryOptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -2195,7 +2240,7 @@ namespace LanguageExt
         public static TryOptionAsync<OptionAsync<A>> Where< A>(this TryOptionAsync<OptionAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTryOptionAsync<OptionAsync<A>>, TryOptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>).BindAsync<MTryOptionAsync<OptionAsync<A>>, TryOptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -2412,7 +2457,7 @@ namespace LanguageExt
             default(TransAsync<MTryOptionAsync<OptionAsync<A>>, TryOptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>)
                 .Bind<MTryOptionAsync<OptionAsync<A>>, TryOptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -2428,7 +2473,7 @@ namespace LanguageExt
             default(TransAsync<MTryOptionAsync<OptionAsync<A>>, TryOptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>)
                 .BindAsync<MTryOptionAsync<OptionAsync<A>>, TryOptionAsync<OptionAsync<A>>, MOptionAsync<A>, OptionAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MOptionAsync<A>).Zero());
 
         /// <summary>
@@ -2526,12 +2571,26 @@ namespace LanguageExt
         [Pure]
         public static TryOptionAsync<OptionAsync<B>> ApplyT< A, B>(this Func<A, B> fab, TryOptionAsync<OptionAsync<A>> fa) =>
             default(ApplTryOptionAsync< OptionAsync<A>, OptionAsync<B>>).Apply(
-                default(MTryOptionAsync< Func<OptionAsync<A>, OptionAsync<B>>>).ReturnAsync(
+                default(MTryOptionAsync< Func<OptionAsync<A>, OptionAsync<B>>>).PureAsync(
                     Task.FromResult<Func<OptionAsync<A>, OptionAsync<B>>>((OptionAsync<A> a) => 
                         default(ApplOptionAsync< A, B>).Apply(
-                            default(MOptionAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MOptionAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `TryOptionAsync&lt;OptionAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`TryOptionAsync&lt;OptionAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static TryOptionAsync<OptionAsync<B>> ApplyT< A, B>(this TryOptionAsync<OptionAsync<Func<A, B>>> fab, TryOptionAsync<OptionAsync<A>> fa) =>
+            default(MTryOptionAsync<OptionAsync<Func<A, B>>>).Bind<MTryOptionAsync<OptionAsync<B>>, TryOptionAsync<OptionAsync<B>>, OptionAsync<B>>(fab, f =>
+                default(MTryOptionAsync<OptionAsync<A>>).Bind<MTryOptionAsync<OptionAsync<B>>, TryOptionAsync<OptionAsync<B>>, OptionAsync<B>>(fa, a => 
+                    default(MTryOptionAsync<OptionAsync<B>>).PureAsync(Task.FromResult(default(ApplOptionAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -2544,12 +2603,7 @@ namespace LanguageExt
         /// <returns>`TryOptionAsync&lt;OptionAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static TryOptionAsync<OptionAsync<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, TryOptionAsync<OptionAsync<A>> fa, TryOptionAsync<OptionAsync<B>> fb) =>
-            default(ApplTryOptionAsync< OptionAsync<A>, OptionAsync<B>, OptionAsync<C>>).Apply(
-                default(MTryOptionAsync< Func<OptionAsync<A>, Func<OptionAsync<B>, OptionAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<OptionAsync<A>, Func<OptionAsync<B>, OptionAsync<C>>>>((OptionAsync<A> a) =>
-                        (OptionAsync<B> b) =>
-                            default(ApplOptionAsync< A, B, C>).Apply(
-                                default(MOptionAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
     }
     /// <summary>
@@ -2576,7 +2630,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MOptionAsync<EitherAsync<L, A>>, OptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MOptionAsync<EitherAsync<L, C>>, OptionAsync<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(ma, a =>
             default(TransAsync<MOptionAsync<EitherAsync<L, B>>, OptionAsync<EitherAsync<L, B>>, MEitherAsync<L, B>, EitherAsync<L, B>, B>).Bind<MOptionAsync<EitherAsync<L, C>>, OptionAsync<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(bind(a), b =>
-            default(MEitherAsync<L, C>).ReturnAsync(project(a, b).AsTask())));
+            default(MEitherAsync<L, C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -2595,7 +2649,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MOptionAsync<EitherAsync<L, A>>, OptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MOptionAsync<EitherAsync<L, C>>, OptionAsync<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(ma, a =>
             default(TransAsync<MOptionAsync<EitherAsync<L, B>>, OptionAsync<EitherAsync<L, B>>, MEitherAsync<L, B>, EitherAsync<L, B>, B>).Bind<MOptionAsync<EitherAsync<L, C>>, OptionAsync<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(bind(a), b =>
-            default(MEitherAsync<L, C>).ReturnAsync(project(a, b))));
+            default(MEitherAsync<L, C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -2610,7 +2664,7 @@ namespace LanguageExt
         public static OptionAsync<EitherAsync<L, A>> Where<L, A>(this OptionAsync<EitherAsync<L, A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MOptionAsync<EitherAsync<L, A>>, OptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MOptionAsync<EitherAsync<L, A>>, OptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                 a => pred(a)
-                    ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                    ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                     : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -2625,7 +2679,7 @@ namespace LanguageExt
         public static OptionAsync<EitherAsync<L, A>> Where<L, A>(this OptionAsync<EitherAsync<L, A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MOptionAsync<EitherAsync<L, A>>, OptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).BindAsync<MOptionAsync<EitherAsync<L, A>>, OptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                    ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                     : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -2842,7 +2896,7 @@ namespace LanguageExt
             default(TransAsync<MOptionAsync<EitherAsync<L, A>>, OptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>)
                 .Bind<MOptionAsync<EitherAsync<L, A>>, OptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                     a => pred(a)
-                        ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                        ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                         : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -2858,7 +2912,7 @@ namespace LanguageExt
             default(TransAsync<MOptionAsync<EitherAsync<L, A>>, OptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>)
                 .BindAsync<MOptionAsync<EitherAsync<L, A>>, OptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                        ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                         : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -2956,12 +3010,26 @@ namespace LanguageExt
         [Pure]
         public static OptionAsync<EitherAsync<L, B>> ApplyT<L, A, B>(this Func<A, B> fab, OptionAsync<EitherAsync<L, A>> fa) =>
             default(ApplOptionAsync< EitherAsync<L, A>, EitherAsync<L, B>>).Apply(
-                default(MOptionAsync< Func<EitherAsync<L, A>, EitherAsync<L, B>>>).ReturnAsync(
+                default(MOptionAsync< Func<EitherAsync<L, A>, EitherAsync<L, B>>>).PureAsync(
                     Task.FromResult<Func<EitherAsync<L, A>, EitherAsync<L, B>>>((EitherAsync<L, A> a) => 
                         default(ApplEitherAsync<L, A, B>).Apply(
-                            default(MEitherAsync<L, Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MEitherAsync<L, Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `OptionAsync&lt;EitherAsync&lt;L, A&gt;&gt;`</param>
+        /// <returns>`OptionAsync&lt;EitherAsync&lt;L, B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static OptionAsync<EitherAsync<L, B>> ApplyT<L, A, B>(this OptionAsync<EitherAsync<L, Func<A, B>>> fab, OptionAsync<EitherAsync<L, A>> fa) =>
+            default(MOptionAsync<EitherAsync<L, Func<A, B>>>).Bind<MOptionAsync<EitherAsync<L, B>>, OptionAsync<EitherAsync<L, B>>, EitherAsync<L, B>>(fab, f =>
+                default(MOptionAsync<EitherAsync<L, A>>).Bind<MOptionAsync<EitherAsync<L, B>>, OptionAsync<EitherAsync<L, B>>, EitherAsync<L, B>>(fa, a => 
+                    default(MOptionAsync<EitherAsync<L, B>>).PureAsync(Task.FromResult(default(ApplEitherAsync<L, A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -2974,12 +3042,7 @@ namespace LanguageExt
         /// <returns>`OptionAsync&lt;EitherAsync&lt;L, B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static OptionAsync<EitherAsync<L, C>> ApplyT<L, A, B, C>(this Func<A, B, C> fabc, OptionAsync<EitherAsync<L, A>> fa, OptionAsync<EitherAsync<L, B>> fb) =>
-            default(ApplOptionAsync< EitherAsync<L, A>, EitherAsync<L, B>, EitherAsync<L, C>>).Apply(
-                default(MOptionAsync< Func<EitherAsync<L, A>, Func<EitherAsync<L, B>, EitherAsync<L, C>>>>).ReturnAsync(
-                    Task.FromResult<Func<EitherAsync<L, A>, Func<EitherAsync<L, B>, EitherAsync<L, C>>>>((EitherAsync<L, A> a) =>
-                        (EitherAsync<L, B> b) =>
-                            default(ApplEitherAsync<L, A, B, C>).Apply(
-                                default(MEitherAsync<L, Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -2998,7 +3061,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MEitherAsync<L, EitherAsync<L, A>>, EitherAsync<L, EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MEitherAsync<L, EitherAsync<L, C>>, EitherAsync<L, EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(ma, a =>
             default(TransAsync<MEitherAsync<L, EitherAsync<L, B>>, EitherAsync<L, EitherAsync<L, B>>, MEitherAsync<L, B>, EitherAsync<L, B>, B>).Bind<MEitherAsync<L, EitherAsync<L, C>>, EitherAsync<L, EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(bind(a), b =>
-            default(MEitherAsync<L, C>).ReturnAsync(project(a, b).AsTask())));
+            default(MEitherAsync<L, C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -3017,7 +3080,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MEitherAsync<L, EitherAsync<L, A>>, EitherAsync<L, EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MEitherAsync<L, EitherAsync<L, C>>, EitherAsync<L, EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(ma, a =>
             default(TransAsync<MEitherAsync<L, EitherAsync<L, B>>, EitherAsync<L, EitherAsync<L, B>>, MEitherAsync<L, B>, EitherAsync<L, B>, B>).Bind<MEitherAsync<L, EitherAsync<L, C>>, EitherAsync<L, EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(bind(a), b =>
-            default(MEitherAsync<L, C>).ReturnAsync(project(a, b))));
+            default(MEitherAsync<L, C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -3032,7 +3095,7 @@ namespace LanguageExt
         public static EitherAsync<L, EitherAsync<L, A>> Where<L, A>(this EitherAsync<L, EitherAsync<L, A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MEitherAsync<L, EitherAsync<L, A>>, EitherAsync<L, EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MEitherAsync<L, EitherAsync<L, A>>, EitherAsync<L, EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                 a => pred(a)
-                    ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                    ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                     : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -3047,7 +3110,7 @@ namespace LanguageExt
         public static EitherAsync<L, EitherAsync<L, A>> Where<L, A>(this EitherAsync<L, EitherAsync<L, A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MEitherAsync<L, EitherAsync<L, A>>, EitherAsync<L, EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).BindAsync<MEitherAsync<L, EitherAsync<L, A>>, EitherAsync<L, EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                    ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                     : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -3264,7 +3327,7 @@ namespace LanguageExt
             default(TransAsync<MEitherAsync<L, EitherAsync<L, A>>, EitherAsync<L, EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>)
                 .Bind<MEitherAsync<L, EitherAsync<L, A>>, EitherAsync<L, EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                     a => pred(a)
-                        ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                        ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                         : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -3280,7 +3343,7 @@ namespace LanguageExt
             default(TransAsync<MEitherAsync<L, EitherAsync<L, A>>, EitherAsync<L, EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>)
                 .BindAsync<MEitherAsync<L, EitherAsync<L, A>>, EitherAsync<L, EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                        ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                         : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -3378,12 +3441,26 @@ namespace LanguageExt
         [Pure]
         public static EitherAsync<L, EitherAsync<L, B>> ApplyT<L, A, B>(this Func<A, B> fab, EitherAsync<L, EitherAsync<L, A>> fa) =>
             default(ApplEitherAsync<L, EitherAsync<L, A>, EitherAsync<L, B>>).Apply(
-                default(MEitherAsync<L, Func<EitherAsync<L, A>, EitherAsync<L, B>>>).ReturnAsync(
+                default(MEitherAsync<L, Func<EitherAsync<L, A>, EitherAsync<L, B>>>).PureAsync(
                     Task.FromResult<Func<EitherAsync<L, A>, EitherAsync<L, B>>>((EitherAsync<L, A> a) => 
                         default(ApplEitherAsync<L, A, B>).Apply(
-                            default(MEitherAsync<L, Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MEitherAsync<L, Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `EitherAsync&lt;L, EitherAsync&lt;L, A&gt;&gt;`</param>
+        /// <returns>`EitherAsync&lt;L, EitherAsync&lt;L, B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static EitherAsync<L, EitherAsync<L, B>> ApplyT<L, A, B>(this EitherAsync<L, EitherAsync<L, Func<A, B>>> fab, EitherAsync<L, EitherAsync<L, A>> fa) =>
+            default(MEitherAsync<L, EitherAsync<L, Func<A, B>>>).Bind<MEitherAsync<L, EitherAsync<L, B>>, EitherAsync<L, EitherAsync<L, B>>, EitherAsync<L, B>>(fab, f =>
+                default(MEitherAsync<L, EitherAsync<L, A>>).Bind<MEitherAsync<L, EitherAsync<L, B>>, EitherAsync<L, EitherAsync<L, B>>, EitherAsync<L, B>>(fa, a => 
+                    default(MEitherAsync<L, EitherAsync<L, B>>).PureAsync(Task.FromResult(default(ApplEitherAsync<L, A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -3396,12 +3473,7 @@ namespace LanguageExt
         /// <returns>`EitherAsync&lt;L, EitherAsync&lt;L, B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static EitherAsync<L, EitherAsync<L, C>> ApplyT<L, A, B, C>(this Func<A, B, C> fabc, EitherAsync<L, EitherAsync<L, A>> fa, EitherAsync<L, EitherAsync<L, B>> fb) =>
-            default(ApplEitherAsync<L, EitherAsync<L, A>, EitherAsync<L, B>, EitherAsync<L, C>>).Apply(
-                default(MEitherAsync<L, Func<EitherAsync<L, A>, Func<EitherAsync<L, B>, EitherAsync<L, C>>>>).ReturnAsync(
-                    Task.FromResult<Func<EitherAsync<L, A>, Func<EitherAsync<L, B>, EitherAsync<L, C>>>>((EitherAsync<L, A> a) =>
-                        (EitherAsync<L, B> b) =>
-                            default(ApplEitherAsync<L, A, B, C>).Apply(
-                                default(MEitherAsync<L, Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -3420,7 +3492,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTask<EitherAsync<L, A>>, Task<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MTask<EitherAsync<L, C>>, Task<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(ma, a =>
             default(TransAsync<MTask<EitherAsync<L, B>>, Task<EitherAsync<L, B>>, MEitherAsync<L, B>, EitherAsync<L, B>, B>).Bind<MTask<EitherAsync<L, C>>, Task<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(bind(a), b =>
-            default(MEitherAsync<L, C>).ReturnAsync(project(a, b).AsTask())));
+            default(MEitherAsync<L, C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -3439,7 +3511,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTask<EitherAsync<L, A>>, Task<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MTask<EitherAsync<L, C>>, Task<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(ma, a =>
             default(TransAsync<MTask<EitherAsync<L, B>>, Task<EitherAsync<L, B>>, MEitherAsync<L, B>, EitherAsync<L, B>, B>).Bind<MTask<EitherAsync<L, C>>, Task<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(bind(a), b =>
-            default(MEitherAsync<L, C>).ReturnAsync(project(a, b))));
+            default(MEitherAsync<L, C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -3454,7 +3526,7 @@ namespace LanguageExt
         public static Task<EitherAsync<L, A>> Where<L, A>(this Task<EitherAsync<L, A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTask<EitherAsync<L, A>>, Task<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MTask<EitherAsync<L, A>>, Task<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                 a => pred(a)
-                    ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                    ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                     : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -3469,7 +3541,7 @@ namespace LanguageExt
         public static Task<EitherAsync<L, A>> Where<L, A>(this Task<EitherAsync<L, A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTask<EitherAsync<L, A>>, Task<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).BindAsync<MTask<EitherAsync<L, A>>, Task<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                    ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                     : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -3686,7 +3758,7 @@ namespace LanguageExt
             default(TransAsync<MTask<EitherAsync<L, A>>, Task<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>)
                 .Bind<MTask<EitherAsync<L, A>>, Task<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                     a => pred(a)
-                        ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                        ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                         : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -3702,7 +3774,7 @@ namespace LanguageExt
             default(TransAsync<MTask<EitherAsync<L, A>>, Task<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>)
                 .BindAsync<MTask<EitherAsync<L, A>>, Task<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                        ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                         : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -3800,12 +3872,26 @@ namespace LanguageExt
         [Pure]
         public static Task<EitherAsync<L, B>> ApplyT<L, A, B>(this Func<A, B> fab, Task<EitherAsync<L, A>> fa) =>
             default(ApplTask< EitherAsync<L, A>, EitherAsync<L, B>>).Apply(
-                default(MTask< Func<EitherAsync<L, A>, EitherAsync<L, B>>>).ReturnAsync(
+                default(MTask< Func<EitherAsync<L, A>, EitherAsync<L, B>>>).PureAsync(
                     Task.FromResult<Func<EitherAsync<L, A>, EitherAsync<L, B>>>((EitherAsync<L, A> a) => 
                         default(ApplEitherAsync<L, A, B>).Apply(
-                            default(MEitherAsync<L, Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MEitherAsync<L, Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `Task&lt;EitherAsync&lt;L, A&gt;&gt;`</param>
+        /// <returns>`Task&lt;EitherAsync&lt;L, B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static Task<EitherAsync<L, B>> ApplyT<L, A, B>(this Task<EitherAsync<L, Func<A, B>>> fab, Task<EitherAsync<L, A>> fa) =>
+            default(MTask<EitherAsync<L, Func<A, B>>>).Bind<MTask<EitherAsync<L, B>>, Task<EitherAsync<L, B>>, EitherAsync<L, B>>(fab, f =>
+                default(MTask<EitherAsync<L, A>>).Bind<MTask<EitherAsync<L, B>>, Task<EitherAsync<L, B>>, EitherAsync<L, B>>(fa, a => 
+                    default(MTask<EitherAsync<L, B>>).PureAsync(Task.FromResult(default(ApplEitherAsync<L, A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -3818,12 +3904,7 @@ namespace LanguageExt
         /// <returns>`Task&lt;EitherAsync&lt;L, B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static Task<EitherAsync<L, C>> ApplyT<L, A, B, C>(this Func<A, B, C> fabc, Task<EitherAsync<L, A>> fa, Task<EitherAsync<L, B>> fb) =>
-            default(ApplTask< EitherAsync<L, A>, EitherAsync<L, B>, EitherAsync<L, C>>).Apply(
-                default(MTask< Func<EitherAsync<L, A>, Func<EitherAsync<L, B>, EitherAsync<L, C>>>>).ReturnAsync(
-                    Task.FromResult<Func<EitherAsync<L, A>, Func<EitherAsync<L, B>, EitherAsync<L, C>>>>((EitherAsync<L, A> a) =>
-                        (EitherAsync<L, B> b) =>
-                            default(ApplEitherAsync<L, A, B, C>).Apply(
-                                default(MEitherAsync<L, Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -3842,7 +3923,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MValueTask<EitherAsync<L, A>>, ValueTask<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MValueTask<EitherAsync<L, C>>, ValueTask<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(ma, a =>
             default(TransAsync<MValueTask<EitherAsync<L, B>>, ValueTask<EitherAsync<L, B>>, MEitherAsync<L, B>, EitherAsync<L, B>, B>).Bind<MValueTask<EitherAsync<L, C>>, ValueTask<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(bind(a), b =>
-            default(MEitherAsync<L, C>).ReturnAsync(project(a, b).AsTask())));
+            default(MEitherAsync<L, C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -3861,7 +3942,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MValueTask<EitherAsync<L, A>>, ValueTask<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MValueTask<EitherAsync<L, C>>, ValueTask<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(ma, a =>
             default(TransAsync<MValueTask<EitherAsync<L, B>>, ValueTask<EitherAsync<L, B>>, MEitherAsync<L, B>, EitherAsync<L, B>, B>).Bind<MValueTask<EitherAsync<L, C>>, ValueTask<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(bind(a), b =>
-            default(MEitherAsync<L, C>).ReturnAsync(project(a, b))));
+            default(MEitherAsync<L, C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -3876,7 +3957,7 @@ namespace LanguageExt
         public static ValueTask<EitherAsync<L, A>> Where<L, A>(this ValueTask<EitherAsync<L, A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MValueTask<EitherAsync<L, A>>, ValueTask<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MValueTask<EitherAsync<L, A>>, ValueTask<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                 a => pred(a)
-                    ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                    ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                     : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -3891,7 +3972,7 @@ namespace LanguageExt
         public static ValueTask<EitherAsync<L, A>> Where<L, A>(this ValueTask<EitherAsync<L, A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MValueTask<EitherAsync<L, A>>, ValueTask<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).BindAsync<MValueTask<EitherAsync<L, A>>, ValueTask<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                    ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                     : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -4108,7 +4189,7 @@ namespace LanguageExt
             default(TransAsync<MValueTask<EitherAsync<L, A>>, ValueTask<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>)
                 .Bind<MValueTask<EitherAsync<L, A>>, ValueTask<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                     a => pred(a)
-                        ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                        ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                         : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -4124,7 +4205,7 @@ namespace LanguageExt
             default(TransAsync<MValueTask<EitherAsync<L, A>>, ValueTask<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>)
                 .BindAsync<MValueTask<EitherAsync<L, A>>, ValueTask<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                        ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                         : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -4222,12 +4303,26 @@ namespace LanguageExt
         [Pure]
         public static ValueTask<EitherAsync<L, B>> ApplyT<L, A, B>(this Func<A, B> fab, ValueTask<EitherAsync<L, A>> fa) =>
             default(ApplValueTask< EitherAsync<L, A>, EitherAsync<L, B>>).Apply(
-                default(MValueTask< Func<EitherAsync<L, A>, EitherAsync<L, B>>>).ReturnAsync(
+                default(MValueTask< Func<EitherAsync<L, A>, EitherAsync<L, B>>>).PureAsync(
                     Task.FromResult<Func<EitherAsync<L, A>, EitherAsync<L, B>>>((EitherAsync<L, A> a) => 
                         default(ApplEitherAsync<L, A, B>).Apply(
-                            default(MEitherAsync<L, Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MEitherAsync<L, Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `ValueTask&lt;EitherAsync&lt;L, A&gt;&gt;`</param>
+        /// <returns>`ValueTask&lt;EitherAsync&lt;L, B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static ValueTask<EitherAsync<L, B>> ApplyT<L, A, B>(this ValueTask<EitherAsync<L, Func<A, B>>> fab, ValueTask<EitherAsync<L, A>> fa) =>
+            default(MValueTask<EitherAsync<L, Func<A, B>>>).Bind<MValueTask<EitherAsync<L, B>>, ValueTask<EitherAsync<L, B>>, EitherAsync<L, B>>(fab, f =>
+                default(MValueTask<EitherAsync<L, A>>).Bind<MValueTask<EitherAsync<L, B>>, ValueTask<EitherAsync<L, B>>, EitherAsync<L, B>>(fa, a => 
+                    default(MValueTask<EitherAsync<L, B>>).PureAsync(Task.FromResult(default(ApplEitherAsync<L, A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -4240,12 +4335,7 @@ namespace LanguageExt
         /// <returns>`ValueTask&lt;EitherAsync&lt;L, B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static ValueTask<EitherAsync<L, C>> ApplyT<L, A, B, C>(this Func<A, B, C> fabc, ValueTask<EitherAsync<L, A>> fa, ValueTask<EitherAsync<L, B>> fb) =>
-            default(ApplValueTask< EitherAsync<L, A>, EitherAsync<L, B>, EitherAsync<L, C>>).Apply(
-                default(MValueTask< Func<EitherAsync<L, A>, Func<EitherAsync<L, B>, EitherAsync<L, C>>>>).ReturnAsync(
-                    Task.FromResult<Func<EitherAsync<L, A>, Func<EitherAsync<L, B>, EitherAsync<L, C>>>>((EitherAsync<L, A> a) =>
-                        (EitherAsync<L, B> b) =>
-                            default(ApplEitherAsync<L, A, B, C>).Apply(
-                                default(MEitherAsync<L, Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -4264,7 +4354,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTryAsync<EitherAsync<L, A>>, TryAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MTryAsync<EitherAsync<L, C>>, TryAsync<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(ma, a =>
             default(TransAsync<MTryAsync<EitherAsync<L, B>>, TryAsync<EitherAsync<L, B>>, MEitherAsync<L, B>, EitherAsync<L, B>, B>).Bind<MTryAsync<EitherAsync<L, C>>, TryAsync<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(bind(a), b =>
-            default(MEitherAsync<L, C>).ReturnAsync(project(a, b).AsTask())));
+            default(MEitherAsync<L, C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -4283,7 +4373,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTryAsync<EitherAsync<L, A>>, TryAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MTryAsync<EitherAsync<L, C>>, TryAsync<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(ma, a =>
             default(TransAsync<MTryAsync<EitherAsync<L, B>>, TryAsync<EitherAsync<L, B>>, MEitherAsync<L, B>, EitherAsync<L, B>, B>).Bind<MTryAsync<EitherAsync<L, C>>, TryAsync<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(bind(a), b =>
-            default(MEitherAsync<L, C>).ReturnAsync(project(a, b))));
+            default(MEitherAsync<L, C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -4298,7 +4388,7 @@ namespace LanguageExt
         public static TryAsync<EitherAsync<L, A>> Where<L, A>(this TryAsync<EitherAsync<L, A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTryAsync<EitherAsync<L, A>>, TryAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MTryAsync<EitherAsync<L, A>>, TryAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                 a => pred(a)
-                    ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                    ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                     : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -4313,7 +4403,7 @@ namespace LanguageExt
         public static TryAsync<EitherAsync<L, A>> Where<L, A>(this TryAsync<EitherAsync<L, A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTryAsync<EitherAsync<L, A>>, TryAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).BindAsync<MTryAsync<EitherAsync<L, A>>, TryAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                    ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                     : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -4530,7 +4620,7 @@ namespace LanguageExt
             default(TransAsync<MTryAsync<EitherAsync<L, A>>, TryAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>)
                 .Bind<MTryAsync<EitherAsync<L, A>>, TryAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                     a => pred(a)
-                        ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                        ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                         : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -4546,7 +4636,7 @@ namespace LanguageExt
             default(TransAsync<MTryAsync<EitherAsync<L, A>>, TryAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>)
                 .BindAsync<MTryAsync<EitherAsync<L, A>>, TryAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                        ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                         : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -4644,12 +4734,26 @@ namespace LanguageExt
         [Pure]
         public static TryAsync<EitherAsync<L, B>> ApplyT<L, A, B>(this Func<A, B> fab, TryAsync<EitherAsync<L, A>> fa) =>
             default(ApplTryAsync< EitherAsync<L, A>, EitherAsync<L, B>>).Apply(
-                default(MTryAsync< Func<EitherAsync<L, A>, EitherAsync<L, B>>>).ReturnAsync(
+                default(MTryAsync< Func<EitherAsync<L, A>, EitherAsync<L, B>>>).PureAsync(
                     Task.FromResult<Func<EitherAsync<L, A>, EitherAsync<L, B>>>((EitherAsync<L, A> a) => 
                         default(ApplEitherAsync<L, A, B>).Apply(
-                            default(MEitherAsync<L, Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MEitherAsync<L, Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `TryAsync&lt;EitherAsync&lt;L, A&gt;&gt;`</param>
+        /// <returns>`TryAsync&lt;EitherAsync&lt;L, B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static TryAsync<EitherAsync<L, B>> ApplyT<L, A, B>(this TryAsync<EitherAsync<L, Func<A, B>>> fab, TryAsync<EitherAsync<L, A>> fa) =>
+            default(MTryAsync<EitherAsync<L, Func<A, B>>>).Bind<MTryAsync<EitherAsync<L, B>>, TryAsync<EitherAsync<L, B>>, EitherAsync<L, B>>(fab, f =>
+                default(MTryAsync<EitherAsync<L, A>>).Bind<MTryAsync<EitherAsync<L, B>>, TryAsync<EitherAsync<L, B>>, EitherAsync<L, B>>(fa, a => 
+                    default(MTryAsync<EitherAsync<L, B>>).PureAsync(Task.FromResult(default(ApplEitherAsync<L, A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -4662,12 +4766,7 @@ namespace LanguageExt
         /// <returns>`TryAsync&lt;EitherAsync&lt;L, B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static TryAsync<EitherAsync<L, C>> ApplyT<L, A, B, C>(this Func<A, B, C> fabc, TryAsync<EitherAsync<L, A>> fa, TryAsync<EitherAsync<L, B>> fb) =>
-            default(ApplTryAsync< EitherAsync<L, A>, EitherAsync<L, B>, EitherAsync<L, C>>).Apply(
-                default(MTryAsync< Func<EitherAsync<L, A>, Func<EitherAsync<L, B>, EitherAsync<L, C>>>>).ReturnAsync(
-                    Task.FromResult<Func<EitherAsync<L, A>, Func<EitherAsync<L, B>, EitherAsync<L, C>>>>((EitherAsync<L, A> a) =>
-                        (EitherAsync<L, B> b) =>
-                            default(ApplEitherAsync<L, A, B, C>).Apply(
-                                default(MEitherAsync<L, Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -4686,7 +4785,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTryOptionAsync<EitherAsync<L, A>>, TryOptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MTryOptionAsync<EitherAsync<L, C>>, TryOptionAsync<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(ma, a =>
             default(TransAsync<MTryOptionAsync<EitherAsync<L, B>>, TryOptionAsync<EitherAsync<L, B>>, MEitherAsync<L, B>, EitherAsync<L, B>, B>).Bind<MTryOptionAsync<EitherAsync<L, C>>, TryOptionAsync<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(bind(a), b =>
-            default(MEitherAsync<L, C>).ReturnAsync(project(a, b).AsTask())));
+            default(MEitherAsync<L, C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -4705,7 +4804,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTryOptionAsync<EitherAsync<L, A>>, TryOptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MTryOptionAsync<EitherAsync<L, C>>, TryOptionAsync<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(ma, a =>
             default(TransAsync<MTryOptionAsync<EitherAsync<L, B>>, TryOptionAsync<EitherAsync<L, B>>, MEitherAsync<L, B>, EitherAsync<L, B>, B>).Bind<MTryOptionAsync<EitherAsync<L, C>>, TryOptionAsync<EitherAsync<L, C>>, MEitherAsync<L, C>, EitherAsync<L, C>, C>(bind(a), b =>
-            default(MEitherAsync<L, C>).ReturnAsync(project(a, b))));
+            default(MEitherAsync<L, C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -4720,7 +4819,7 @@ namespace LanguageExt
         public static TryOptionAsync<EitherAsync<L, A>> Where<L, A>(this TryOptionAsync<EitherAsync<L, A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTryOptionAsync<EitherAsync<L, A>>, TryOptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).Bind<MTryOptionAsync<EitherAsync<L, A>>, TryOptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                 a => pred(a)
-                    ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                    ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                     : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -4735,7 +4834,7 @@ namespace LanguageExt
         public static TryOptionAsync<EitherAsync<L, A>> Where<L, A>(this TryOptionAsync<EitherAsync<L, A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTryOptionAsync<EitherAsync<L, A>>, TryOptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>).BindAsync<MTryOptionAsync<EitherAsync<L, A>>, TryOptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                    ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                     : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -4952,7 +5051,7 @@ namespace LanguageExt
             default(TransAsync<MTryOptionAsync<EitherAsync<L, A>>, TryOptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>)
                 .Bind<MTryOptionAsync<EitherAsync<L, A>>, TryOptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                     a => pred(a)
-                        ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                        ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                         : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -4968,7 +5067,7 @@ namespace LanguageExt
             default(TransAsync<MTryOptionAsync<EitherAsync<L, A>>, TryOptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>)
                 .BindAsync<MTryOptionAsync<EitherAsync<L, A>>, TryOptionAsync<EitherAsync<L, A>>, MEitherAsync<L, A>, EitherAsync<L, A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MEitherAsync<L, A>).ReturnAsync(a.AsTask())
+                        ? default(MEitherAsync<L, A>).PureAsync(a.AsTask())
                         : default(MEitherAsync<L, A>).Zero());
 
         /// <summary>
@@ -5066,12 +5165,26 @@ namespace LanguageExt
         [Pure]
         public static TryOptionAsync<EitherAsync<L, B>> ApplyT<L, A, B>(this Func<A, B> fab, TryOptionAsync<EitherAsync<L, A>> fa) =>
             default(ApplTryOptionAsync< EitherAsync<L, A>, EitherAsync<L, B>>).Apply(
-                default(MTryOptionAsync< Func<EitherAsync<L, A>, EitherAsync<L, B>>>).ReturnAsync(
+                default(MTryOptionAsync< Func<EitherAsync<L, A>, EitherAsync<L, B>>>).PureAsync(
                     Task.FromResult<Func<EitherAsync<L, A>, EitherAsync<L, B>>>((EitherAsync<L, A> a) => 
                         default(ApplEitherAsync<L, A, B>).Apply(
-                            default(MEitherAsync<L, Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MEitherAsync<L, Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `TryOptionAsync&lt;EitherAsync&lt;L, A&gt;&gt;`</param>
+        /// <returns>`TryOptionAsync&lt;EitherAsync&lt;L, B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static TryOptionAsync<EitherAsync<L, B>> ApplyT<L, A, B>(this TryOptionAsync<EitherAsync<L, Func<A, B>>> fab, TryOptionAsync<EitherAsync<L, A>> fa) =>
+            default(MTryOptionAsync<EitherAsync<L, Func<A, B>>>).Bind<MTryOptionAsync<EitherAsync<L, B>>, TryOptionAsync<EitherAsync<L, B>>, EitherAsync<L, B>>(fab, f =>
+                default(MTryOptionAsync<EitherAsync<L, A>>).Bind<MTryOptionAsync<EitherAsync<L, B>>, TryOptionAsync<EitherAsync<L, B>>, EitherAsync<L, B>>(fa, a => 
+                    default(MTryOptionAsync<EitherAsync<L, B>>).PureAsync(Task.FromResult(default(ApplEitherAsync<L, A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -5084,12 +5197,7 @@ namespace LanguageExt
         /// <returns>`TryOptionAsync&lt;EitherAsync&lt;L, B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static TryOptionAsync<EitherAsync<L, C>> ApplyT<L, A, B, C>(this Func<A, B, C> fabc, TryOptionAsync<EitherAsync<L, A>> fa, TryOptionAsync<EitherAsync<L, B>> fb) =>
-            default(ApplTryOptionAsync< EitherAsync<L, A>, EitherAsync<L, B>, EitherAsync<L, C>>).Apply(
-                default(MTryOptionAsync< Func<EitherAsync<L, A>, Func<EitherAsync<L, B>, EitherAsync<L, C>>>>).ReturnAsync(
-                    Task.FromResult<Func<EitherAsync<L, A>, Func<EitherAsync<L, B>, EitherAsync<L, C>>>>((EitherAsync<L, A> a) =>
-                        (EitherAsync<L, B> b) =>
-                            default(ApplEitherAsync<L, A, B, C>).Apply(
-                                default(MEitherAsync<L, Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
     }
     /// <summary>
@@ -5116,7 +5224,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MOptionAsync<Task<A>>, OptionAsync<Task<A>>, MTask<A>, Task<A>, A>).Bind<MOptionAsync<Task<C>>, OptionAsync<Task<C>>, MTask<C>, Task<C>, C>(ma, a =>
             default(TransAsync<MOptionAsync<Task<B>>, OptionAsync<Task<B>>, MTask<B>, Task<B>, B>).Bind<MOptionAsync<Task<C>>, OptionAsync<Task<C>>, MTask<C>, Task<C>, C>(bind(a), b =>
-            default(MTask<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTask<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -5135,7 +5243,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MOptionAsync<Task<A>>, OptionAsync<Task<A>>, MTask<A>, Task<A>, A>).Bind<MOptionAsync<Task<C>>, OptionAsync<Task<C>>, MTask<C>, Task<C>, C>(ma, a =>
             default(TransAsync<MOptionAsync<Task<B>>, OptionAsync<Task<B>>, MTask<B>, Task<B>, B>).Bind<MOptionAsync<Task<C>>, OptionAsync<Task<C>>, MTask<C>, Task<C>, C>(bind(a), b =>
-            default(MTask<C>).ReturnAsync(project(a, b))));
+            default(MTask<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -5150,7 +5258,7 @@ namespace LanguageExt
         public static OptionAsync<Task<A>> Where< A>(this OptionAsync<Task<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MOptionAsync<Task<A>>, OptionAsync<Task<A>>, MTask<A>, Task<A>, A>).Bind<MOptionAsync<Task<A>>, OptionAsync<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MTask<A>).PureAsync(a.AsTask())
                     : default(MTask<A>).Zero());
 
         /// <summary>
@@ -5165,7 +5273,7 @@ namespace LanguageExt
         public static OptionAsync<Task<A>> Where< A>(this OptionAsync<Task<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MOptionAsync<Task<A>>, OptionAsync<Task<A>>, MTask<A>, Task<A>, A>).BindAsync<MOptionAsync<Task<A>>, OptionAsync<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MTask<A>).PureAsync(a.AsTask())
                     : default(MTask<A>).Zero());
 
         /// <summary>
@@ -5382,7 +5490,7 @@ namespace LanguageExt
             default(TransAsync<MOptionAsync<Task<A>>, OptionAsync<Task<A>>, MTask<A>, Task<A>, A>)
                 .Bind<MOptionAsync<Task<A>>, OptionAsync<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MTask<A>).PureAsync(a.AsTask())
                         : default(MTask<A>).Zero());
 
         /// <summary>
@@ -5398,7 +5506,7 @@ namespace LanguageExt
             default(TransAsync<MOptionAsync<Task<A>>, OptionAsync<Task<A>>, MTask<A>, Task<A>, A>)
                 .BindAsync<MOptionAsync<Task<A>>, OptionAsync<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MTask<A>).PureAsync(a.AsTask())
                         : default(MTask<A>).Zero());
 
         /// <summary>
@@ -5496,12 +5604,26 @@ namespace LanguageExt
         [Pure]
         public static OptionAsync<Task<B>> ApplyT< A, B>(this Func<A, B> fab, OptionAsync<Task<A>> fa) =>
             default(ApplOptionAsync< Task<A>, Task<B>>).Apply(
-                default(MOptionAsync< Func<Task<A>, Task<B>>>).ReturnAsync(
+                default(MOptionAsync< Func<Task<A>, Task<B>>>).PureAsync(
                     Task.FromResult<Func<Task<A>, Task<B>>>((Task<A> a) => 
                         default(ApplTask< A, B>).Apply(
-                            default(MTask< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTask< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `OptionAsync&lt;Task&lt;A&gt;&gt;`</param>
+        /// <returns>`OptionAsync&lt;Task&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static OptionAsync<Task<B>> ApplyT< A, B>(this OptionAsync<Task<Func<A, B>>> fab, OptionAsync<Task<A>> fa) =>
+            default(MOptionAsync<Task<Func<A, B>>>).Bind<MOptionAsync<Task<B>>, OptionAsync<Task<B>>, Task<B>>(fab, f =>
+                default(MOptionAsync<Task<A>>).Bind<MOptionAsync<Task<B>>, OptionAsync<Task<B>>, Task<B>>(fa, a => 
+                    default(MOptionAsync<Task<B>>).PureAsync(Task.FromResult(default(ApplTask< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -5514,12 +5636,7 @@ namespace LanguageExt
         /// <returns>`OptionAsync&lt;Task&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static OptionAsync<Task<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, OptionAsync<Task<A>> fa, OptionAsync<Task<B>> fb) =>
-            default(ApplOptionAsync< Task<A>, Task<B>, Task<C>>).Apply(
-                default(MOptionAsync< Func<Task<A>, Func<Task<B>, Task<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<Task<A>, Func<Task<B>, Task<C>>>>((Task<A> a) =>
-                        (Task<B> b) =>
-                            default(ApplTask< A, B, C>).Apply(
-                                default(MTask< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -5538,7 +5655,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MEitherAsync<L, Task<A>>, EitherAsync<L, Task<A>>, MTask<A>, Task<A>, A>).Bind<MEitherAsync<L, Task<C>>, EitherAsync<L, Task<C>>, MTask<C>, Task<C>, C>(ma, a =>
             default(TransAsync<MEitherAsync<L, Task<B>>, EitherAsync<L, Task<B>>, MTask<B>, Task<B>, B>).Bind<MEitherAsync<L, Task<C>>, EitherAsync<L, Task<C>>, MTask<C>, Task<C>, C>(bind(a), b =>
-            default(MTask<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTask<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -5557,7 +5674,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MEitherAsync<L, Task<A>>, EitherAsync<L, Task<A>>, MTask<A>, Task<A>, A>).Bind<MEitherAsync<L, Task<C>>, EitherAsync<L, Task<C>>, MTask<C>, Task<C>, C>(ma, a =>
             default(TransAsync<MEitherAsync<L, Task<B>>, EitherAsync<L, Task<B>>, MTask<B>, Task<B>, B>).Bind<MEitherAsync<L, Task<C>>, EitherAsync<L, Task<C>>, MTask<C>, Task<C>, C>(bind(a), b =>
-            default(MTask<C>).ReturnAsync(project(a, b))));
+            default(MTask<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -5572,7 +5689,7 @@ namespace LanguageExt
         public static EitherAsync<L, Task<A>> Where<L, A>(this EitherAsync<L, Task<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MEitherAsync<L, Task<A>>, EitherAsync<L, Task<A>>, MTask<A>, Task<A>, A>).Bind<MEitherAsync<L, Task<A>>, EitherAsync<L, Task<A>>, MTask<A>, Task<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MTask<A>).PureAsync(a.AsTask())
                     : default(MTask<A>).Zero());
 
         /// <summary>
@@ -5587,7 +5704,7 @@ namespace LanguageExt
         public static EitherAsync<L, Task<A>> Where<L, A>(this EitherAsync<L, Task<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MEitherAsync<L, Task<A>>, EitherAsync<L, Task<A>>, MTask<A>, Task<A>, A>).BindAsync<MEitherAsync<L, Task<A>>, EitherAsync<L, Task<A>>, MTask<A>, Task<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MTask<A>).PureAsync(a.AsTask())
                     : default(MTask<A>).Zero());
 
         /// <summary>
@@ -5804,7 +5921,7 @@ namespace LanguageExt
             default(TransAsync<MEitherAsync<L, Task<A>>, EitherAsync<L, Task<A>>, MTask<A>, Task<A>, A>)
                 .Bind<MEitherAsync<L, Task<A>>, EitherAsync<L, Task<A>>, MTask<A>, Task<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MTask<A>).PureAsync(a.AsTask())
                         : default(MTask<A>).Zero());
 
         /// <summary>
@@ -5820,7 +5937,7 @@ namespace LanguageExt
             default(TransAsync<MEitherAsync<L, Task<A>>, EitherAsync<L, Task<A>>, MTask<A>, Task<A>, A>)
                 .BindAsync<MEitherAsync<L, Task<A>>, EitherAsync<L, Task<A>>, MTask<A>, Task<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MTask<A>).PureAsync(a.AsTask())
                         : default(MTask<A>).Zero());
 
         /// <summary>
@@ -5918,12 +6035,26 @@ namespace LanguageExt
         [Pure]
         public static EitherAsync<L, Task<B>> ApplyT<L, A, B>(this Func<A, B> fab, EitherAsync<L, Task<A>> fa) =>
             default(ApplEitherAsync<L, Task<A>, Task<B>>).Apply(
-                default(MEitherAsync<L, Func<Task<A>, Task<B>>>).ReturnAsync(
+                default(MEitherAsync<L, Func<Task<A>, Task<B>>>).PureAsync(
                     Task.FromResult<Func<Task<A>, Task<B>>>((Task<A> a) => 
                         default(ApplTask< A, B>).Apply(
-                            default(MTask< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTask< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `EitherAsync&lt;L, Task&lt;A&gt;&gt;`</param>
+        /// <returns>`EitherAsync&lt;L, Task&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static EitherAsync<L, Task<B>> ApplyT<L, A, B>(this EitherAsync<L, Task<Func<A, B>>> fab, EitherAsync<L, Task<A>> fa) =>
+            default(MEitherAsync<L, Task<Func<A, B>>>).Bind<MEitherAsync<L, Task<B>>, EitherAsync<L, Task<B>>, Task<B>>(fab, f =>
+                default(MEitherAsync<L, Task<A>>).Bind<MEitherAsync<L, Task<B>>, EitherAsync<L, Task<B>>, Task<B>>(fa, a => 
+                    default(MEitherAsync<L, Task<B>>).PureAsync(Task.FromResult(default(ApplTask< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -5936,12 +6067,7 @@ namespace LanguageExt
         /// <returns>`EitherAsync&lt;L, Task&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static EitherAsync<L, Task<C>> ApplyT<L, A, B, C>(this Func<A, B, C> fabc, EitherAsync<L, Task<A>> fa, EitherAsync<L, Task<B>> fb) =>
-            default(ApplEitherAsync<L, Task<A>, Task<B>, Task<C>>).Apply(
-                default(MEitherAsync<L, Func<Task<A>, Func<Task<B>, Task<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<Task<A>, Func<Task<B>, Task<C>>>>((Task<A> a) =>
-                        (Task<B> b) =>
-                            default(ApplTask< A, B, C>).Apply(
-                                default(MTask< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -5960,7 +6086,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTask<Task<A>>, Task<Task<A>>, MTask<A>, Task<A>, A>).Bind<MTask<Task<C>>, Task<Task<C>>, MTask<C>, Task<C>, C>(ma, a =>
             default(TransAsync<MTask<Task<B>>, Task<Task<B>>, MTask<B>, Task<B>, B>).Bind<MTask<Task<C>>, Task<Task<C>>, MTask<C>, Task<C>, C>(bind(a), b =>
-            default(MTask<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTask<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -5979,7 +6105,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTask<Task<A>>, Task<Task<A>>, MTask<A>, Task<A>, A>).Bind<MTask<Task<C>>, Task<Task<C>>, MTask<C>, Task<C>, C>(ma, a =>
             default(TransAsync<MTask<Task<B>>, Task<Task<B>>, MTask<B>, Task<B>, B>).Bind<MTask<Task<C>>, Task<Task<C>>, MTask<C>, Task<C>, C>(bind(a), b =>
-            default(MTask<C>).ReturnAsync(project(a, b))));
+            default(MTask<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -5994,7 +6120,7 @@ namespace LanguageExt
         public static Task<Task<A>> Where< A>(this Task<Task<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTask<Task<A>>, Task<Task<A>>, MTask<A>, Task<A>, A>).Bind<MTask<Task<A>>, Task<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MTask<A>).PureAsync(a.AsTask())
                     : default(MTask<A>).Zero());
 
         /// <summary>
@@ -6009,7 +6135,7 @@ namespace LanguageExt
         public static Task<Task<A>> Where< A>(this Task<Task<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTask<Task<A>>, Task<Task<A>>, MTask<A>, Task<A>, A>).BindAsync<MTask<Task<A>>, Task<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MTask<A>).PureAsync(a.AsTask())
                     : default(MTask<A>).Zero());
 
         /// <summary>
@@ -6226,7 +6352,7 @@ namespace LanguageExt
             default(TransAsync<MTask<Task<A>>, Task<Task<A>>, MTask<A>, Task<A>, A>)
                 .Bind<MTask<Task<A>>, Task<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MTask<A>).PureAsync(a.AsTask())
                         : default(MTask<A>).Zero());
 
         /// <summary>
@@ -6242,7 +6368,7 @@ namespace LanguageExt
             default(TransAsync<MTask<Task<A>>, Task<Task<A>>, MTask<A>, Task<A>, A>)
                 .BindAsync<MTask<Task<A>>, Task<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MTask<A>).PureAsync(a.AsTask())
                         : default(MTask<A>).Zero());
 
         /// <summary>
@@ -6340,12 +6466,26 @@ namespace LanguageExt
         [Pure]
         public static Task<Task<B>> ApplyT< A, B>(this Func<A, B> fab, Task<Task<A>> fa) =>
             default(ApplTask< Task<A>, Task<B>>).Apply(
-                default(MTask< Func<Task<A>, Task<B>>>).ReturnAsync(
+                default(MTask< Func<Task<A>, Task<B>>>).PureAsync(
                     Task.FromResult<Func<Task<A>, Task<B>>>((Task<A> a) => 
                         default(ApplTask< A, B>).Apply(
-                            default(MTask< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTask< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `Task&lt;Task&lt;A&gt;&gt;`</param>
+        /// <returns>`Task&lt;Task&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static Task<Task<B>> ApplyT< A, B>(this Task<Task<Func<A, B>>> fab, Task<Task<A>> fa) =>
+            default(MTask<Task<Func<A, B>>>).Bind<MTask<Task<B>>, Task<Task<B>>, Task<B>>(fab, f =>
+                default(MTask<Task<A>>).Bind<MTask<Task<B>>, Task<Task<B>>, Task<B>>(fa, a => 
+                    default(MTask<Task<B>>).PureAsync(Task.FromResult(default(ApplTask< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -6358,12 +6498,7 @@ namespace LanguageExt
         /// <returns>`Task&lt;Task&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static Task<Task<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, Task<Task<A>> fa, Task<Task<B>> fb) =>
-            default(ApplTask< Task<A>, Task<B>, Task<C>>).Apply(
-                default(MTask< Func<Task<A>, Func<Task<B>, Task<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<Task<A>, Func<Task<B>, Task<C>>>>((Task<A> a) =>
-                        (Task<B> b) =>
-                            default(ApplTask< A, B, C>).Apply(
-                                default(MTask< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -6382,7 +6517,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MValueTask<Task<A>>, ValueTask<Task<A>>, MTask<A>, Task<A>, A>).Bind<MValueTask<Task<C>>, ValueTask<Task<C>>, MTask<C>, Task<C>, C>(ma, a =>
             default(TransAsync<MValueTask<Task<B>>, ValueTask<Task<B>>, MTask<B>, Task<B>, B>).Bind<MValueTask<Task<C>>, ValueTask<Task<C>>, MTask<C>, Task<C>, C>(bind(a), b =>
-            default(MTask<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTask<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -6401,7 +6536,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MValueTask<Task<A>>, ValueTask<Task<A>>, MTask<A>, Task<A>, A>).Bind<MValueTask<Task<C>>, ValueTask<Task<C>>, MTask<C>, Task<C>, C>(ma, a =>
             default(TransAsync<MValueTask<Task<B>>, ValueTask<Task<B>>, MTask<B>, Task<B>, B>).Bind<MValueTask<Task<C>>, ValueTask<Task<C>>, MTask<C>, Task<C>, C>(bind(a), b =>
-            default(MTask<C>).ReturnAsync(project(a, b))));
+            default(MTask<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -6416,7 +6551,7 @@ namespace LanguageExt
         public static ValueTask<Task<A>> Where< A>(this ValueTask<Task<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MValueTask<Task<A>>, ValueTask<Task<A>>, MTask<A>, Task<A>, A>).Bind<MValueTask<Task<A>>, ValueTask<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MTask<A>).PureAsync(a.AsTask())
                     : default(MTask<A>).Zero());
 
         /// <summary>
@@ -6431,7 +6566,7 @@ namespace LanguageExt
         public static ValueTask<Task<A>> Where< A>(this ValueTask<Task<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MValueTask<Task<A>>, ValueTask<Task<A>>, MTask<A>, Task<A>, A>).BindAsync<MValueTask<Task<A>>, ValueTask<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MTask<A>).PureAsync(a.AsTask())
                     : default(MTask<A>).Zero());
 
         /// <summary>
@@ -6648,7 +6783,7 @@ namespace LanguageExt
             default(TransAsync<MValueTask<Task<A>>, ValueTask<Task<A>>, MTask<A>, Task<A>, A>)
                 .Bind<MValueTask<Task<A>>, ValueTask<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MTask<A>).PureAsync(a.AsTask())
                         : default(MTask<A>).Zero());
 
         /// <summary>
@@ -6664,7 +6799,7 @@ namespace LanguageExt
             default(TransAsync<MValueTask<Task<A>>, ValueTask<Task<A>>, MTask<A>, Task<A>, A>)
                 .BindAsync<MValueTask<Task<A>>, ValueTask<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MTask<A>).PureAsync(a.AsTask())
                         : default(MTask<A>).Zero());
 
         /// <summary>
@@ -6762,12 +6897,26 @@ namespace LanguageExt
         [Pure]
         public static ValueTask<Task<B>> ApplyT< A, B>(this Func<A, B> fab, ValueTask<Task<A>> fa) =>
             default(ApplValueTask< Task<A>, Task<B>>).Apply(
-                default(MValueTask< Func<Task<A>, Task<B>>>).ReturnAsync(
+                default(MValueTask< Func<Task<A>, Task<B>>>).PureAsync(
                     Task.FromResult<Func<Task<A>, Task<B>>>((Task<A> a) => 
                         default(ApplTask< A, B>).Apply(
-                            default(MTask< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTask< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `ValueTask&lt;Task&lt;A&gt;&gt;`</param>
+        /// <returns>`ValueTask&lt;Task&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static ValueTask<Task<B>> ApplyT< A, B>(this ValueTask<Task<Func<A, B>>> fab, ValueTask<Task<A>> fa) =>
+            default(MValueTask<Task<Func<A, B>>>).Bind<MValueTask<Task<B>>, ValueTask<Task<B>>, Task<B>>(fab, f =>
+                default(MValueTask<Task<A>>).Bind<MValueTask<Task<B>>, ValueTask<Task<B>>, Task<B>>(fa, a => 
+                    default(MValueTask<Task<B>>).PureAsync(Task.FromResult(default(ApplTask< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -6780,12 +6929,7 @@ namespace LanguageExt
         /// <returns>`ValueTask&lt;Task&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static ValueTask<Task<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, ValueTask<Task<A>> fa, ValueTask<Task<B>> fb) =>
-            default(ApplValueTask< Task<A>, Task<B>, Task<C>>).Apply(
-                default(MValueTask< Func<Task<A>, Func<Task<B>, Task<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<Task<A>, Func<Task<B>, Task<C>>>>((Task<A> a) =>
-                        (Task<B> b) =>
-                            default(ApplTask< A, B, C>).Apply(
-                                default(MTask< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -6804,7 +6948,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTryAsync<Task<A>>, TryAsync<Task<A>>, MTask<A>, Task<A>, A>).Bind<MTryAsync<Task<C>>, TryAsync<Task<C>>, MTask<C>, Task<C>, C>(ma, a =>
             default(TransAsync<MTryAsync<Task<B>>, TryAsync<Task<B>>, MTask<B>, Task<B>, B>).Bind<MTryAsync<Task<C>>, TryAsync<Task<C>>, MTask<C>, Task<C>, C>(bind(a), b =>
-            default(MTask<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTask<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -6823,7 +6967,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTryAsync<Task<A>>, TryAsync<Task<A>>, MTask<A>, Task<A>, A>).Bind<MTryAsync<Task<C>>, TryAsync<Task<C>>, MTask<C>, Task<C>, C>(ma, a =>
             default(TransAsync<MTryAsync<Task<B>>, TryAsync<Task<B>>, MTask<B>, Task<B>, B>).Bind<MTryAsync<Task<C>>, TryAsync<Task<C>>, MTask<C>, Task<C>, C>(bind(a), b =>
-            default(MTask<C>).ReturnAsync(project(a, b))));
+            default(MTask<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -6838,7 +6982,7 @@ namespace LanguageExt
         public static TryAsync<Task<A>> Where< A>(this TryAsync<Task<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTryAsync<Task<A>>, TryAsync<Task<A>>, MTask<A>, Task<A>, A>).Bind<MTryAsync<Task<A>>, TryAsync<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MTask<A>).PureAsync(a.AsTask())
                     : default(MTask<A>).Zero());
 
         /// <summary>
@@ -6853,7 +6997,7 @@ namespace LanguageExt
         public static TryAsync<Task<A>> Where< A>(this TryAsync<Task<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTryAsync<Task<A>>, TryAsync<Task<A>>, MTask<A>, Task<A>, A>).BindAsync<MTryAsync<Task<A>>, TryAsync<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MTask<A>).PureAsync(a.AsTask())
                     : default(MTask<A>).Zero());
 
         /// <summary>
@@ -7070,7 +7214,7 @@ namespace LanguageExt
             default(TransAsync<MTryAsync<Task<A>>, TryAsync<Task<A>>, MTask<A>, Task<A>, A>)
                 .Bind<MTryAsync<Task<A>>, TryAsync<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MTask<A>).PureAsync(a.AsTask())
                         : default(MTask<A>).Zero());
 
         /// <summary>
@@ -7086,7 +7230,7 @@ namespace LanguageExt
             default(TransAsync<MTryAsync<Task<A>>, TryAsync<Task<A>>, MTask<A>, Task<A>, A>)
                 .BindAsync<MTryAsync<Task<A>>, TryAsync<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MTask<A>).PureAsync(a.AsTask())
                         : default(MTask<A>).Zero());
 
         /// <summary>
@@ -7184,12 +7328,26 @@ namespace LanguageExt
         [Pure]
         public static TryAsync<Task<B>> ApplyT< A, B>(this Func<A, B> fab, TryAsync<Task<A>> fa) =>
             default(ApplTryAsync< Task<A>, Task<B>>).Apply(
-                default(MTryAsync< Func<Task<A>, Task<B>>>).ReturnAsync(
+                default(MTryAsync< Func<Task<A>, Task<B>>>).PureAsync(
                     Task.FromResult<Func<Task<A>, Task<B>>>((Task<A> a) => 
                         default(ApplTask< A, B>).Apply(
-                            default(MTask< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTask< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `TryAsync&lt;Task&lt;A&gt;&gt;`</param>
+        /// <returns>`TryAsync&lt;Task&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static TryAsync<Task<B>> ApplyT< A, B>(this TryAsync<Task<Func<A, B>>> fab, TryAsync<Task<A>> fa) =>
+            default(MTryAsync<Task<Func<A, B>>>).Bind<MTryAsync<Task<B>>, TryAsync<Task<B>>, Task<B>>(fab, f =>
+                default(MTryAsync<Task<A>>).Bind<MTryAsync<Task<B>>, TryAsync<Task<B>>, Task<B>>(fa, a => 
+                    default(MTryAsync<Task<B>>).PureAsync(Task.FromResult(default(ApplTask< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -7202,12 +7360,7 @@ namespace LanguageExt
         /// <returns>`TryAsync&lt;Task&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static TryAsync<Task<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, TryAsync<Task<A>> fa, TryAsync<Task<B>> fb) =>
-            default(ApplTryAsync< Task<A>, Task<B>, Task<C>>).Apply(
-                default(MTryAsync< Func<Task<A>, Func<Task<B>, Task<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<Task<A>, Func<Task<B>, Task<C>>>>((Task<A> a) =>
-                        (Task<B> b) =>
-                            default(ApplTask< A, B, C>).Apply(
-                                default(MTask< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -7226,7 +7379,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTryOptionAsync<Task<A>>, TryOptionAsync<Task<A>>, MTask<A>, Task<A>, A>).Bind<MTryOptionAsync<Task<C>>, TryOptionAsync<Task<C>>, MTask<C>, Task<C>, C>(ma, a =>
             default(TransAsync<MTryOptionAsync<Task<B>>, TryOptionAsync<Task<B>>, MTask<B>, Task<B>, B>).Bind<MTryOptionAsync<Task<C>>, TryOptionAsync<Task<C>>, MTask<C>, Task<C>, C>(bind(a), b =>
-            default(MTask<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTask<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -7245,7 +7398,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTryOptionAsync<Task<A>>, TryOptionAsync<Task<A>>, MTask<A>, Task<A>, A>).Bind<MTryOptionAsync<Task<C>>, TryOptionAsync<Task<C>>, MTask<C>, Task<C>, C>(ma, a =>
             default(TransAsync<MTryOptionAsync<Task<B>>, TryOptionAsync<Task<B>>, MTask<B>, Task<B>, B>).Bind<MTryOptionAsync<Task<C>>, TryOptionAsync<Task<C>>, MTask<C>, Task<C>, C>(bind(a), b =>
-            default(MTask<C>).ReturnAsync(project(a, b))));
+            default(MTask<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -7260,7 +7413,7 @@ namespace LanguageExt
         public static TryOptionAsync<Task<A>> Where< A>(this TryOptionAsync<Task<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTryOptionAsync<Task<A>>, TryOptionAsync<Task<A>>, MTask<A>, Task<A>, A>).Bind<MTryOptionAsync<Task<A>>, TryOptionAsync<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MTask<A>).PureAsync(a.AsTask())
                     : default(MTask<A>).Zero());
 
         /// <summary>
@@ -7275,7 +7428,7 @@ namespace LanguageExt
         public static TryOptionAsync<Task<A>> Where< A>(this TryOptionAsync<Task<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTryOptionAsync<Task<A>>, TryOptionAsync<Task<A>>, MTask<A>, Task<A>, A>).BindAsync<MTryOptionAsync<Task<A>>, TryOptionAsync<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MTask<A>).PureAsync(a.AsTask())
                     : default(MTask<A>).Zero());
 
         /// <summary>
@@ -7492,7 +7645,7 @@ namespace LanguageExt
             default(TransAsync<MTryOptionAsync<Task<A>>, TryOptionAsync<Task<A>>, MTask<A>, Task<A>, A>)
                 .Bind<MTryOptionAsync<Task<A>>, TryOptionAsync<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MTask<A>).PureAsync(a.AsTask())
                         : default(MTask<A>).Zero());
 
         /// <summary>
@@ -7508,7 +7661,7 @@ namespace LanguageExt
             default(TransAsync<MTryOptionAsync<Task<A>>, TryOptionAsync<Task<A>>, MTask<A>, Task<A>, A>)
                 .BindAsync<MTryOptionAsync<Task<A>>, TryOptionAsync<Task<A>>, MTask<A>, Task<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MTask<A>).PureAsync(a.AsTask())
                         : default(MTask<A>).Zero());
 
         /// <summary>
@@ -7606,12 +7759,26 @@ namespace LanguageExt
         [Pure]
         public static TryOptionAsync<Task<B>> ApplyT< A, B>(this Func<A, B> fab, TryOptionAsync<Task<A>> fa) =>
             default(ApplTryOptionAsync< Task<A>, Task<B>>).Apply(
-                default(MTryOptionAsync< Func<Task<A>, Task<B>>>).ReturnAsync(
+                default(MTryOptionAsync< Func<Task<A>, Task<B>>>).PureAsync(
                     Task.FromResult<Func<Task<A>, Task<B>>>((Task<A> a) => 
                         default(ApplTask< A, B>).Apply(
-                            default(MTask< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTask< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `TryOptionAsync&lt;Task&lt;A&gt;&gt;`</param>
+        /// <returns>`TryOptionAsync&lt;Task&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static TryOptionAsync<Task<B>> ApplyT< A, B>(this TryOptionAsync<Task<Func<A, B>>> fab, TryOptionAsync<Task<A>> fa) =>
+            default(MTryOptionAsync<Task<Func<A, B>>>).Bind<MTryOptionAsync<Task<B>>, TryOptionAsync<Task<B>>, Task<B>>(fab, f =>
+                default(MTryOptionAsync<Task<A>>).Bind<MTryOptionAsync<Task<B>>, TryOptionAsync<Task<B>>, Task<B>>(fa, a => 
+                    default(MTryOptionAsync<Task<B>>).PureAsync(Task.FromResult(default(ApplTask< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -7624,12 +7791,7 @@ namespace LanguageExt
         /// <returns>`TryOptionAsync&lt;Task&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static TryOptionAsync<Task<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, TryOptionAsync<Task<A>> fa, TryOptionAsync<Task<B>> fb) =>
-            default(ApplTryOptionAsync< Task<A>, Task<B>, Task<C>>).Apply(
-                default(MTryOptionAsync< Func<Task<A>, Func<Task<B>, Task<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<Task<A>, Func<Task<B>, Task<C>>>>((Task<A> a) =>
-                        (Task<B> b) =>
-                            default(ApplTask< A, B, C>).Apply(
-                                default(MTask< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
     }
     /// <summary>
@@ -7656,7 +7818,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MOptionAsync<ValueTask<A>>, OptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MOptionAsync<ValueTask<C>>, OptionAsync<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(ma, a =>
             default(TransAsync<MOptionAsync<ValueTask<B>>, OptionAsync<ValueTask<B>>, MValueTask<B>, ValueTask<B>, B>).Bind<MOptionAsync<ValueTask<C>>, OptionAsync<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(bind(a), b =>
-            default(MValueTask<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MValueTask<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -7675,7 +7837,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MOptionAsync<ValueTask<A>>, OptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MOptionAsync<ValueTask<C>>, OptionAsync<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(ma, a =>
             default(TransAsync<MOptionAsync<ValueTask<B>>, OptionAsync<ValueTask<B>>, MValueTask<B>, ValueTask<B>, B>).Bind<MOptionAsync<ValueTask<C>>, OptionAsync<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(bind(a), b =>
-            default(MValueTask<C>).ReturnAsync(project(a, b))));
+            default(MValueTask<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -7690,7 +7852,7 @@ namespace LanguageExt
         public static OptionAsync<ValueTask<A>> Where< A>(this OptionAsync<ValueTask<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MOptionAsync<ValueTask<A>>, OptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MOptionAsync<ValueTask<A>>, OptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MValueTask<A>).PureAsync(a.AsTask())
                     : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -7705,7 +7867,7 @@ namespace LanguageExt
         public static OptionAsync<ValueTask<A>> Where< A>(this OptionAsync<ValueTask<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MOptionAsync<ValueTask<A>>, OptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).BindAsync<MOptionAsync<ValueTask<A>>, OptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MValueTask<A>).PureAsync(a.AsTask())
                     : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -7922,7 +8084,7 @@ namespace LanguageExt
             default(TransAsync<MOptionAsync<ValueTask<A>>, OptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>)
                 .Bind<MOptionAsync<ValueTask<A>>, OptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MValueTask<A>).PureAsync(a.AsTask())
                         : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -7938,7 +8100,7 @@ namespace LanguageExt
             default(TransAsync<MOptionAsync<ValueTask<A>>, OptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>)
                 .BindAsync<MOptionAsync<ValueTask<A>>, OptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MValueTask<A>).PureAsync(a.AsTask())
                         : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -8036,12 +8198,26 @@ namespace LanguageExt
         [Pure]
         public static OptionAsync<ValueTask<B>> ApplyT< A, B>(this Func<A, B> fab, OptionAsync<ValueTask<A>> fa) =>
             default(ApplOptionAsync< ValueTask<A>, ValueTask<B>>).Apply(
-                default(MOptionAsync< Func<ValueTask<A>, ValueTask<B>>>).ReturnAsync(
+                default(MOptionAsync< Func<ValueTask<A>, ValueTask<B>>>).PureAsync(
                     Task.FromResult<Func<ValueTask<A>, ValueTask<B>>>((ValueTask<A> a) => 
                         default(ApplValueTask< A, B>).Apply(
-                            default(MValueTask< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MValueTask< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `OptionAsync&lt;ValueTask&lt;A&gt;&gt;`</param>
+        /// <returns>`OptionAsync&lt;ValueTask&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static OptionAsync<ValueTask<B>> ApplyT< A, B>(this OptionAsync<ValueTask<Func<A, B>>> fab, OptionAsync<ValueTask<A>> fa) =>
+            default(MOptionAsync<ValueTask<Func<A, B>>>).Bind<MOptionAsync<ValueTask<B>>, OptionAsync<ValueTask<B>>, ValueTask<B>>(fab, f =>
+                default(MOptionAsync<ValueTask<A>>).Bind<MOptionAsync<ValueTask<B>>, OptionAsync<ValueTask<B>>, ValueTask<B>>(fa, a => 
+                    default(MOptionAsync<ValueTask<B>>).PureAsync(Task.FromResult(default(ApplValueTask< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -8054,12 +8230,7 @@ namespace LanguageExt
         /// <returns>`OptionAsync&lt;ValueTask&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static OptionAsync<ValueTask<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, OptionAsync<ValueTask<A>> fa, OptionAsync<ValueTask<B>> fb) =>
-            default(ApplOptionAsync< ValueTask<A>, ValueTask<B>, ValueTask<C>>).Apply(
-                default(MOptionAsync< Func<ValueTask<A>, Func<ValueTask<B>, ValueTask<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<ValueTask<A>, Func<ValueTask<B>, ValueTask<C>>>>((ValueTask<A> a) =>
-                        (ValueTask<B> b) =>
-                            default(ApplValueTask< A, B, C>).Apply(
-                                default(MValueTask< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -8078,7 +8249,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MEitherAsync<L, ValueTask<A>>, EitherAsync<L, ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MEitherAsync<L, ValueTask<C>>, EitherAsync<L, ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(ma, a =>
             default(TransAsync<MEitherAsync<L, ValueTask<B>>, EitherAsync<L, ValueTask<B>>, MValueTask<B>, ValueTask<B>, B>).Bind<MEitherAsync<L, ValueTask<C>>, EitherAsync<L, ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(bind(a), b =>
-            default(MValueTask<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MValueTask<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -8097,7 +8268,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MEitherAsync<L, ValueTask<A>>, EitherAsync<L, ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MEitherAsync<L, ValueTask<C>>, EitherAsync<L, ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(ma, a =>
             default(TransAsync<MEitherAsync<L, ValueTask<B>>, EitherAsync<L, ValueTask<B>>, MValueTask<B>, ValueTask<B>, B>).Bind<MEitherAsync<L, ValueTask<C>>, EitherAsync<L, ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(bind(a), b =>
-            default(MValueTask<C>).ReturnAsync(project(a, b))));
+            default(MValueTask<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -8112,7 +8283,7 @@ namespace LanguageExt
         public static EitherAsync<L, ValueTask<A>> Where<L, A>(this EitherAsync<L, ValueTask<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MEitherAsync<L, ValueTask<A>>, EitherAsync<L, ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MEitherAsync<L, ValueTask<A>>, EitherAsync<L, ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MValueTask<A>).PureAsync(a.AsTask())
                     : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -8127,7 +8298,7 @@ namespace LanguageExt
         public static EitherAsync<L, ValueTask<A>> Where<L, A>(this EitherAsync<L, ValueTask<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MEitherAsync<L, ValueTask<A>>, EitherAsync<L, ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).BindAsync<MEitherAsync<L, ValueTask<A>>, EitherAsync<L, ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MValueTask<A>).PureAsync(a.AsTask())
                     : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -8344,7 +8515,7 @@ namespace LanguageExt
             default(TransAsync<MEitherAsync<L, ValueTask<A>>, EitherAsync<L, ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>)
                 .Bind<MEitherAsync<L, ValueTask<A>>, EitherAsync<L, ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MValueTask<A>).PureAsync(a.AsTask())
                         : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -8360,7 +8531,7 @@ namespace LanguageExt
             default(TransAsync<MEitherAsync<L, ValueTask<A>>, EitherAsync<L, ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>)
                 .BindAsync<MEitherAsync<L, ValueTask<A>>, EitherAsync<L, ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MValueTask<A>).PureAsync(a.AsTask())
                         : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -8458,12 +8629,26 @@ namespace LanguageExt
         [Pure]
         public static EitherAsync<L, ValueTask<B>> ApplyT<L, A, B>(this Func<A, B> fab, EitherAsync<L, ValueTask<A>> fa) =>
             default(ApplEitherAsync<L, ValueTask<A>, ValueTask<B>>).Apply(
-                default(MEitherAsync<L, Func<ValueTask<A>, ValueTask<B>>>).ReturnAsync(
+                default(MEitherAsync<L, Func<ValueTask<A>, ValueTask<B>>>).PureAsync(
                     Task.FromResult<Func<ValueTask<A>, ValueTask<B>>>((ValueTask<A> a) => 
                         default(ApplValueTask< A, B>).Apply(
-                            default(MValueTask< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MValueTask< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `EitherAsync&lt;L, ValueTask&lt;A&gt;&gt;`</param>
+        /// <returns>`EitherAsync&lt;L, ValueTask&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static EitherAsync<L, ValueTask<B>> ApplyT<L, A, B>(this EitherAsync<L, ValueTask<Func<A, B>>> fab, EitherAsync<L, ValueTask<A>> fa) =>
+            default(MEitherAsync<L, ValueTask<Func<A, B>>>).Bind<MEitherAsync<L, ValueTask<B>>, EitherAsync<L, ValueTask<B>>, ValueTask<B>>(fab, f =>
+                default(MEitherAsync<L, ValueTask<A>>).Bind<MEitherAsync<L, ValueTask<B>>, EitherAsync<L, ValueTask<B>>, ValueTask<B>>(fa, a => 
+                    default(MEitherAsync<L, ValueTask<B>>).PureAsync(Task.FromResult(default(ApplValueTask< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -8476,12 +8661,7 @@ namespace LanguageExt
         /// <returns>`EitherAsync&lt;L, ValueTask&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static EitherAsync<L, ValueTask<C>> ApplyT<L, A, B, C>(this Func<A, B, C> fabc, EitherAsync<L, ValueTask<A>> fa, EitherAsync<L, ValueTask<B>> fb) =>
-            default(ApplEitherAsync<L, ValueTask<A>, ValueTask<B>, ValueTask<C>>).Apply(
-                default(MEitherAsync<L, Func<ValueTask<A>, Func<ValueTask<B>, ValueTask<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<ValueTask<A>, Func<ValueTask<B>, ValueTask<C>>>>((ValueTask<A> a) =>
-                        (ValueTask<B> b) =>
-                            default(ApplValueTask< A, B, C>).Apply(
-                                default(MValueTask< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -8500,7 +8680,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTask<ValueTask<A>>, Task<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MTask<ValueTask<C>>, Task<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(ma, a =>
             default(TransAsync<MTask<ValueTask<B>>, Task<ValueTask<B>>, MValueTask<B>, ValueTask<B>, B>).Bind<MTask<ValueTask<C>>, Task<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(bind(a), b =>
-            default(MValueTask<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MValueTask<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -8519,7 +8699,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTask<ValueTask<A>>, Task<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MTask<ValueTask<C>>, Task<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(ma, a =>
             default(TransAsync<MTask<ValueTask<B>>, Task<ValueTask<B>>, MValueTask<B>, ValueTask<B>, B>).Bind<MTask<ValueTask<C>>, Task<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(bind(a), b =>
-            default(MValueTask<C>).ReturnAsync(project(a, b))));
+            default(MValueTask<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -8534,7 +8714,7 @@ namespace LanguageExt
         public static Task<ValueTask<A>> Where< A>(this Task<ValueTask<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTask<ValueTask<A>>, Task<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MTask<ValueTask<A>>, Task<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MValueTask<A>).PureAsync(a.AsTask())
                     : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -8549,7 +8729,7 @@ namespace LanguageExt
         public static Task<ValueTask<A>> Where< A>(this Task<ValueTask<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTask<ValueTask<A>>, Task<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).BindAsync<MTask<ValueTask<A>>, Task<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MValueTask<A>).PureAsync(a.AsTask())
                     : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -8766,7 +8946,7 @@ namespace LanguageExt
             default(TransAsync<MTask<ValueTask<A>>, Task<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>)
                 .Bind<MTask<ValueTask<A>>, Task<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MValueTask<A>).PureAsync(a.AsTask())
                         : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -8782,7 +8962,7 @@ namespace LanguageExt
             default(TransAsync<MTask<ValueTask<A>>, Task<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>)
                 .BindAsync<MTask<ValueTask<A>>, Task<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MValueTask<A>).PureAsync(a.AsTask())
                         : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -8880,12 +9060,26 @@ namespace LanguageExt
         [Pure]
         public static Task<ValueTask<B>> ApplyT< A, B>(this Func<A, B> fab, Task<ValueTask<A>> fa) =>
             default(ApplTask< ValueTask<A>, ValueTask<B>>).Apply(
-                default(MTask< Func<ValueTask<A>, ValueTask<B>>>).ReturnAsync(
+                default(MTask< Func<ValueTask<A>, ValueTask<B>>>).PureAsync(
                     Task.FromResult<Func<ValueTask<A>, ValueTask<B>>>((ValueTask<A> a) => 
                         default(ApplValueTask< A, B>).Apply(
-                            default(MValueTask< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MValueTask< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `Task&lt;ValueTask&lt;A&gt;&gt;`</param>
+        /// <returns>`Task&lt;ValueTask&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static Task<ValueTask<B>> ApplyT< A, B>(this Task<ValueTask<Func<A, B>>> fab, Task<ValueTask<A>> fa) =>
+            default(MTask<ValueTask<Func<A, B>>>).Bind<MTask<ValueTask<B>>, Task<ValueTask<B>>, ValueTask<B>>(fab, f =>
+                default(MTask<ValueTask<A>>).Bind<MTask<ValueTask<B>>, Task<ValueTask<B>>, ValueTask<B>>(fa, a => 
+                    default(MTask<ValueTask<B>>).PureAsync(Task.FromResult(default(ApplValueTask< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -8898,12 +9092,7 @@ namespace LanguageExt
         /// <returns>`Task&lt;ValueTask&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static Task<ValueTask<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, Task<ValueTask<A>> fa, Task<ValueTask<B>> fb) =>
-            default(ApplTask< ValueTask<A>, ValueTask<B>, ValueTask<C>>).Apply(
-                default(MTask< Func<ValueTask<A>, Func<ValueTask<B>, ValueTask<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<ValueTask<A>, Func<ValueTask<B>, ValueTask<C>>>>((ValueTask<A> a) =>
-                        (ValueTask<B> b) =>
-                            default(ApplValueTask< A, B, C>).Apply(
-                                default(MValueTask< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -8922,7 +9111,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MValueTask<ValueTask<A>>, ValueTask<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MValueTask<ValueTask<C>>, ValueTask<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(ma, a =>
             default(TransAsync<MValueTask<ValueTask<B>>, ValueTask<ValueTask<B>>, MValueTask<B>, ValueTask<B>, B>).Bind<MValueTask<ValueTask<C>>, ValueTask<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(bind(a), b =>
-            default(MValueTask<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MValueTask<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -8941,7 +9130,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MValueTask<ValueTask<A>>, ValueTask<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MValueTask<ValueTask<C>>, ValueTask<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(ma, a =>
             default(TransAsync<MValueTask<ValueTask<B>>, ValueTask<ValueTask<B>>, MValueTask<B>, ValueTask<B>, B>).Bind<MValueTask<ValueTask<C>>, ValueTask<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(bind(a), b =>
-            default(MValueTask<C>).ReturnAsync(project(a, b))));
+            default(MValueTask<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -8956,7 +9145,7 @@ namespace LanguageExt
         public static ValueTask<ValueTask<A>> Where< A>(this ValueTask<ValueTask<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MValueTask<ValueTask<A>>, ValueTask<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MValueTask<ValueTask<A>>, ValueTask<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MValueTask<A>).PureAsync(a.AsTask())
                     : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -8971,7 +9160,7 @@ namespace LanguageExt
         public static ValueTask<ValueTask<A>> Where< A>(this ValueTask<ValueTask<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MValueTask<ValueTask<A>>, ValueTask<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).BindAsync<MValueTask<ValueTask<A>>, ValueTask<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MValueTask<A>).PureAsync(a.AsTask())
                     : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -9188,7 +9377,7 @@ namespace LanguageExt
             default(TransAsync<MValueTask<ValueTask<A>>, ValueTask<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>)
                 .Bind<MValueTask<ValueTask<A>>, ValueTask<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MValueTask<A>).PureAsync(a.AsTask())
                         : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -9204,7 +9393,7 @@ namespace LanguageExt
             default(TransAsync<MValueTask<ValueTask<A>>, ValueTask<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>)
                 .BindAsync<MValueTask<ValueTask<A>>, ValueTask<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MValueTask<A>).PureAsync(a.AsTask())
                         : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -9302,12 +9491,26 @@ namespace LanguageExt
         [Pure]
         public static ValueTask<ValueTask<B>> ApplyT< A, B>(this Func<A, B> fab, ValueTask<ValueTask<A>> fa) =>
             default(ApplValueTask< ValueTask<A>, ValueTask<B>>).Apply(
-                default(MValueTask< Func<ValueTask<A>, ValueTask<B>>>).ReturnAsync(
+                default(MValueTask< Func<ValueTask<A>, ValueTask<B>>>).PureAsync(
                     Task.FromResult<Func<ValueTask<A>, ValueTask<B>>>((ValueTask<A> a) => 
                         default(ApplValueTask< A, B>).Apply(
-                            default(MValueTask< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MValueTask< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `ValueTask&lt;ValueTask&lt;A&gt;&gt;`</param>
+        /// <returns>`ValueTask&lt;ValueTask&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static ValueTask<ValueTask<B>> ApplyT< A, B>(this ValueTask<ValueTask<Func<A, B>>> fab, ValueTask<ValueTask<A>> fa) =>
+            default(MValueTask<ValueTask<Func<A, B>>>).Bind<MValueTask<ValueTask<B>>, ValueTask<ValueTask<B>>, ValueTask<B>>(fab, f =>
+                default(MValueTask<ValueTask<A>>).Bind<MValueTask<ValueTask<B>>, ValueTask<ValueTask<B>>, ValueTask<B>>(fa, a => 
+                    default(MValueTask<ValueTask<B>>).PureAsync(Task.FromResult(default(ApplValueTask< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -9320,12 +9523,7 @@ namespace LanguageExt
         /// <returns>`ValueTask&lt;ValueTask&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static ValueTask<ValueTask<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, ValueTask<ValueTask<A>> fa, ValueTask<ValueTask<B>> fb) =>
-            default(ApplValueTask< ValueTask<A>, ValueTask<B>, ValueTask<C>>).Apply(
-                default(MValueTask< Func<ValueTask<A>, Func<ValueTask<B>, ValueTask<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<ValueTask<A>, Func<ValueTask<B>, ValueTask<C>>>>((ValueTask<A> a) =>
-                        (ValueTask<B> b) =>
-                            default(ApplValueTask< A, B, C>).Apply(
-                                default(MValueTask< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -9344,7 +9542,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTryAsync<ValueTask<A>>, TryAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MTryAsync<ValueTask<C>>, TryAsync<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(ma, a =>
             default(TransAsync<MTryAsync<ValueTask<B>>, TryAsync<ValueTask<B>>, MValueTask<B>, ValueTask<B>, B>).Bind<MTryAsync<ValueTask<C>>, TryAsync<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(bind(a), b =>
-            default(MValueTask<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MValueTask<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -9363,7 +9561,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTryAsync<ValueTask<A>>, TryAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MTryAsync<ValueTask<C>>, TryAsync<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(ma, a =>
             default(TransAsync<MTryAsync<ValueTask<B>>, TryAsync<ValueTask<B>>, MValueTask<B>, ValueTask<B>, B>).Bind<MTryAsync<ValueTask<C>>, TryAsync<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(bind(a), b =>
-            default(MValueTask<C>).ReturnAsync(project(a, b))));
+            default(MValueTask<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -9378,7 +9576,7 @@ namespace LanguageExt
         public static TryAsync<ValueTask<A>> Where< A>(this TryAsync<ValueTask<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTryAsync<ValueTask<A>>, TryAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MTryAsync<ValueTask<A>>, TryAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MValueTask<A>).PureAsync(a.AsTask())
                     : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -9393,7 +9591,7 @@ namespace LanguageExt
         public static TryAsync<ValueTask<A>> Where< A>(this TryAsync<ValueTask<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTryAsync<ValueTask<A>>, TryAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).BindAsync<MTryAsync<ValueTask<A>>, TryAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MValueTask<A>).PureAsync(a.AsTask())
                     : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -9610,7 +9808,7 @@ namespace LanguageExt
             default(TransAsync<MTryAsync<ValueTask<A>>, TryAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>)
                 .Bind<MTryAsync<ValueTask<A>>, TryAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MValueTask<A>).PureAsync(a.AsTask())
                         : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -9626,7 +9824,7 @@ namespace LanguageExt
             default(TransAsync<MTryAsync<ValueTask<A>>, TryAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>)
                 .BindAsync<MTryAsync<ValueTask<A>>, TryAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MValueTask<A>).PureAsync(a.AsTask())
                         : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -9724,12 +9922,26 @@ namespace LanguageExt
         [Pure]
         public static TryAsync<ValueTask<B>> ApplyT< A, B>(this Func<A, B> fab, TryAsync<ValueTask<A>> fa) =>
             default(ApplTryAsync< ValueTask<A>, ValueTask<B>>).Apply(
-                default(MTryAsync< Func<ValueTask<A>, ValueTask<B>>>).ReturnAsync(
+                default(MTryAsync< Func<ValueTask<A>, ValueTask<B>>>).PureAsync(
                     Task.FromResult<Func<ValueTask<A>, ValueTask<B>>>((ValueTask<A> a) => 
                         default(ApplValueTask< A, B>).Apply(
-                            default(MValueTask< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MValueTask< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `TryAsync&lt;ValueTask&lt;A&gt;&gt;`</param>
+        /// <returns>`TryAsync&lt;ValueTask&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static TryAsync<ValueTask<B>> ApplyT< A, B>(this TryAsync<ValueTask<Func<A, B>>> fab, TryAsync<ValueTask<A>> fa) =>
+            default(MTryAsync<ValueTask<Func<A, B>>>).Bind<MTryAsync<ValueTask<B>>, TryAsync<ValueTask<B>>, ValueTask<B>>(fab, f =>
+                default(MTryAsync<ValueTask<A>>).Bind<MTryAsync<ValueTask<B>>, TryAsync<ValueTask<B>>, ValueTask<B>>(fa, a => 
+                    default(MTryAsync<ValueTask<B>>).PureAsync(Task.FromResult(default(ApplValueTask< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -9742,12 +9954,7 @@ namespace LanguageExt
         /// <returns>`TryAsync&lt;ValueTask&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static TryAsync<ValueTask<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, TryAsync<ValueTask<A>> fa, TryAsync<ValueTask<B>> fb) =>
-            default(ApplTryAsync< ValueTask<A>, ValueTask<B>, ValueTask<C>>).Apply(
-                default(MTryAsync< Func<ValueTask<A>, Func<ValueTask<B>, ValueTask<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<ValueTask<A>, Func<ValueTask<B>, ValueTask<C>>>>((ValueTask<A> a) =>
-                        (ValueTask<B> b) =>
-                            default(ApplValueTask< A, B, C>).Apply(
-                                default(MValueTask< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -9766,7 +9973,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTryOptionAsync<ValueTask<A>>, TryOptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MTryOptionAsync<ValueTask<C>>, TryOptionAsync<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(ma, a =>
             default(TransAsync<MTryOptionAsync<ValueTask<B>>, TryOptionAsync<ValueTask<B>>, MValueTask<B>, ValueTask<B>, B>).Bind<MTryOptionAsync<ValueTask<C>>, TryOptionAsync<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(bind(a), b =>
-            default(MValueTask<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MValueTask<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -9785,7 +9992,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTryOptionAsync<ValueTask<A>>, TryOptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MTryOptionAsync<ValueTask<C>>, TryOptionAsync<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(ma, a =>
             default(TransAsync<MTryOptionAsync<ValueTask<B>>, TryOptionAsync<ValueTask<B>>, MValueTask<B>, ValueTask<B>, B>).Bind<MTryOptionAsync<ValueTask<C>>, TryOptionAsync<ValueTask<C>>, MValueTask<C>, ValueTask<C>, C>(bind(a), b =>
-            default(MValueTask<C>).ReturnAsync(project(a, b))));
+            default(MValueTask<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -9800,7 +10007,7 @@ namespace LanguageExt
         public static TryOptionAsync<ValueTask<A>> Where< A>(this TryOptionAsync<ValueTask<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTryOptionAsync<ValueTask<A>>, TryOptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).Bind<MTryOptionAsync<ValueTask<A>>, TryOptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MValueTask<A>).PureAsync(a.AsTask())
                     : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -9815,7 +10022,7 @@ namespace LanguageExt
         public static TryOptionAsync<ValueTask<A>> Where< A>(this TryOptionAsync<ValueTask<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTryOptionAsync<ValueTask<A>>, TryOptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>).BindAsync<MTryOptionAsync<ValueTask<A>>, TryOptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                    ? default(MValueTask<A>).PureAsync(a.AsTask())
                     : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -10032,7 +10239,7 @@ namespace LanguageExt
             default(TransAsync<MTryOptionAsync<ValueTask<A>>, TryOptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>)
                 .Bind<MTryOptionAsync<ValueTask<A>>, TryOptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MValueTask<A>).PureAsync(a.AsTask())
                         : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -10048,7 +10255,7 @@ namespace LanguageExt
             default(TransAsync<MTryOptionAsync<ValueTask<A>>, TryOptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>)
                 .BindAsync<MTryOptionAsync<ValueTask<A>>, TryOptionAsync<ValueTask<A>>, MValueTask<A>, ValueTask<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MValueTask<A>).ReturnAsync(a.AsTask())
+                        ? default(MValueTask<A>).PureAsync(a.AsTask())
                         : default(MValueTask<A>).Zero());
 
         /// <summary>
@@ -10146,12 +10353,26 @@ namespace LanguageExt
         [Pure]
         public static TryOptionAsync<ValueTask<B>> ApplyT< A, B>(this Func<A, B> fab, TryOptionAsync<ValueTask<A>> fa) =>
             default(ApplTryOptionAsync< ValueTask<A>, ValueTask<B>>).Apply(
-                default(MTryOptionAsync< Func<ValueTask<A>, ValueTask<B>>>).ReturnAsync(
+                default(MTryOptionAsync< Func<ValueTask<A>, ValueTask<B>>>).PureAsync(
                     Task.FromResult<Func<ValueTask<A>, ValueTask<B>>>((ValueTask<A> a) => 
                         default(ApplValueTask< A, B>).Apply(
-                            default(MValueTask< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MValueTask< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `TryOptionAsync&lt;ValueTask&lt;A&gt;&gt;`</param>
+        /// <returns>`TryOptionAsync&lt;ValueTask&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static TryOptionAsync<ValueTask<B>> ApplyT< A, B>(this TryOptionAsync<ValueTask<Func<A, B>>> fab, TryOptionAsync<ValueTask<A>> fa) =>
+            default(MTryOptionAsync<ValueTask<Func<A, B>>>).Bind<MTryOptionAsync<ValueTask<B>>, TryOptionAsync<ValueTask<B>>, ValueTask<B>>(fab, f =>
+                default(MTryOptionAsync<ValueTask<A>>).Bind<MTryOptionAsync<ValueTask<B>>, TryOptionAsync<ValueTask<B>>, ValueTask<B>>(fa, a => 
+                    default(MTryOptionAsync<ValueTask<B>>).PureAsync(Task.FromResult(default(ApplValueTask< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -10164,12 +10385,7 @@ namespace LanguageExt
         /// <returns>`TryOptionAsync&lt;ValueTask&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static TryOptionAsync<ValueTask<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, TryOptionAsync<ValueTask<A>> fa, TryOptionAsync<ValueTask<B>> fb) =>
-            default(ApplTryOptionAsync< ValueTask<A>, ValueTask<B>, ValueTask<C>>).Apply(
-                default(MTryOptionAsync< Func<ValueTask<A>, Func<ValueTask<B>, ValueTask<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<ValueTask<A>, Func<ValueTask<B>, ValueTask<C>>>>((ValueTask<A> a) =>
-                        (ValueTask<B> b) =>
-                            default(ApplValueTask< A, B, C>).Apply(
-                                default(MValueTask< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
     }
     /// <summary>
@@ -10196,7 +10412,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MOptionAsync<TryAsync<A>>, OptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MOptionAsync<TryAsync<C>>, OptionAsync<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(ma, a =>
             default(TransAsync<MOptionAsync<TryAsync<B>>, OptionAsync<TryAsync<B>>, MTryAsync<B>, TryAsync<B>, B>).Bind<MOptionAsync<TryAsync<C>>, OptionAsync<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(bind(a), b =>
-            default(MTryAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTryAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -10215,7 +10431,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MOptionAsync<TryAsync<A>>, OptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MOptionAsync<TryAsync<C>>, OptionAsync<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(ma, a =>
             default(TransAsync<MOptionAsync<TryAsync<B>>, OptionAsync<TryAsync<B>>, MTryAsync<B>, TryAsync<B>, B>).Bind<MOptionAsync<TryAsync<C>>, OptionAsync<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(bind(a), b =>
-            default(MTryAsync<C>).ReturnAsync(project(a, b))));
+            default(MTryAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -10230,7 +10446,7 @@ namespace LanguageExt
         public static OptionAsync<TryAsync<A>> Where< A>(this OptionAsync<TryAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MOptionAsync<TryAsync<A>>, OptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MOptionAsync<TryAsync<A>>, OptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryAsync<A>).PureAsync(a.AsTask())
                     : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -10245,7 +10461,7 @@ namespace LanguageExt
         public static OptionAsync<TryAsync<A>> Where< A>(this OptionAsync<TryAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MOptionAsync<TryAsync<A>>, OptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).BindAsync<MOptionAsync<TryAsync<A>>, OptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryAsync<A>).PureAsync(a.AsTask())
                     : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -10462,7 +10678,7 @@ namespace LanguageExt
             default(TransAsync<MOptionAsync<TryAsync<A>>, OptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>)
                 .Bind<MOptionAsync<TryAsync<A>>, OptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryAsync<A>).PureAsync(a.AsTask())
                         : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -10478,7 +10694,7 @@ namespace LanguageExt
             default(TransAsync<MOptionAsync<TryAsync<A>>, OptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>)
                 .BindAsync<MOptionAsync<TryAsync<A>>, OptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryAsync<A>).PureAsync(a.AsTask())
                         : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -10576,12 +10792,26 @@ namespace LanguageExt
         [Pure]
         public static OptionAsync<TryAsync<B>> ApplyT< A, B>(this Func<A, B> fab, OptionAsync<TryAsync<A>> fa) =>
             default(ApplOptionAsync< TryAsync<A>, TryAsync<B>>).Apply(
-                default(MOptionAsync< Func<TryAsync<A>, TryAsync<B>>>).ReturnAsync(
+                default(MOptionAsync< Func<TryAsync<A>, TryAsync<B>>>).PureAsync(
                     Task.FromResult<Func<TryAsync<A>, TryAsync<B>>>((TryAsync<A> a) => 
                         default(ApplTryAsync< A, B>).Apply(
-                            default(MTryAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTryAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `OptionAsync&lt;TryAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`OptionAsync&lt;TryAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static OptionAsync<TryAsync<B>> ApplyT< A, B>(this OptionAsync<TryAsync<Func<A, B>>> fab, OptionAsync<TryAsync<A>> fa) =>
+            default(MOptionAsync<TryAsync<Func<A, B>>>).Bind<MOptionAsync<TryAsync<B>>, OptionAsync<TryAsync<B>>, TryAsync<B>>(fab, f =>
+                default(MOptionAsync<TryAsync<A>>).Bind<MOptionAsync<TryAsync<B>>, OptionAsync<TryAsync<B>>, TryAsync<B>>(fa, a => 
+                    default(MOptionAsync<TryAsync<B>>).PureAsync(Task.FromResult(default(ApplTryAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -10594,12 +10824,7 @@ namespace LanguageExt
         /// <returns>`OptionAsync&lt;TryAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static OptionAsync<TryAsync<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, OptionAsync<TryAsync<A>> fa, OptionAsync<TryAsync<B>> fb) =>
-            default(ApplOptionAsync< TryAsync<A>, TryAsync<B>, TryAsync<C>>).Apply(
-                default(MOptionAsync< Func<TryAsync<A>, Func<TryAsync<B>, TryAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<TryAsync<A>, Func<TryAsync<B>, TryAsync<C>>>>((TryAsync<A> a) =>
-                        (TryAsync<B> b) =>
-                            default(ApplTryAsync< A, B, C>).Apply(
-                                default(MTryAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -10618,7 +10843,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MEitherAsync<L, TryAsync<A>>, EitherAsync<L, TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MEitherAsync<L, TryAsync<C>>, EitherAsync<L, TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(ma, a =>
             default(TransAsync<MEitherAsync<L, TryAsync<B>>, EitherAsync<L, TryAsync<B>>, MTryAsync<B>, TryAsync<B>, B>).Bind<MEitherAsync<L, TryAsync<C>>, EitherAsync<L, TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(bind(a), b =>
-            default(MTryAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTryAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -10637,7 +10862,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MEitherAsync<L, TryAsync<A>>, EitherAsync<L, TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MEitherAsync<L, TryAsync<C>>, EitherAsync<L, TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(ma, a =>
             default(TransAsync<MEitherAsync<L, TryAsync<B>>, EitherAsync<L, TryAsync<B>>, MTryAsync<B>, TryAsync<B>, B>).Bind<MEitherAsync<L, TryAsync<C>>, EitherAsync<L, TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(bind(a), b =>
-            default(MTryAsync<C>).ReturnAsync(project(a, b))));
+            default(MTryAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -10652,7 +10877,7 @@ namespace LanguageExt
         public static EitherAsync<L, TryAsync<A>> Where<L, A>(this EitherAsync<L, TryAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MEitherAsync<L, TryAsync<A>>, EitherAsync<L, TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MEitherAsync<L, TryAsync<A>>, EitherAsync<L, TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryAsync<A>).PureAsync(a.AsTask())
                     : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -10667,7 +10892,7 @@ namespace LanguageExt
         public static EitherAsync<L, TryAsync<A>> Where<L, A>(this EitherAsync<L, TryAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MEitherAsync<L, TryAsync<A>>, EitherAsync<L, TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).BindAsync<MEitherAsync<L, TryAsync<A>>, EitherAsync<L, TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryAsync<A>).PureAsync(a.AsTask())
                     : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -10884,7 +11109,7 @@ namespace LanguageExt
             default(TransAsync<MEitherAsync<L, TryAsync<A>>, EitherAsync<L, TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>)
                 .Bind<MEitherAsync<L, TryAsync<A>>, EitherAsync<L, TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryAsync<A>).PureAsync(a.AsTask())
                         : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -10900,7 +11125,7 @@ namespace LanguageExt
             default(TransAsync<MEitherAsync<L, TryAsync<A>>, EitherAsync<L, TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>)
                 .BindAsync<MEitherAsync<L, TryAsync<A>>, EitherAsync<L, TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryAsync<A>).PureAsync(a.AsTask())
                         : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -10998,12 +11223,26 @@ namespace LanguageExt
         [Pure]
         public static EitherAsync<L, TryAsync<B>> ApplyT<L, A, B>(this Func<A, B> fab, EitherAsync<L, TryAsync<A>> fa) =>
             default(ApplEitherAsync<L, TryAsync<A>, TryAsync<B>>).Apply(
-                default(MEitherAsync<L, Func<TryAsync<A>, TryAsync<B>>>).ReturnAsync(
+                default(MEitherAsync<L, Func<TryAsync<A>, TryAsync<B>>>).PureAsync(
                     Task.FromResult<Func<TryAsync<A>, TryAsync<B>>>((TryAsync<A> a) => 
                         default(ApplTryAsync< A, B>).Apply(
-                            default(MTryAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTryAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `EitherAsync&lt;L, TryAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`EitherAsync&lt;L, TryAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static EitherAsync<L, TryAsync<B>> ApplyT<L, A, B>(this EitherAsync<L, TryAsync<Func<A, B>>> fab, EitherAsync<L, TryAsync<A>> fa) =>
+            default(MEitherAsync<L, TryAsync<Func<A, B>>>).Bind<MEitherAsync<L, TryAsync<B>>, EitherAsync<L, TryAsync<B>>, TryAsync<B>>(fab, f =>
+                default(MEitherAsync<L, TryAsync<A>>).Bind<MEitherAsync<L, TryAsync<B>>, EitherAsync<L, TryAsync<B>>, TryAsync<B>>(fa, a => 
+                    default(MEitherAsync<L, TryAsync<B>>).PureAsync(Task.FromResult(default(ApplTryAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -11016,12 +11255,7 @@ namespace LanguageExt
         /// <returns>`EitherAsync&lt;L, TryAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static EitherAsync<L, TryAsync<C>> ApplyT<L, A, B, C>(this Func<A, B, C> fabc, EitherAsync<L, TryAsync<A>> fa, EitherAsync<L, TryAsync<B>> fb) =>
-            default(ApplEitherAsync<L, TryAsync<A>, TryAsync<B>, TryAsync<C>>).Apply(
-                default(MEitherAsync<L, Func<TryAsync<A>, Func<TryAsync<B>, TryAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<TryAsync<A>, Func<TryAsync<B>, TryAsync<C>>>>((TryAsync<A> a) =>
-                        (TryAsync<B> b) =>
-                            default(ApplTryAsync< A, B, C>).Apply(
-                                default(MTryAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -11040,7 +11274,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTask<TryAsync<A>>, Task<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MTask<TryAsync<C>>, Task<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(ma, a =>
             default(TransAsync<MTask<TryAsync<B>>, Task<TryAsync<B>>, MTryAsync<B>, TryAsync<B>, B>).Bind<MTask<TryAsync<C>>, Task<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(bind(a), b =>
-            default(MTryAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTryAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -11059,7 +11293,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTask<TryAsync<A>>, Task<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MTask<TryAsync<C>>, Task<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(ma, a =>
             default(TransAsync<MTask<TryAsync<B>>, Task<TryAsync<B>>, MTryAsync<B>, TryAsync<B>, B>).Bind<MTask<TryAsync<C>>, Task<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(bind(a), b =>
-            default(MTryAsync<C>).ReturnAsync(project(a, b))));
+            default(MTryAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -11074,7 +11308,7 @@ namespace LanguageExt
         public static Task<TryAsync<A>> Where< A>(this Task<TryAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTask<TryAsync<A>>, Task<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MTask<TryAsync<A>>, Task<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryAsync<A>).PureAsync(a.AsTask())
                     : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -11089,7 +11323,7 @@ namespace LanguageExt
         public static Task<TryAsync<A>> Where< A>(this Task<TryAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTask<TryAsync<A>>, Task<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).BindAsync<MTask<TryAsync<A>>, Task<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryAsync<A>).PureAsync(a.AsTask())
                     : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -11306,7 +11540,7 @@ namespace LanguageExt
             default(TransAsync<MTask<TryAsync<A>>, Task<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>)
                 .Bind<MTask<TryAsync<A>>, Task<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryAsync<A>).PureAsync(a.AsTask())
                         : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -11322,7 +11556,7 @@ namespace LanguageExt
             default(TransAsync<MTask<TryAsync<A>>, Task<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>)
                 .BindAsync<MTask<TryAsync<A>>, Task<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryAsync<A>).PureAsync(a.AsTask())
                         : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -11420,12 +11654,26 @@ namespace LanguageExt
         [Pure]
         public static Task<TryAsync<B>> ApplyT< A, B>(this Func<A, B> fab, Task<TryAsync<A>> fa) =>
             default(ApplTask< TryAsync<A>, TryAsync<B>>).Apply(
-                default(MTask< Func<TryAsync<A>, TryAsync<B>>>).ReturnAsync(
+                default(MTask< Func<TryAsync<A>, TryAsync<B>>>).PureAsync(
                     Task.FromResult<Func<TryAsync<A>, TryAsync<B>>>((TryAsync<A> a) => 
                         default(ApplTryAsync< A, B>).Apply(
-                            default(MTryAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTryAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `Task&lt;TryAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`Task&lt;TryAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static Task<TryAsync<B>> ApplyT< A, B>(this Task<TryAsync<Func<A, B>>> fab, Task<TryAsync<A>> fa) =>
+            default(MTask<TryAsync<Func<A, B>>>).Bind<MTask<TryAsync<B>>, Task<TryAsync<B>>, TryAsync<B>>(fab, f =>
+                default(MTask<TryAsync<A>>).Bind<MTask<TryAsync<B>>, Task<TryAsync<B>>, TryAsync<B>>(fa, a => 
+                    default(MTask<TryAsync<B>>).PureAsync(Task.FromResult(default(ApplTryAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -11438,12 +11686,7 @@ namespace LanguageExt
         /// <returns>`Task&lt;TryAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static Task<TryAsync<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, Task<TryAsync<A>> fa, Task<TryAsync<B>> fb) =>
-            default(ApplTask< TryAsync<A>, TryAsync<B>, TryAsync<C>>).Apply(
-                default(MTask< Func<TryAsync<A>, Func<TryAsync<B>, TryAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<TryAsync<A>, Func<TryAsync<B>, TryAsync<C>>>>((TryAsync<A> a) =>
-                        (TryAsync<B> b) =>
-                            default(ApplTryAsync< A, B, C>).Apply(
-                                default(MTryAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -11462,7 +11705,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MValueTask<TryAsync<A>>, ValueTask<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MValueTask<TryAsync<C>>, ValueTask<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(ma, a =>
             default(TransAsync<MValueTask<TryAsync<B>>, ValueTask<TryAsync<B>>, MTryAsync<B>, TryAsync<B>, B>).Bind<MValueTask<TryAsync<C>>, ValueTask<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(bind(a), b =>
-            default(MTryAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTryAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -11481,7 +11724,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MValueTask<TryAsync<A>>, ValueTask<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MValueTask<TryAsync<C>>, ValueTask<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(ma, a =>
             default(TransAsync<MValueTask<TryAsync<B>>, ValueTask<TryAsync<B>>, MTryAsync<B>, TryAsync<B>, B>).Bind<MValueTask<TryAsync<C>>, ValueTask<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(bind(a), b =>
-            default(MTryAsync<C>).ReturnAsync(project(a, b))));
+            default(MTryAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -11496,7 +11739,7 @@ namespace LanguageExt
         public static ValueTask<TryAsync<A>> Where< A>(this ValueTask<TryAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MValueTask<TryAsync<A>>, ValueTask<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MValueTask<TryAsync<A>>, ValueTask<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryAsync<A>).PureAsync(a.AsTask())
                     : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -11511,7 +11754,7 @@ namespace LanguageExt
         public static ValueTask<TryAsync<A>> Where< A>(this ValueTask<TryAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MValueTask<TryAsync<A>>, ValueTask<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).BindAsync<MValueTask<TryAsync<A>>, ValueTask<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryAsync<A>).PureAsync(a.AsTask())
                     : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -11728,7 +11971,7 @@ namespace LanguageExt
             default(TransAsync<MValueTask<TryAsync<A>>, ValueTask<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>)
                 .Bind<MValueTask<TryAsync<A>>, ValueTask<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryAsync<A>).PureAsync(a.AsTask())
                         : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -11744,7 +11987,7 @@ namespace LanguageExt
             default(TransAsync<MValueTask<TryAsync<A>>, ValueTask<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>)
                 .BindAsync<MValueTask<TryAsync<A>>, ValueTask<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryAsync<A>).PureAsync(a.AsTask())
                         : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -11842,12 +12085,26 @@ namespace LanguageExt
         [Pure]
         public static ValueTask<TryAsync<B>> ApplyT< A, B>(this Func<A, B> fab, ValueTask<TryAsync<A>> fa) =>
             default(ApplValueTask< TryAsync<A>, TryAsync<B>>).Apply(
-                default(MValueTask< Func<TryAsync<A>, TryAsync<B>>>).ReturnAsync(
+                default(MValueTask< Func<TryAsync<A>, TryAsync<B>>>).PureAsync(
                     Task.FromResult<Func<TryAsync<A>, TryAsync<B>>>((TryAsync<A> a) => 
                         default(ApplTryAsync< A, B>).Apply(
-                            default(MTryAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTryAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `ValueTask&lt;TryAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`ValueTask&lt;TryAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static ValueTask<TryAsync<B>> ApplyT< A, B>(this ValueTask<TryAsync<Func<A, B>>> fab, ValueTask<TryAsync<A>> fa) =>
+            default(MValueTask<TryAsync<Func<A, B>>>).Bind<MValueTask<TryAsync<B>>, ValueTask<TryAsync<B>>, TryAsync<B>>(fab, f =>
+                default(MValueTask<TryAsync<A>>).Bind<MValueTask<TryAsync<B>>, ValueTask<TryAsync<B>>, TryAsync<B>>(fa, a => 
+                    default(MValueTask<TryAsync<B>>).PureAsync(Task.FromResult(default(ApplTryAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -11860,12 +12117,7 @@ namespace LanguageExt
         /// <returns>`ValueTask&lt;TryAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static ValueTask<TryAsync<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, ValueTask<TryAsync<A>> fa, ValueTask<TryAsync<B>> fb) =>
-            default(ApplValueTask< TryAsync<A>, TryAsync<B>, TryAsync<C>>).Apply(
-                default(MValueTask< Func<TryAsync<A>, Func<TryAsync<B>, TryAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<TryAsync<A>, Func<TryAsync<B>, TryAsync<C>>>>((TryAsync<A> a) =>
-                        (TryAsync<B> b) =>
-                            default(ApplTryAsync< A, B, C>).Apply(
-                                default(MTryAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -11884,7 +12136,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTryAsync<TryAsync<A>>, TryAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MTryAsync<TryAsync<C>>, TryAsync<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(ma, a =>
             default(TransAsync<MTryAsync<TryAsync<B>>, TryAsync<TryAsync<B>>, MTryAsync<B>, TryAsync<B>, B>).Bind<MTryAsync<TryAsync<C>>, TryAsync<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(bind(a), b =>
-            default(MTryAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTryAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -11903,7 +12155,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTryAsync<TryAsync<A>>, TryAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MTryAsync<TryAsync<C>>, TryAsync<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(ma, a =>
             default(TransAsync<MTryAsync<TryAsync<B>>, TryAsync<TryAsync<B>>, MTryAsync<B>, TryAsync<B>, B>).Bind<MTryAsync<TryAsync<C>>, TryAsync<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(bind(a), b =>
-            default(MTryAsync<C>).ReturnAsync(project(a, b))));
+            default(MTryAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -11918,7 +12170,7 @@ namespace LanguageExt
         public static TryAsync<TryAsync<A>> Where< A>(this TryAsync<TryAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTryAsync<TryAsync<A>>, TryAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MTryAsync<TryAsync<A>>, TryAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryAsync<A>).PureAsync(a.AsTask())
                     : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -11933,7 +12185,7 @@ namespace LanguageExt
         public static TryAsync<TryAsync<A>> Where< A>(this TryAsync<TryAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTryAsync<TryAsync<A>>, TryAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).BindAsync<MTryAsync<TryAsync<A>>, TryAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryAsync<A>).PureAsync(a.AsTask())
                     : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -12150,7 +12402,7 @@ namespace LanguageExt
             default(TransAsync<MTryAsync<TryAsync<A>>, TryAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>)
                 .Bind<MTryAsync<TryAsync<A>>, TryAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryAsync<A>).PureAsync(a.AsTask())
                         : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -12166,7 +12418,7 @@ namespace LanguageExt
             default(TransAsync<MTryAsync<TryAsync<A>>, TryAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>)
                 .BindAsync<MTryAsync<TryAsync<A>>, TryAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryAsync<A>).PureAsync(a.AsTask())
                         : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -12264,12 +12516,26 @@ namespace LanguageExt
         [Pure]
         public static TryAsync<TryAsync<B>> ApplyT< A, B>(this Func<A, B> fab, TryAsync<TryAsync<A>> fa) =>
             default(ApplTryAsync< TryAsync<A>, TryAsync<B>>).Apply(
-                default(MTryAsync< Func<TryAsync<A>, TryAsync<B>>>).ReturnAsync(
+                default(MTryAsync< Func<TryAsync<A>, TryAsync<B>>>).PureAsync(
                     Task.FromResult<Func<TryAsync<A>, TryAsync<B>>>((TryAsync<A> a) => 
                         default(ApplTryAsync< A, B>).Apply(
-                            default(MTryAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTryAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `TryAsync&lt;TryAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`TryAsync&lt;TryAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static TryAsync<TryAsync<B>> ApplyT< A, B>(this TryAsync<TryAsync<Func<A, B>>> fab, TryAsync<TryAsync<A>> fa) =>
+            default(MTryAsync<TryAsync<Func<A, B>>>).Bind<MTryAsync<TryAsync<B>>, TryAsync<TryAsync<B>>, TryAsync<B>>(fab, f =>
+                default(MTryAsync<TryAsync<A>>).Bind<MTryAsync<TryAsync<B>>, TryAsync<TryAsync<B>>, TryAsync<B>>(fa, a => 
+                    default(MTryAsync<TryAsync<B>>).PureAsync(Task.FromResult(default(ApplTryAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -12282,12 +12548,7 @@ namespace LanguageExt
         /// <returns>`TryAsync&lt;TryAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static TryAsync<TryAsync<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, TryAsync<TryAsync<A>> fa, TryAsync<TryAsync<B>> fb) =>
-            default(ApplTryAsync< TryAsync<A>, TryAsync<B>, TryAsync<C>>).Apply(
-                default(MTryAsync< Func<TryAsync<A>, Func<TryAsync<B>, TryAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<TryAsync<A>, Func<TryAsync<B>, TryAsync<C>>>>((TryAsync<A> a) =>
-                        (TryAsync<B> b) =>
-                            default(ApplTryAsync< A, B, C>).Apply(
-                                default(MTryAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -12306,7 +12567,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTryOptionAsync<TryAsync<A>>, TryOptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MTryOptionAsync<TryAsync<C>>, TryOptionAsync<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(ma, a =>
             default(TransAsync<MTryOptionAsync<TryAsync<B>>, TryOptionAsync<TryAsync<B>>, MTryAsync<B>, TryAsync<B>, B>).Bind<MTryOptionAsync<TryAsync<C>>, TryOptionAsync<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(bind(a), b =>
-            default(MTryAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTryAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -12325,7 +12586,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTryOptionAsync<TryAsync<A>>, TryOptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MTryOptionAsync<TryAsync<C>>, TryOptionAsync<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(ma, a =>
             default(TransAsync<MTryOptionAsync<TryAsync<B>>, TryOptionAsync<TryAsync<B>>, MTryAsync<B>, TryAsync<B>, B>).Bind<MTryOptionAsync<TryAsync<C>>, TryOptionAsync<TryAsync<C>>, MTryAsync<C>, TryAsync<C>, C>(bind(a), b =>
-            default(MTryAsync<C>).ReturnAsync(project(a, b))));
+            default(MTryAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -12340,7 +12601,7 @@ namespace LanguageExt
         public static TryOptionAsync<TryAsync<A>> Where< A>(this TryOptionAsync<TryAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTryOptionAsync<TryAsync<A>>, TryOptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).Bind<MTryOptionAsync<TryAsync<A>>, TryOptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryAsync<A>).PureAsync(a.AsTask())
                     : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -12355,7 +12616,7 @@ namespace LanguageExt
         public static TryOptionAsync<TryAsync<A>> Where< A>(this TryOptionAsync<TryAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTryOptionAsync<TryAsync<A>>, TryOptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>).BindAsync<MTryOptionAsync<TryAsync<A>>, TryOptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryAsync<A>).PureAsync(a.AsTask())
                     : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -12572,7 +12833,7 @@ namespace LanguageExt
             default(TransAsync<MTryOptionAsync<TryAsync<A>>, TryOptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>)
                 .Bind<MTryOptionAsync<TryAsync<A>>, TryOptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryAsync<A>).PureAsync(a.AsTask())
                         : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -12588,7 +12849,7 @@ namespace LanguageExt
             default(TransAsync<MTryOptionAsync<TryAsync<A>>, TryOptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>)
                 .BindAsync<MTryOptionAsync<TryAsync<A>>, TryOptionAsync<TryAsync<A>>, MTryAsync<A>, TryAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTryAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryAsync<A>).PureAsync(a.AsTask())
                         : default(MTryAsync<A>).Zero());
 
         /// <summary>
@@ -12686,12 +12947,26 @@ namespace LanguageExt
         [Pure]
         public static TryOptionAsync<TryAsync<B>> ApplyT< A, B>(this Func<A, B> fab, TryOptionAsync<TryAsync<A>> fa) =>
             default(ApplTryOptionAsync< TryAsync<A>, TryAsync<B>>).Apply(
-                default(MTryOptionAsync< Func<TryAsync<A>, TryAsync<B>>>).ReturnAsync(
+                default(MTryOptionAsync< Func<TryAsync<A>, TryAsync<B>>>).PureAsync(
                     Task.FromResult<Func<TryAsync<A>, TryAsync<B>>>((TryAsync<A> a) => 
                         default(ApplTryAsync< A, B>).Apply(
-                            default(MTryAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTryAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `TryOptionAsync&lt;TryAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`TryOptionAsync&lt;TryAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static TryOptionAsync<TryAsync<B>> ApplyT< A, B>(this TryOptionAsync<TryAsync<Func<A, B>>> fab, TryOptionAsync<TryAsync<A>> fa) =>
+            default(MTryOptionAsync<TryAsync<Func<A, B>>>).Bind<MTryOptionAsync<TryAsync<B>>, TryOptionAsync<TryAsync<B>>, TryAsync<B>>(fab, f =>
+                default(MTryOptionAsync<TryAsync<A>>).Bind<MTryOptionAsync<TryAsync<B>>, TryOptionAsync<TryAsync<B>>, TryAsync<B>>(fa, a => 
+                    default(MTryOptionAsync<TryAsync<B>>).PureAsync(Task.FromResult(default(ApplTryAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -12704,12 +12979,7 @@ namespace LanguageExt
         /// <returns>`TryOptionAsync&lt;TryAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static TryOptionAsync<TryAsync<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, TryOptionAsync<TryAsync<A>> fa, TryOptionAsync<TryAsync<B>> fb) =>
-            default(ApplTryOptionAsync< TryAsync<A>, TryAsync<B>, TryAsync<C>>).Apply(
-                default(MTryOptionAsync< Func<TryAsync<A>, Func<TryAsync<B>, TryAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<TryAsync<A>, Func<TryAsync<B>, TryAsync<C>>>>((TryAsync<A> a) =>
-                        (TryAsync<B> b) =>
-                            default(ApplTryAsync< A, B, C>).Apply(
-                                default(MTryAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
     }
     /// <summary>
@@ -12736,7 +13006,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MOptionAsync<TryOptionAsync<A>>, OptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MOptionAsync<TryOptionAsync<C>>, OptionAsync<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(ma, a =>
             default(TransAsync<MOptionAsync<TryOptionAsync<B>>, OptionAsync<TryOptionAsync<B>>, MTryOptionAsync<B>, TryOptionAsync<B>, B>).Bind<MOptionAsync<TryOptionAsync<C>>, OptionAsync<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(bind(a), b =>
-            default(MTryOptionAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTryOptionAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -12755,7 +13025,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MOptionAsync<TryOptionAsync<A>>, OptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MOptionAsync<TryOptionAsync<C>>, OptionAsync<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(ma, a =>
             default(TransAsync<MOptionAsync<TryOptionAsync<B>>, OptionAsync<TryOptionAsync<B>>, MTryOptionAsync<B>, TryOptionAsync<B>, B>).Bind<MOptionAsync<TryOptionAsync<C>>, OptionAsync<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(bind(a), b =>
-            default(MTryOptionAsync<C>).ReturnAsync(project(a, b))));
+            default(MTryOptionAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -12770,7 +13040,7 @@ namespace LanguageExt
         public static OptionAsync<TryOptionAsync<A>> Where< A>(this OptionAsync<TryOptionAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MOptionAsync<TryOptionAsync<A>>, OptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MOptionAsync<TryOptionAsync<A>>, OptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -12785,7 +13055,7 @@ namespace LanguageExt
         public static OptionAsync<TryOptionAsync<A>> Where< A>(this OptionAsync<TryOptionAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MOptionAsync<TryOptionAsync<A>>, OptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).BindAsync<MOptionAsync<TryOptionAsync<A>>, OptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -13002,7 +13272,7 @@ namespace LanguageExt
             default(TransAsync<MOptionAsync<TryOptionAsync<A>>, OptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>)
                 .Bind<MOptionAsync<TryOptionAsync<A>>, OptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -13018,7 +13288,7 @@ namespace LanguageExt
             default(TransAsync<MOptionAsync<TryOptionAsync<A>>, OptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>)
                 .BindAsync<MOptionAsync<TryOptionAsync<A>>, OptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -13116,12 +13386,26 @@ namespace LanguageExt
         [Pure]
         public static OptionAsync<TryOptionAsync<B>> ApplyT< A, B>(this Func<A, B> fab, OptionAsync<TryOptionAsync<A>> fa) =>
             default(ApplOptionAsync< TryOptionAsync<A>, TryOptionAsync<B>>).Apply(
-                default(MOptionAsync< Func<TryOptionAsync<A>, TryOptionAsync<B>>>).ReturnAsync(
+                default(MOptionAsync< Func<TryOptionAsync<A>, TryOptionAsync<B>>>).PureAsync(
                     Task.FromResult<Func<TryOptionAsync<A>, TryOptionAsync<B>>>((TryOptionAsync<A> a) => 
                         default(ApplTryOptionAsync< A, B>).Apply(
-                            default(MTryOptionAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTryOptionAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `OptionAsync&lt;TryOptionAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`OptionAsync&lt;TryOptionAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static OptionAsync<TryOptionAsync<B>> ApplyT< A, B>(this OptionAsync<TryOptionAsync<Func<A, B>>> fab, OptionAsync<TryOptionAsync<A>> fa) =>
+            default(MOptionAsync<TryOptionAsync<Func<A, B>>>).Bind<MOptionAsync<TryOptionAsync<B>>, OptionAsync<TryOptionAsync<B>>, TryOptionAsync<B>>(fab, f =>
+                default(MOptionAsync<TryOptionAsync<A>>).Bind<MOptionAsync<TryOptionAsync<B>>, OptionAsync<TryOptionAsync<B>>, TryOptionAsync<B>>(fa, a => 
+                    default(MOptionAsync<TryOptionAsync<B>>).PureAsync(Task.FromResult(default(ApplTryOptionAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -13134,12 +13418,7 @@ namespace LanguageExt
         /// <returns>`OptionAsync&lt;TryOptionAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static OptionAsync<TryOptionAsync<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, OptionAsync<TryOptionAsync<A>> fa, OptionAsync<TryOptionAsync<B>> fb) =>
-            default(ApplOptionAsync< TryOptionAsync<A>, TryOptionAsync<B>, TryOptionAsync<C>>).Apply(
-                default(MOptionAsync< Func<TryOptionAsync<A>, Func<TryOptionAsync<B>, TryOptionAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<TryOptionAsync<A>, Func<TryOptionAsync<B>, TryOptionAsync<C>>>>((TryOptionAsync<A> a) =>
-                        (TryOptionAsync<B> b) =>
-                            default(ApplTryOptionAsync< A, B, C>).Apply(
-                                default(MTryOptionAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -13158,7 +13437,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MEitherAsync<L, TryOptionAsync<A>>, EitherAsync<L, TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MEitherAsync<L, TryOptionAsync<C>>, EitherAsync<L, TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(ma, a =>
             default(TransAsync<MEitherAsync<L, TryOptionAsync<B>>, EitherAsync<L, TryOptionAsync<B>>, MTryOptionAsync<B>, TryOptionAsync<B>, B>).Bind<MEitherAsync<L, TryOptionAsync<C>>, EitherAsync<L, TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(bind(a), b =>
-            default(MTryOptionAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTryOptionAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -13177,7 +13456,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MEitherAsync<L, TryOptionAsync<A>>, EitherAsync<L, TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MEitherAsync<L, TryOptionAsync<C>>, EitherAsync<L, TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(ma, a =>
             default(TransAsync<MEitherAsync<L, TryOptionAsync<B>>, EitherAsync<L, TryOptionAsync<B>>, MTryOptionAsync<B>, TryOptionAsync<B>, B>).Bind<MEitherAsync<L, TryOptionAsync<C>>, EitherAsync<L, TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(bind(a), b =>
-            default(MTryOptionAsync<C>).ReturnAsync(project(a, b))));
+            default(MTryOptionAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -13192,7 +13471,7 @@ namespace LanguageExt
         public static EitherAsync<L, TryOptionAsync<A>> Where<L, A>(this EitherAsync<L, TryOptionAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MEitherAsync<L, TryOptionAsync<A>>, EitherAsync<L, TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MEitherAsync<L, TryOptionAsync<A>>, EitherAsync<L, TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -13207,7 +13486,7 @@ namespace LanguageExt
         public static EitherAsync<L, TryOptionAsync<A>> Where<L, A>(this EitherAsync<L, TryOptionAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MEitherAsync<L, TryOptionAsync<A>>, EitherAsync<L, TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).BindAsync<MEitherAsync<L, TryOptionAsync<A>>, EitherAsync<L, TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -13424,7 +13703,7 @@ namespace LanguageExt
             default(TransAsync<MEitherAsync<L, TryOptionAsync<A>>, EitherAsync<L, TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>)
                 .Bind<MEitherAsync<L, TryOptionAsync<A>>, EitherAsync<L, TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -13440,7 +13719,7 @@ namespace LanguageExt
             default(TransAsync<MEitherAsync<L, TryOptionAsync<A>>, EitherAsync<L, TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>)
                 .BindAsync<MEitherAsync<L, TryOptionAsync<A>>, EitherAsync<L, TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -13538,12 +13817,26 @@ namespace LanguageExt
         [Pure]
         public static EitherAsync<L, TryOptionAsync<B>> ApplyT<L, A, B>(this Func<A, B> fab, EitherAsync<L, TryOptionAsync<A>> fa) =>
             default(ApplEitherAsync<L, TryOptionAsync<A>, TryOptionAsync<B>>).Apply(
-                default(MEitherAsync<L, Func<TryOptionAsync<A>, TryOptionAsync<B>>>).ReturnAsync(
+                default(MEitherAsync<L, Func<TryOptionAsync<A>, TryOptionAsync<B>>>).PureAsync(
                     Task.FromResult<Func<TryOptionAsync<A>, TryOptionAsync<B>>>((TryOptionAsync<A> a) => 
                         default(ApplTryOptionAsync< A, B>).Apply(
-                            default(MTryOptionAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTryOptionAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `EitherAsync&lt;L, TryOptionAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`EitherAsync&lt;L, TryOptionAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static EitherAsync<L, TryOptionAsync<B>> ApplyT<L, A, B>(this EitherAsync<L, TryOptionAsync<Func<A, B>>> fab, EitherAsync<L, TryOptionAsync<A>> fa) =>
+            default(MEitherAsync<L, TryOptionAsync<Func<A, B>>>).Bind<MEitherAsync<L, TryOptionAsync<B>>, EitherAsync<L, TryOptionAsync<B>>, TryOptionAsync<B>>(fab, f =>
+                default(MEitherAsync<L, TryOptionAsync<A>>).Bind<MEitherAsync<L, TryOptionAsync<B>>, EitherAsync<L, TryOptionAsync<B>>, TryOptionAsync<B>>(fa, a => 
+                    default(MEitherAsync<L, TryOptionAsync<B>>).PureAsync(Task.FromResult(default(ApplTryOptionAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -13556,12 +13849,7 @@ namespace LanguageExt
         /// <returns>`EitherAsync&lt;L, TryOptionAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static EitherAsync<L, TryOptionAsync<C>> ApplyT<L, A, B, C>(this Func<A, B, C> fabc, EitherAsync<L, TryOptionAsync<A>> fa, EitherAsync<L, TryOptionAsync<B>> fb) =>
-            default(ApplEitherAsync<L, TryOptionAsync<A>, TryOptionAsync<B>, TryOptionAsync<C>>).Apply(
-                default(MEitherAsync<L, Func<TryOptionAsync<A>, Func<TryOptionAsync<B>, TryOptionAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<TryOptionAsync<A>, Func<TryOptionAsync<B>, TryOptionAsync<C>>>>((TryOptionAsync<A> a) =>
-                        (TryOptionAsync<B> b) =>
-                            default(ApplTryOptionAsync< A, B, C>).Apply(
-                                default(MTryOptionAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -13580,7 +13868,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTask<TryOptionAsync<A>>, Task<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MTask<TryOptionAsync<C>>, Task<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(ma, a =>
             default(TransAsync<MTask<TryOptionAsync<B>>, Task<TryOptionAsync<B>>, MTryOptionAsync<B>, TryOptionAsync<B>, B>).Bind<MTask<TryOptionAsync<C>>, Task<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(bind(a), b =>
-            default(MTryOptionAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTryOptionAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -13599,7 +13887,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTask<TryOptionAsync<A>>, Task<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MTask<TryOptionAsync<C>>, Task<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(ma, a =>
             default(TransAsync<MTask<TryOptionAsync<B>>, Task<TryOptionAsync<B>>, MTryOptionAsync<B>, TryOptionAsync<B>, B>).Bind<MTask<TryOptionAsync<C>>, Task<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(bind(a), b =>
-            default(MTryOptionAsync<C>).ReturnAsync(project(a, b))));
+            default(MTryOptionAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -13614,7 +13902,7 @@ namespace LanguageExt
         public static Task<TryOptionAsync<A>> Where< A>(this Task<TryOptionAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTask<TryOptionAsync<A>>, Task<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MTask<TryOptionAsync<A>>, Task<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -13629,7 +13917,7 @@ namespace LanguageExt
         public static Task<TryOptionAsync<A>> Where< A>(this Task<TryOptionAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTask<TryOptionAsync<A>>, Task<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).BindAsync<MTask<TryOptionAsync<A>>, Task<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -13846,7 +14134,7 @@ namespace LanguageExt
             default(TransAsync<MTask<TryOptionAsync<A>>, Task<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>)
                 .Bind<MTask<TryOptionAsync<A>>, Task<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -13862,7 +14150,7 @@ namespace LanguageExt
             default(TransAsync<MTask<TryOptionAsync<A>>, Task<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>)
                 .BindAsync<MTask<TryOptionAsync<A>>, Task<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -13960,12 +14248,26 @@ namespace LanguageExt
         [Pure]
         public static Task<TryOptionAsync<B>> ApplyT< A, B>(this Func<A, B> fab, Task<TryOptionAsync<A>> fa) =>
             default(ApplTask< TryOptionAsync<A>, TryOptionAsync<B>>).Apply(
-                default(MTask< Func<TryOptionAsync<A>, TryOptionAsync<B>>>).ReturnAsync(
+                default(MTask< Func<TryOptionAsync<A>, TryOptionAsync<B>>>).PureAsync(
                     Task.FromResult<Func<TryOptionAsync<A>, TryOptionAsync<B>>>((TryOptionAsync<A> a) => 
                         default(ApplTryOptionAsync< A, B>).Apply(
-                            default(MTryOptionAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTryOptionAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `Task&lt;TryOptionAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`Task&lt;TryOptionAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static Task<TryOptionAsync<B>> ApplyT< A, B>(this Task<TryOptionAsync<Func<A, B>>> fab, Task<TryOptionAsync<A>> fa) =>
+            default(MTask<TryOptionAsync<Func<A, B>>>).Bind<MTask<TryOptionAsync<B>>, Task<TryOptionAsync<B>>, TryOptionAsync<B>>(fab, f =>
+                default(MTask<TryOptionAsync<A>>).Bind<MTask<TryOptionAsync<B>>, Task<TryOptionAsync<B>>, TryOptionAsync<B>>(fa, a => 
+                    default(MTask<TryOptionAsync<B>>).PureAsync(Task.FromResult(default(ApplTryOptionAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -13978,12 +14280,7 @@ namespace LanguageExt
         /// <returns>`Task&lt;TryOptionAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static Task<TryOptionAsync<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, Task<TryOptionAsync<A>> fa, Task<TryOptionAsync<B>> fb) =>
-            default(ApplTask< TryOptionAsync<A>, TryOptionAsync<B>, TryOptionAsync<C>>).Apply(
-                default(MTask< Func<TryOptionAsync<A>, Func<TryOptionAsync<B>, TryOptionAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<TryOptionAsync<A>, Func<TryOptionAsync<B>, TryOptionAsync<C>>>>((TryOptionAsync<A> a) =>
-                        (TryOptionAsync<B> b) =>
-                            default(ApplTryOptionAsync< A, B, C>).Apply(
-                                default(MTryOptionAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -14002,7 +14299,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MValueTask<TryOptionAsync<A>>, ValueTask<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MValueTask<TryOptionAsync<C>>, ValueTask<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(ma, a =>
             default(TransAsync<MValueTask<TryOptionAsync<B>>, ValueTask<TryOptionAsync<B>>, MTryOptionAsync<B>, TryOptionAsync<B>, B>).Bind<MValueTask<TryOptionAsync<C>>, ValueTask<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(bind(a), b =>
-            default(MTryOptionAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTryOptionAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -14021,7 +14318,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MValueTask<TryOptionAsync<A>>, ValueTask<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MValueTask<TryOptionAsync<C>>, ValueTask<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(ma, a =>
             default(TransAsync<MValueTask<TryOptionAsync<B>>, ValueTask<TryOptionAsync<B>>, MTryOptionAsync<B>, TryOptionAsync<B>, B>).Bind<MValueTask<TryOptionAsync<C>>, ValueTask<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(bind(a), b =>
-            default(MTryOptionAsync<C>).ReturnAsync(project(a, b))));
+            default(MTryOptionAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -14036,7 +14333,7 @@ namespace LanguageExt
         public static ValueTask<TryOptionAsync<A>> Where< A>(this ValueTask<TryOptionAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MValueTask<TryOptionAsync<A>>, ValueTask<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MValueTask<TryOptionAsync<A>>, ValueTask<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -14051,7 +14348,7 @@ namespace LanguageExt
         public static ValueTask<TryOptionAsync<A>> Where< A>(this ValueTask<TryOptionAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MValueTask<TryOptionAsync<A>>, ValueTask<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).BindAsync<MValueTask<TryOptionAsync<A>>, ValueTask<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -14268,7 +14565,7 @@ namespace LanguageExt
             default(TransAsync<MValueTask<TryOptionAsync<A>>, ValueTask<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>)
                 .Bind<MValueTask<TryOptionAsync<A>>, ValueTask<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -14284,7 +14581,7 @@ namespace LanguageExt
             default(TransAsync<MValueTask<TryOptionAsync<A>>, ValueTask<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>)
                 .BindAsync<MValueTask<TryOptionAsync<A>>, ValueTask<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -14382,12 +14679,26 @@ namespace LanguageExt
         [Pure]
         public static ValueTask<TryOptionAsync<B>> ApplyT< A, B>(this Func<A, B> fab, ValueTask<TryOptionAsync<A>> fa) =>
             default(ApplValueTask< TryOptionAsync<A>, TryOptionAsync<B>>).Apply(
-                default(MValueTask< Func<TryOptionAsync<A>, TryOptionAsync<B>>>).ReturnAsync(
+                default(MValueTask< Func<TryOptionAsync<A>, TryOptionAsync<B>>>).PureAsync(
                     Task.FromResult<Func<TryOptionAsync<A>, TryOptionAsync<B>>>((TryOptionAsync<A> a) => 
                         default(ApplTryOptionAsync< A, B>).Apply(
-                            default(MTryOptionAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTryOptionAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `ValueTask&lt;TryOptionAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`ValueTask&lt;TryOptionAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static ValueTask<TryOptionAsync<B>> ApplyT< A, B>(this ValueTask<TryOptionAsync<Func<A, B>>> fab, ValueTask<TryOptionAsync<A>> fa) =>
+            default(MValueTask<TryOptionAsync<Func<A, B>>>).Bind<MValueTask<TryOptionAsync<B>>, ValueTask<TryOptionAsync<B>>, TryOptionAsync<B>>(fab, f =>
+                default(MValueTask<TryOptionAsync<A>>).Bind<MValueTask<TryOptionAsync<B>>, ValueTask<TryOptionAsync<B>>, TryOptionAsync<B>>(fa, a => 
+                    default(MValueTask<TryOptionAsync<B>>).PureAsync(Task.FromResult(default(ApplTryOptionAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -14400,12 +14711,7 @@ namespace LanguageExt
         /// <returns>`ValueTask&lt;TryOptionAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static ValueTask<TryOptionAsync<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, ValueTask<TryOptionAsync<A>> fa, ValueTask<TryOptionAsync<B>> fb) =>
-            default(ApplValueTask< TryOptionAsync<A>, TryOptionAsync<B>, TryOptionAsync<C>>).Apply(
-                default(MValueTask< Func<TryOptionAsync<A>, Func<TryOptionAsync<B>, TryOptionAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<TryOptionAsync<A>, Func<TryOptionAsync<B>, TryOptionAsync<C>>>>((TryOptionAsync<A> a) =>
-                        (TryOptionAsync<B> b) =>
-                            default(ApplTryOptionAsync< A, B, C>).Apply(
-                                default(MTryOptionAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -14424,7 +14730,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTryAsync<TryOptionAsync<A>>, TryAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MTryAsync<TryOptionAsync<C>>, TryAsync<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(ma, a =>
             default(TransAsync<MTryAsync<TryOptionAsync<B>>, TryAsync<TryOptionAsync<B>>, MTryOptionAsync<B>, TryOptionAsync<B>, B>).Bind<MTryAsync<TryOptionAsync<C>>, TryAsync<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(bind(a), b =>
-            default(MTryOptionAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTryOptionAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -14443,7 +14749,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTryAsync<TryOptionAsync<A>>, TryAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MTryAsync<TryOptionAsync<C>>, TryAsync<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(ma, a =>
             default(TransAsync<MTryAsync<TryOptionAsync<B>>, TryAsync<TryOptionAsync<B>>, MTryOptionAsync<B>, TryOptionAsync<B>, B>).Bind<MTryAsync<TryOptionAsync<C>>, TryAsync<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(bind(a), b =>
-            default(MTryOptionAsync<C>).ReturnAsync(project(a, b))));
+            default(MTryOptionAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -14458,7 +14764,7 @@ namespace LanguageExt
         public static TryAsync<TryOptionAsync<A>> Where< A>(this TryAsync<TryOptionAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTryAsync<TryOptionAsync<A>>, TryAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MTryAsync<TryOptionAsync<A>>, TryAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -14473,7 +14779,7 @@ namespace LanguageExt
         public static TryAsync<TryOptionAsync<A>> Where< A>(this TryAsync<TryOptionAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTryAsync<TryOptionAsync<A>>, TryAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).BindAsync<MTryAsync<TryOptionAsync<A>>, TryAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -14690,7 +14996,7 @@ namespace LanguageExt
             default(TransAsync<MTryAsync<TryOptionAsync<A>>, TryAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>)
                 .Bind<MTryAsync<TryOptionAsync<A>>, TryAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -14706,7 +15012,7 @@ namespace LanguageExt
             default(TransAsync<MTryAsync<TryOptionAsync<A>>, TryAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>)
                 .BindAsync<MTryAsync<TryOptionAsync<A>>, TryAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -14804,12 +15110,26 @@ namespace LanguageExt
         [Pure]
         public static TryAsync<TryOptionAsync<B>> ApplyT< A, B>(this Func<A, B> fab, TryAsync<TryOptionAsync<A>> fa) =>
             default(ApplTryAsync< TryOptionAsync<A>, TryOptionAsync<B>>).Apply(
-                default(MTryAsync< Func<TryOptionAsync<A>, TryOptionAsync<B>>>).ReturnAsync(
+                default(MTryAsync< Func<TryOptionAsync<A>, TryOptionAsync<B>>>).PureAsync(
                     Task.FromResult<Func<TryOptionAsync<A>, TryOptionAsync<B>>>((TryOptionAsync<A> a) => 
                         default(ApplTryOptionAsync< A, B>).Apply(
-                            default(MTryOptionAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTryOptionAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `TryAsync&lt;TryOptionAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`TryAsync&lt;TryOptionAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static TryAsync<TryOptionAsync<B>> ApplyT< A, B>(this TryAsync<TryOptionAsync<Func<A, B>>> fab, TryAsync<TryOptionAsync<A>> fa) =>
+            default(MTryAsync<TryOptionAsync<Func<A, B>>>).Bind<MTryAsync<TryOptionAsync<B>>, TryAsync<TryOptionAsync<B>>, TryOptionAsync<B>>(fab, f =>
+                default(MTryAsync<TryOptionAsync<A>>).Bind<MTryAsync<TryOptionAsync<B>>, TryAsync<TryOptionAsync<B>>, TryOptionAsync<B>>(fa, a => 
+                    default(MTryAsync<TryOptionAsync<B>>).PureAsync(Task.FromResult(default(ApplTryOptionAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -14822,12 +15142,7 @@ namespace LanguageExt
         /// <returns>`TryAsync&lt;TryOptionAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static TryAsync<TryOptionAsync<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, TryAsync<TryOptionAsync<A>> fa, TryAsync<TryOptionAsync<B>> fb) =>
-            default(ApplTryAsync< TryOptionAsync<A>, TryOptionAsync<B>, TryOptionAsync<C>>).Apply(
-                default(MTryAsync< Func<TryOptionAsync<A>, Func<TryOptionAsync<B>, TryOptionAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<TryOptionAsync<A>, Func<TryOptionAsync<B>, TryOptionAsync<C>>>>((TryOptionAsync<A> a) =>
-                        (TryOptionAsync<B> b) =>
-                            default(ApplTryOptionAsync< A, B, C>).Apply(
-                                default(MTryOptionAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
         /// <summary>
         /// Monadic bind and project operation
@@ -14846,7 +15161,7 @@ namespace LanguageExt
             Func<A, B, C> project) =>
             default(TransAsync<MTryOptionAsync<TryOptionAsync<A>>, TryOptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MTryOptionAsync<TryOptionAsync<C>>, TryOptionAsync<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(ma, a =>
             default(TransAsync<MTryOptionAsync<TryOptionAsync<B>>, TryOptionAsync<TryOptionAsync<B>>, MTryOptionAsync<B>, TryOptionAsync<B>, B>).Bind<MTryOptionAsync<TryOptionAsync<C>>, TryOptionAsync<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(bind(a), b =>
-            default(MTryOptionAsync<C>).ReturnAsync(project(a, b).AsTask())));
+            default(MTryOptionAsync<C>).PureAsync(project(a, b).AsTask())));
 
         /// <summary>
         /// Monadic bind and project operation
@@ -14865,7 +15180,7 @@ namespace LanguageExt
             Func<A, B, Task<C>> project) =>
             default(TransAsync<MTryOptionAsync<TryOptionAsync<A>>, TryOptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MTryOptionAsync<TryOptionAsync<C>>, TryOptionAsync<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(ma, a =>
             default(TransAsync<MTryOptionAsync<TryOptionAsync<B>>, TryOptionAsync<TryOptionAsync<B>>, MTryOptionAsync<B>, TryOptionAsync<B>, B>).Bind<MTryOptionAsync<TryOptionAsync<C>>, TryOptionAsync<TryOptionAsync<C>>, MTryOptionAsync<C>, TryOptionAsync<C>, C>(bind(a), b =>
-            default(MTryOptionAsync<C>).ReturnAsync(project(a, b))));
+            default(MTryOptionAsync<C>).PureAsync(project(a, b))));
 
 
         /// <summary>
@@ -14880,7 +15195,7 @@ namespace LanguageExt
         public static TryOptionAsync<TryOptionAsync<A>> Where< A>(this TryOptionAsync<TryOptionAsync<A>> ma, Func<A, bool> pred) =>
             default(TransAsync<MTryOptionAsync<TryOptionAsync<A>>, TryOptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).Bind<MTryOptionAsync<TryOptionAsync<A>>, TryOptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                 a => pred(a)
-                    ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -14895,7 +15210,7 @@ namespace LanguageExt
         public static TryOptionAsync<TryOptionAsync<A>> Where< A>(this TryOptionAsync<TryOptionAsync<A>> ma, Func<A, Task<bool>> pred) =>
             default(TransAsync<MTryOptionAsync<TryOptionAsync<A>>, TryOptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>).BindAsync<MTryOptionAsync<TryOptionAsync<A>>, TryOptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                 async a => (await pred(a).ConfigureAwait(false))
-                    ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                    ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                     : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -15112,7 +15427,7 @@ namespace LanguageExt
             default(TransAsync<MTryOptionAsync<TryOptionAsync<A>>, TryOptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>)
                 .Bind<MTryOptionAsync<TryOptionAsync<A>>, TryOptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                     a => pred(a)
-                        ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -15128,7 +15443,7 @@ namespace LanguageExt
             default(TransAsync<MTryOptionAsync<TryOptionAsync<A>>, TryOptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>)
                 .BindAsync<MTryOptionAsync<TryOptionAsync<A>>, TryOptionAsync<TryOptionAsync<A>>, MTryOptionAsync<A>, TryOptionAsync<A>, A>(ma, 
                     async a => (await pred(a).ConfigureAwait(false))
-                        ? default(MTryOptionAsync<A>).ReturnAsync(a.AsTask())
+                        ? default(MTryOptionAsync<A>).PureAsync(a.AsTask())
                         : default(MTryOptionAsync<A>).Zero());
 
         /// <summary>
@@ -15226,12 +15541,26 @@ namespace LanguageExt
         [Pure]
         public static TryOptionAsync<TryOptionAsync<B>> ApplyT< A, B>(this Func<A, B> fab, TryOptionAsync<TryOptionAsync<A>> fa) =>
             default(ApplTryOptionAsync< TryOptionAsync<A>, TryOptionAsync<B>>).Apply(
-                default(MTryOptionAsync< Func<TryOptionAsync<A>, TryOptionAsync<B>>>).ReturnAsync(
+                default(MTryOptionAsync< Func<TryOptionAsync<A>, TryOptionAsync<B>>>).PureAsync(
                     Task.FromResult<Func<TryOptionAsync<A>, TryOptionAsync<B>>>((TryOptionAsync<A> a) => 
                         default(ApplTryOptionAsync< A, B>).Apply(
-                            default(MTryOptionAsync< Func<A, B>>).ReturnAsync(fab.AsTask()), 
+                            default(MTryOptionAsync< Func<A, B>>).PureAsync(fab.AsTask()), 
                             a))),
                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `TryOptionAsync&lt;TryOptionAsync&lt;A&gt;&gt;`</param>
+        /// <returns>`TryOptionAsync&lt;TryOptionAsync&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        [Pure]
+        public static TryOptionAsync<TryOptionAsync<B>> ApplyT< A, B>(this TryOptionAsync<TryOptionAsync<Func<A, B>>> fab, TryOptionAsync<TryOptionAsync<A>> fa) =>
+            default(MTryOptionAsync<TryOptionAsync<Func<A, B>>>).Bind<MTryOptionAsync<TryOptionAsync<B>>, TryOptionAsync<TryOptionAsync<B>>, TryOptionAsync<B>>(fab, f =>
+                default(MTryOptionAsync<TryOptionAsync<A>>).Bind<MTryOptionAsync<TryOptionAsync<B>>, TryOptionAsync<TryOptionAsync<B>>, TryOptionAsync<B>>(fa, a => 
+                    default(MTryOptionAsync<TryOptionAsync<B>>).PureAsync(Task.FromResult(default(ApplTryOptionAsync< A, B>).Apply(f, a)))));
 
         /// <summary>
         /// Apply `fa` and `fb` to `fabc`
@@ -15244,12 +15573,7 @@ namespace LanguageExt
         /// <returns>`TryOptionAsync&lt;TryOptionAsync&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
         [Pure]
         public static TryOptionAsync<TryOptionAsync<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, TryOptionAsync<TryOptionAsync<A>> fa, TryOptionAsync<TryOptionAsync<B>> fb) =>
-            default(ApplTryOptionAsync< TryOptionAsync<A>, TryOptionAsync<B>, TryOptionAsync<C>>).Apply(
-                default(MTryOptionAsync< Func<TryOptionAsync<A>, Func<TryOptionAsync<B>, TryOptionAsync<C>>>>).ReturnAsync(
-                    Task.FromResult<Func<TryOptionAsync<A>, Func<TryOptionAsync<B>, TryOptionAsync<C>>>>((TryOptionAsync<A> a) =>
-                        (TryOptionAsync<B> b) =>
-                            default(ApplTryOptionAsync< A, B, C>).Apply(
-                                default(MTryOptionAsync< Func<A, Func<B, C>>>).ReturnAsync(curry(fabc).AsTask()), a, b))), fa, fb);
+            curry(fabc).ApplyT(fa).ApplyT(fb);
 
     }
 }

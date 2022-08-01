@@ -10,6 +10,15 @@ using System.Runtime.CompilerServices;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureHashSet<A> :
+        ApplicativePure<HashSet<A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public HashSet<A> Pure(A x) =>
+            HashSet(x);
+    }    
+    
     public readonly struct ApplHashSet<A, B> :
         Applicative<HashSet<Func<A, B>>, HashSet<A>, HashSet<B>, A, B>
     {

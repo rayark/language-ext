@@ -795,28 +795,28 @@ namespace LanguageExt.Pipes
         /// </summary>
         [Pure, MethodImpl(Proxy.mops)]
         public static Lift<RT, (A, B)> collect<RT, A, B>(Effect<RT, A> ma, Effect<RT, B> mb) where RT : struct, HasCancel<RT> =>
-            Proxy.lift<RT, (A, B)>((ma.RunEffect(), mb.RunEffect()).Sequence());
+            Proxy.lift<RT, (A, B)>((ma.MkEffect(), mb.MkEffect()).Sequence());
 
         /// <summary>
         /// Creates a non-yielding producer that returns the result of the effects
         /// </summary>
         [Pure, MethodImpl(Proxy.mops)]
         public static Lift<RT, (A, B, C)> collect<RT, A, B, C>(Effect<RT, A> ma, Effect<RT, B> mb, Effect<RT, C> mc) where RT : struct, HasCancel<RT> =>
-            Proxy.lift<RT, (A, B, C)>((ma.RunEffect(), mb.RunEffect(), mc.RunEffect()).Sequence());
+            Proxy.lift<RT, (A, B, C)>((ma.MkEffect(), mb.MkEffect(), mc.MkEffect()).Sequence());
 
         /// <summary>
         /// Creates a non-yielding producer that returns the result of the effects
         /// </summary>
         [Pure, MethodImpl(Proxy.mops)]
         public static Lift<RT, (A, B, C, D)> collect<RT, A, B, C, D>(Effect<RT, A> ma, Effect<RT, B> mb, Effect<RT, C> mc, Effect<RT, D> md) where RT : struct, HasCancel<RT> =>
-            Proxy.lift<RT, (A, B, C, D)>((ma.RunEffect(), mb.RunEffect(), mc.RunEffect(), md.RunEffect()).Sequence());
+            Proxy.lift<RT, (A, B, C, D)>((ma.MkEffect(), mb.MkEffect(), mc.MkEffect(), md.MkEffect()).Sequence());
 
         /// <summary>
         /// Creates a non-yielding producer that returns the result of the effects
         /// </summary>
         [Pure, MethodImpl(Proxy.mops)]
         public static Lift<RT, (A, B, C, D, E)> collect<RT, A, B, C, D, E>(Effect<RT, A> ma, Effect<RT, B> mb, Effect<RT, C> mc, Effect<RT, D> md, Effect<RT, E> me) where RT : struct, HasCancel<RT> =>
-            Proxy.lift<RT, (A, B, C, D, E)>((ma.RunEffect(), mb.RunEffect(), mc.RunEffect(), md.RunEffect(), me.RunEffect()).Sequence());
+            Proxy.lift<RT, (A, B, C, D, E)>((ma.MkEffect(), mb.MkEffect(), mc.MkEffect(), md.MkEffect(), me.MkEffect()).Sequence());
 
         /// <summary>
         /// Creates a non-yielding producer that returns the result of the effects

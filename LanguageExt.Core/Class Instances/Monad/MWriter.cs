@@ -17,7 +17,7 @@ namespace LanguageExt.ClassInstances
                 var (a, output1, faulted) = ma();
                 return faulted
                     ? default(MONADB).Fail()
-                    : default(MONADB).BindReturn((output1, faulted), f(a));
+                    : default(MONADB).BindReturn((output1, false), f(a));
             });
 
         [Pure]
@@ -27,7 +27,7 @@ namespace LanguageExt.ClassInstances
                 var (a, output1, faulted) = ma();
                 return faulted
                     ? default(MONADB).Fail().AsTask()
-                    : default(MONADB).BindReturn((output1, faulted), f(a)).AsTask();
+                    : default(MONADB).BindReturn((output1, false), f(a)).AsTask();
             });
 
         [Pure]
@@ -41,7 +41,7 @@ namespace LanguageExt.ClassInstances
 
         [Pure]
         public Writer<MonoidW, W, A> Fail(object err = null) =>
-            new Writer<MonoidW, W, A>(() => (default(A), default(MonoidW).Empty(), true));
+            () => (default, default(MonoidW).Empty(), true);
 
         [Pure]
         public Writer<MonoidW, W, A> Writer(A value, W output) =>
@@ -52,7 +52,7 @@ namespace LanguageExt.ClassInstances
             f(unit);
 
         [Pure]
-        public Writer<MonoidW, W, A> Return(Func<Unit, A> f) =>
+        public Writer<MonoidW, W, A> Lift(Func<Unit, A> f) =>
             () => (f(unit), default(MonoidW).Empty(), false);
 
         /// <summary>

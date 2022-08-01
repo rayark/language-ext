@@ -89,12 +89,12 @@ namespace LanguageExt.ClassInstances
         }
 
         [Pure]
-        public A[] Return(Func<Unit, A> x) =>
+        public A[] Lift(Func<Unit, A> x) =>
             new[] { x(unit) };
 
         [Pure]
-        public A[] Return(A x) =>
-            Return(_ => x);
+        public A[] Pure(A x) =>
+            Lift(_ => x);
 
         [Pure]
         public A[] Zero() =>

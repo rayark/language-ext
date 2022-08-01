@@ -8,6 +8,15 @@ using System.Runtime.CompilerServices;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureLst<A> :
+        ApplicativePure<Lst<A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Lst<A> Pure(A x) =>
+            List.create(x);
+    }
+    
     public readonly struct ApplLst<A, B> :
         Applicative<Lst<Func<A, B>>, Lst<A>, Lst<B>, A, B>
     {

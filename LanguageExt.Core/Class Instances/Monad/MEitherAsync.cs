@@ -235,11 +235,11 @@ namespace LanguageExt.ClassInstances
         }
 
         [Pure]
-        public EitherAsync<L, R> ReturnAsync(Task<R> x) =>
+        public EitherAsync<L, R> PureAsync(Task<R> x) =>
             EitherAsync<L, R>.RightAsync(x);
 
         [Pure]
-        public EitherAsync<L, R> ReturnAsync(Func<Unit, Task<R>> f) =>
+        public EitherAsync<L, R> LiftAsync(Func<Unit, Task<R>> f) =>
             EitherAsync<L, R>.RightAsync(f(unit));
 
         [Pure]

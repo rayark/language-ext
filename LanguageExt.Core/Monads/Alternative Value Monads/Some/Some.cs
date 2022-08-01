@@ -95,7 +95,7 @@ namespace LanguageExt
 
         [Pure]
         public static implicit operator Option<A>(Some<A> value) =>
-            default(MOption<A>).Return(value.Value);
+            default(MOption<A>).Pure(value.Value);
 
         [Pure]
         public static implicit operator Some<A>(A value) => 

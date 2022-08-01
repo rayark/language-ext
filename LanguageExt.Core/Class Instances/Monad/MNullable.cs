@@ -44,7 +44,7 @@ namespace LanguageExt.ClassInstances
                 : b;
 
         [Pure]
-        public A? Return(Func<Unit, A> f)
+        public A? Lift(Func<Unit, A> f)
         {
             var x = f(unit);
             return isnull(x)
@@ -142,8 +142,8 @@ namespace LanguageExt.ClassInstances
             mb;
 
         [Pure]
-        public A? Return(A x) =>
-            Return(_ => x);
+        public A? Pure(A x) =>
+            Lift(_ => x);
 
         [Pure]
         public A? Apply(Func<A, A, A> f, A? fa, A? fb) =>

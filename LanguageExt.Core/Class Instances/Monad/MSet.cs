@@ -64,7 +64,7 @@ namespace LanguageExt.ClassInstances
             ma + mb;
 
         [Pure]
-        public Set<A> Return(Func<Unit, A> f) =>
+        public Set<A> Lift(Func<Unit, A> f) =>
             Set(f(unit));
 
         [Pure]
@@ -76,7 +76,7 @@ namespace LanguageExt.ClassInstances
             x.GetHashCode();
 
         [Pure]
-        public Set<A> Return(A x) =>
+        public Set<A> Pure(A x) =>
             Set(x);
 
         [Pure]

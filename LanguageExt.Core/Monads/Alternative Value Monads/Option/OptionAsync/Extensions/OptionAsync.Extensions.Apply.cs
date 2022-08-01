@@ -50,6 +50,22 @@ public static partial class OptionAsyncExtensions
     /// <returns>Bound result of the application of the function to the argument</returns>
     public static OptionAsync<B> Apply<A, B>(this Func<A, B> ff, OptionAsync<A> fx) =>
         default(ApplOptionAsync<A, B>).Apply(SomeAsync(ff), fx);
+        
+    /// <summary>
+    /// Applicative apply
+    /// </summary>
+    /// <remarks>
+    /// Applies the bound function to the bound arguments, returning a bound result. 
+    /// </remarks>
+    /// <param name="ff">Bound function</param>
+    /// <param name="fx">Bound argument</param>
+    /// <param name="fy">Bound argument</param>
+    /// <typeparam name="A">Input bound value type</typeparam>
+    /// <typeparam name="B">Intermediate bound value type</typeparam>
+    /// <typeparam name="C">Output bound value type</typeparam>
+    /// <returns>Bound result of the application of the function to the argument</returns>
+    public static OptionAsync<C> Apply<A, B, C>(this OptionAsync<Func<A, B, C>> ff, OptionAsync<A> fx, OptionAsync<B> fy) =>
+        ff.Map(curry).Apply(fx).Apply(fy);
 
     /// <summary>
     /// Applicative apply

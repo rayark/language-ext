@@ -8,6 +8,15 @@ using System.Threading.Tasks;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureOptionAsync<A> :
+        ApplicativePureAsync<OptionAsync<A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public OptionAsync<A> PureAsync(Task<A> x) =>
+            MOptionAsync<A>.Inst.PureAsync(x);
+    }
+    
     public readonly struct ApplOptionAsync<A, B> :
         ApplicativeAsync<OptionAsync<Func<A, B>>, OptionAsync<A>, OptionAsync<B>, A, B>
     {
@@ -36,7 +45,7 @@ namespace LanguageExt.ClassInstances
         [Pure]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public OptionAsync<A> PureAsync(Task<A> x) =>
-            MOptionAsync<A>.Inst.ReturnAsync(x);
+            MOptionAsync<A>.Inst.PureAsync(x);
 
         [Pure]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -35,13 +35,13 @@ namespace LanguageExt
             where NewInnerMonadC : struct, Monad<NewInnerC, C> =>
             default(TransAsyncSync<OuterMonad, OuterType, InnerMonad, InnerType, A>).BindAsync<NewOuterMonadC, NewOuterC, NewInnerMonadC, NewInnerC, C>(ma, a =>
             default(TransAsyncSync<NewOuterMonadB, NewOuterB, NewInnerMonadB, NewInnerB, B>).BindAsync<NewOuterMonadC, NewOuterC, NewInnerMonadC, NewInnerC, C>(bind(a), b =>
-            default(NewOuterMonadC).ReturnAsync(default(NewInnerMonadC).Return(project(a, b)).AsTask())));
+            default(NewOuterMonadC).PureAsync(default(NewInnerMonadC).Pure(project(a, b)).AsTask())));
 
         public NewOuterType Bind<NewOuterMonad, NewOuterType, NewInnerMonad, NewInnerType, B>(OuterType ma, Func<A, NewInnerType> f)
             where NewOuterMonad : struct, MonadAsync<NewOuterType, NewInnerType>
             where NewInnerMonad : struct, Monad<NewInnerType, B> =>
                 MOuter.Bind<NewOuterMonad, NewOuterType, NewInnerType>(ma, inner =>
-                    default(NewOuterMonad).ReturnAsync(MInner.Bind<NewInnerMonad, NewInnerType, B>(inner, f).AsTask()));
+                    default(NewOuterMonad).PureAsync(MInner.Bind<NewInnerMonad, NewInnerType, B>(inner, f).AsTask()));
 
         public NewOuterType BindAsync<NewOuterMonad, NewOuterType, NewInnerMonad, NewInnerType, B>(OuterType ma, Func<A, NewOuterType> f)
             where NewOuterMonad : struct, MonadAsync<NewOuterType, NewInnerType>
@@ -52,7 +52,7 @@ namespace LanguageExt
         public NewOuterType Map<NewOuterMonad, NewOuterType, NewInnerMonad, NewInnerType, B>(OuterType ma, Func<A, B> f)
             where NewOuterMonad : struct, MonadAsync<NewOuterType, NewInnerType>
             where NewInnerMonad : struct, Monad<NewInnerType, B> =>
-                Bind<NewOuterMonad, NewOuterType, NewInnerMonad, NewInnerType, B>(ma, a => default(NewInnerMonad).Return(f(a)));
+                Bind<NewOuterMonad, NewOuterType, NewInnerMonad, NewInnerType, B>(ma, a => default(NewInnerMonad).Pure(f(a)));
 
         public Task<S> Fold<S>(OuterType ma, S state, Func<S, A, S> f) =>
             MOuter.Fold(ma, state, (s, inner) =>
@@ -70,7 +70,7 @@ namespace LanguageExt
             MOuter.Apply(MInner.Plus, ma, mb);
 
         public OuterType Zero() =>
-            MOuter.ReturnAsync(MInner.Zero().AsTask());
+            MOuter.PureAsync(MInner.Zero().AsTask());
     }
 
     public struct TransAsyncSync<OuterMonad, OuterType, InnerMonad, InnerType, NumA, A>

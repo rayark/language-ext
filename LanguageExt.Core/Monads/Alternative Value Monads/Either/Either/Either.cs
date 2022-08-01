@@ -1235,7 +1235,7 @@ namespace LanguageExt
         [Pure]
         public Either<Ret, R> MapLeft<Ret>(Func<L, Ret> Left) =>
             Match(Left: l => Either<Ret, R>.Left(Left(l)),
-                  Right: identity);
+                  Right: Either<Ret, R>.Right);
 
         /// <summary>
         /// Bi-maps the value in the Either if it's in a Right state

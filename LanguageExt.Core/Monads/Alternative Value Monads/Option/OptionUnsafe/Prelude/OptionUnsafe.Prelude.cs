@@ -84,7 +84,7 @@ namespace LanguageExt
         /// if isnull(value).</returns>
         [Pure]
         public static OptionUnsafe<T> SomeUnsafe<T>(T value) =>
-            default(MOptionUnsafe<T>).Return(value);
+            default(MOptionUnsafe<T>).Pure(value);
 
         /// <summary>
         /// Create a lazy `Some` of `T` (`OptionUnsafe<T>`)
@@ -95,7 +95,7 @@ namespace LanguageExt
         /// if isnull(value).</returns>
         [Pure]
         public static OptionUnsafe<T> SomeUnsafe<T>(Func<Unit, T> f) =>
-            MOptionUnsafe<T>.Inst.Return(f);
+            MOptionUnsafe<T>.Inst.Lift(f);
 
         /// <summary>
         /// Invokes the action if OptionUnsafe is in the Some state, otherwise nothing happens.

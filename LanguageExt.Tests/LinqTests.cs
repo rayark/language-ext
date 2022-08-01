@@ -43,7 +43,7 @@ namespace LanguageExt.Tests
             var lb = List(2, 3, 4, 5);
 
             var r1 =
-               from a in oa.Map(MLst<int>.Inst.Return)  // a : int
+               from a in oa.Map(MLst<int>.Inst.Pure)  // a : int
                from b in Some(lb)      // b : int
                select a + b;
 

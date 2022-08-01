@@ -612,7 +612,7 @@ namespace LanguageExt
         
         [Pure, MethodImpl(Opt.Default)]
         public static Aff<RT, C> SelectMany<RT, A, B, C>(this Eff<RT, A> ma, Func<A, Effect<RT, B>> bind, Func<A, B, C> project) where RT : struct, HasCancel<RT> =>
-            Bind(ma, x => Map(bind(x).RunEffect(), y => project(x, y)));
+            Bind(ma, x => Map(bind(x).MkEffect(), y => project(x, y)));
 
         //
         // Where
@@ -1332,7 +1332,7 @@ namespace LanguageExt
         
         [Pure, MethodImpl(Opt.Default)]
         public static Aff<RT, C> SelectMany<RT, A, B, C>(this Eff<A> ma, Func<A, Effect<RT, B>> bind, Func<A, B, C> project) where RT : struct, HasCancel<RT> =>
-            Bind(ma, x => Map(bind(x).RunEffect(), y => project(x, y)));
+            Bind(ma, x => Map(bind(x).MkEffect(), y => project(x, y)));
 
         //
         // Where

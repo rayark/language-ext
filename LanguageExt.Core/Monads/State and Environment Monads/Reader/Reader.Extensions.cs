@@ -171,7 +171,7 @@ public static class ReaderExt
     [Pure]
     public static Reader<Env, B> Select<Env, A, B>(this Reader<Env, A> self, Func<A, B> map) =>
         default(MReader<Env, A>).Bind<MReader<Env, B>, Reader<Env, B>, B>(self, a =>
-        default(MReader<Env, B>).Return(_ => map(a)));
+        default(MReader<Env, B>).Lift(_ => map(a)));
 
     /// <summary>
     /// Select Many
@@ -183,7 +183,7 @@ public static class ReaderExt
         Func<A, B, C> project) =>
             default(MReader<Env, A>).Bind<MReader<Env, C>, Reader<Env, C>, C>(self, a =>
             default(MReader<Env, B>).Bind<MReader<Env, C>, Reader<Env, C>, C>(bind(a), b =>
-            default(MReader<Env, C>).Return(_ => project(a, b))));
+            default(MReader<Env, C>).Lift(_ => project(a, b))));
 
     [Pure]
     public static Reader<Env, Env> Fold<Env, A>(this Reader<Env, A> self, Func<Env, A, Env> f) =>

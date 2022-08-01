@@ -9,6 +9,15 @@ using LanguageExt.Common;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureTask<A> : 
+        ApplicativePureAsync<Task<A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Task<A> PureAsync(Task<A> x) =>
+            x;
+    }
+    
     public readonly struct ApplTask<A, B> : 
         BiFunctorAsync<Task<A>, Task<B>, Error, A, Error, B>,
         ApplicativeAsync<Task<Func<A, B>>, Task<A>, Task<B>, A, B>

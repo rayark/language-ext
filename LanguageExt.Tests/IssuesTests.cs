@@ -307,21 +307,6 @@ namespace Issues
         }
     }
 
-    public class Issue242
-    {
-
-        [Fact]
-        public async Task Issue242_ExpectNoException()
-        {
-            var failableTask = fun((Either<string, int> value) =>
-                value.AsTask());
-
-            var result = await from a in failableTask("This will NOT cause a Bottom Exception")
-                               from b in failableTask(3)
-                               select a + b;
-        }
-
-    }
 
     public class Issue263
     {
@@ -464,7 +449,7 @@ namespace Issues
             Func<A, B, C> project) =>
             ma.BindT(a =>
                 bind(a).BindT(b =>
-                    default(MEither<L, C>).Return(project(a, b))));
+                    default(MEither<L, C>).Pure(project(a, b))));
     }
 
     public class Issue376_3

@@ -33,6 +33,22 @@ public static partial class Prelude
     /// <returns>Bound result of the application of the function to the argument</returns>
     public static TryAsync<B> apply<A, B>(TryAsync<Func<A, B>> ff, TryAsync<A> fx) =>
         default(ApplTryAsync<A, B>).Apply(ff, fx);
+            
+    /// <summary>
+    /// Applicative apply
+    /// </summary>
+    /// <remarks>
+    /// Applies the bound function to the bound arguments, returning a bound result. 
+    /// </remarks>
+    /// <param name="ff">Bound function</param>
+    /// <param name="fx">Bound argument</param>
+    /// <param name="fy">Bound argument</param>
+    /// <typeparam name="A">Input bound value type</typeparam>
+    /// <typeparam name="B">Intermediate bound value type</typeparam>
+    /// <typeparam name="C">Output bound value type</typeparam>
+    /// <returns>Bound result of the application of the function to the argument</returns>
+    public static TryAsync<C> apply<A, B, C>(TryAsync<Func<A, B, C>> ff, TryAsync<A> fx, TryAsync<B> fy) =>
+        ff.Map(curry).Apply(fx).Apply(fy);
     
     /// <summary>
     /// Applicative apply

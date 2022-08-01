@@ -11,6 +11,16 @@ using static LanguageExt.Prelude;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureAff<RT, A> : 
+        ApplicativePureAsync<Aff<RT, A>, A>
+        where RT : struct, HasCancel<RT>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Aff<RT, A> PureAsync(Task<A> x) =>
+            Aff(async () => await x.ConfigureAwait(false)).Memo();
+    }
+    
     public readonly struct ApplAff<RT, A, B> : 
         BiFunctorAsync<Aff<RT, A>, Aff<RT, B>, Error, A, Error, B>,
         ApplicativeAsync<Aff<RT, Func<A, B>>, Aff<RT, A>, Aff<RT, B>, A, B>
@@ -77,6 +87,14 @@ namespace LanguageExt.ClassInstances
                     return b.Value;
                 }
             });
+    }
+    
+    public readonly struct PureAff<A> : ApplicativePureAsync<Aff<A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Aff<A> PureAsync(Task<A> x) =>
+            Aff(async () => await x.ConfigureAwait(false)).Memo();
     }
     
     public readonly struct ApplAff<A, B> : 

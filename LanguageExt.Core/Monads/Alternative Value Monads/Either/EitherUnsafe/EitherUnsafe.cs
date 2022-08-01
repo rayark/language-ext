@@ -243,7 +243,7 @@ namespace LanguageExt
         /// <exception cref="BottomException">Thrown if matching on an EitherUnsafe in a bottom state</exception>
         /// <returns>The return value of the invoked function</returns>
         [Pure]
-        public Ret? MatchUnsafe<Ret>(Func<R?, Ret?> Right, Func<L?, Ret?> Left, Func<Ret?> Bottom = null) =>
+        public Ret? MatchUnsafe<Ret>(Func<R?, Ret?> Right, Func<L?, Ret?> Left, Func<Ret?>? Bottom = null) =>
             MEitherUnsafe<L, R>.Inst.MatchUnsafe(this, Left, Right, Bottom);
 
         /// <summary>
@@ -253,7 +253,7 @@ namespace LanguageExt
         /// <param name="Left">Action to invoke if in a Left state</param>
         /// <returns>Unit</returns>
         /// <exception cref="BottomException">Thrown if matching on an EitherUnsafe in a bottom state</exception>
-        public Unit MatchUnsafe(Action<R?> Right, Action<L?> Left, Action Bottom = null) =>
+        public Unit MatchUnsafe(Action<R?> Right, Action<L?> Left, Action? Bottom = null) =>
             MEitherUnsafe<L, R>.Inst.Match(this, Left, Right, Bottom);
 
         /// <summary>
@@ -264,7 +264,9 @@ namespace LanguageExt
         /// <returns>Returns an unwrapped Right value</returns>
         [Pure]
         public R? IfLeftUnsafe(Func<R?> Left) =>
+            #nullable disable
             ifLeftUnsafe<MEitherUnsafe<L, R>, EitherUnsafe<L, R>, L, R>(this, Left);
+            #nullable enable
 
         /// <summary>
         /// Executes the leftMap function if the EitherUnsafe is in a Left state.
@@ -274,7 +276,9 @@ namespace LanguageExt
         /// <returns>Returns an unwrapped Right value</returns>
         [Pure]
         public R? IfLeftUnsafe(Func<L?, R?> leftMap) =>
+            #nullable disable
             ifLeftUnsafe<MEitherUnsafe<L, R>, EitherUnsafe<L, R>, L, R>(this, leftMap);
+            #nullable enable
 
         /// <summary>
         /// Returns the rightValue if the EitherUnsafe is in a Left state.
@@ -284,7 +288,9 @@ namespace LanguageExt
         /// <returns>Returns an unwrapped Right value</returns>
         [Pure]
         public R? IfLeftUnsafe(R? rightValue) =>
+            #nullable disable
             ifLeftUnsafe<MEitherUnsafe<L, R>, EitherUnsafe<L, R>, L, R>(this, rightValue);
+            #nullable enable
 
         /// <summary>
         /// Executes the Left action if the EitherUnsafe is in a Left state.
@@ -310,7 +316,9 @@ namespace LanguageExt
         /// <returns>Returns an unwrapped Left value</returns>
         [Pure]
         public L? IfRightUnsafe(L? leftValue) =>
+            #nullable disable
             ifRightUnsafe<MEitherUnsafe<L, R>, EitherUnsafe<L, R>, L, R>(this, leftValue);
+            #nullable enable
 
         /// <summary>
         /// Returns the result of Right() if the EitherUnsafe is in a Right state.
@@ -320,7 +328,9 @@ namespace LanguageExt
         /// <returns>Returns an unwrapped Left value</returns>
         [Pure]
         public L? IfRightUnsafe(Func<L?> Right) =>
+            #nullable disable
             ifRightUnsafe<MEitherUnsafe<L, R>, EitherUnsafe<L, R>, L, R>(this, Right);
+            #nullable enable
 
         /// <summary>
         /// Returns the result of rightMap if the EitherUnsafe is in a Right state.
@@ -330,7 +340,9 @@ namespace LanguageExt
         /// <returns>Returns an unwrapped Left value</returns>
         [Pure]
         public L? IfRightUnsafe(Func<R?, L?> rightMap) =>
+            #nullable disable
             ifRightUnsafe<MEitherUnsafe<L, R>, EitherUnsafe<L, R>, L, R>(this, rightMap);
+            #nullable enable
 
         /// <summary>
         /// Match Right and return a context.  You must follow this with .Left(...) to complete the match

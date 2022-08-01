@@ -10,6 +10,14 @@ using System.Runtime.CompilerServices;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureEnumerable<A> : ApplicativePure<IEnumerable<A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public IEnumerable<A> Pure(A x) =>
+            new[] {x};
+    }
+    
     public readonly struct ApplEnumerable<A, B> : Applicative<IEnumerable<Func<A, B>>, IEnumerable<A>, IEnumerable<B>, A, B>
     {
         public static readonly ApplEnumerable<A, B> Inst = default;

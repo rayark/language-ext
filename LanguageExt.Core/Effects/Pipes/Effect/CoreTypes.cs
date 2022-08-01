@@ -157,7 +157,7 @@ namespace LanguageExt.Pipes
         /// <returns>A new `Aff` that represents the composition of this `Proxy` and the result of the bind operation</returns>
         [Pure]
         public Aff<RT, C> SelectMany<B, C>(Func<A, Aff<RT, B>> bind, Func<A, B, C> project) =>
-            this.RunEffect().Bind(a => bind(a).Map(b => project(a, b)));
+            this.MkEffect().Bind(a => bind(a).Map(b => project(a, b)));
 
         /// <summary>
         /// Monadic bind operation, for chaining `Effect` and `Aff` computations together.
@@ -167,7 +167,7 @@ namespace LanguageExt.Pipes
         /// <returns>A new `Aff` that represents the composition of this `Proxy` and the result of the bind operation</returns>
         [Pure]
         public Aff<RT, C> SelectMany<B, C>(Func<A, Aff<B>> bind, Func<A, B, C> project) =>
-            this.RunEffect().Bind(a => bind(a).Map(b => project(a, b)));
+            this.MkEffect().Bind(a => bind(a).Map(b => project(a, b)));
 
         /// <summary>
         /// Monadic bind operation, for chaining `Effect` and `Aff` computations together.
@@ -177,7 +177,7 @@ namespace LanguageExt.Pipes
         /// <returns>A new `Aff` that represents the composition of this `Proxy` and the result of the bind operation</returns>
         [Pure]
         public Aff<RT, C> SelectMany<B, C>(Func<A, Eff<RT, B>> bind, Func<A, B, C> project) =>
-            this.RunEffect().Bind(a => bind(a).Map(b => project(a, b)));
+            this.MkEffect().Bind(a => bind(a).Map(b => project(a, b)));
 
         /// <summary>
         /// Monadic bind operation, for chaining `Effect` and `Aff` computations together.
@@ -187,6 +187,6 @@ namespace LanguageExt.Pipes
         /// <returns>A new `Aff` that represents the composition of this `Proxy` and the result of the bind operation</returns>
         [Pure]
         public Aff<RT, C> SelectMany<B, C>(Func<A, Eff<B>> bind, Func<A, B, C> project) =>
-            this.RunEffect().Bind(a => bind(a).Map(b => project(a, b)));
+            this.MkEffect().Bind(a => bind(a).Map(b => project(a, b)));
     }
 }

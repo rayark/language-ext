@@ -11,6 +11,16 @@ using static LanguageExt.Prelude;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureEff<RT, A> : 
+        ApplicativePure<Eff<RT, A>, A>
+        where RT : struct
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Eff<RT, A> Pure(A x) =>
+            SuccessEff(x);
+    }    
+    
     public readonly struct ApplEff<RT, A, B> : 
         BiFunctor<Eff<RT, A>, Eff<RT, B>, Error, A, Error, B>,
         Applicative<Eff<RT, Func<A, B>>, Eff<RT, A>, Eff<RT, B>, A, B>
@@ -73,6 +83,15 @@ namespace LanguageExt.ClassInstances
                 }
             });
     }
+    
+    public readonly struct PureEff<A> : 
+        ApplicativePure<Eff<A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Eff<A> Pure(A x) =>
+            SuccessEff(x);
+    }    
     
     public readonly struct ApplEff<A, B> : 
         BiFunctor<Eff<A>, Eff<B>, Error, A, Error, B>,

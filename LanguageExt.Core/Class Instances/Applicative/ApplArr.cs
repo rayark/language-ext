@@ -8,6 +8,14 @@ using System.Runtime.CompilerServices;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureArr<A> : ApplicativePure<Arr<A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Arr<A> Pure(A x) =>
+            Array(x);
+    }
+    
     public readonly struct ApplArr<A, B> : Applicative<Arr<Func<A, B>>, Arr<A>, Arr<B>, A, B>
     {
         public static readonly ApplArr<A, B> Inst = default;

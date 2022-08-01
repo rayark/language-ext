@@ -64,7 +64,7 @@ namespace LanguageExt.ClassInstances
             ma + mb;
 
         [Pure]
-        public HashSet<A> Return(Func<Unit, A> f) =>
+        public HashSet<A> Lift(Func<Unit, A> f) =>
             HashSet(f(unit));
 
         [Pure]
@@ -84,8 +84,8 @@ namespace LanguageExt.ClassInstances
             mb;
 
         [Pure]
-        public HashSet<A> Return(A x) =>
-            Return(_ => x);
+        public HashSet<A> Pure(A x) =>
+            Lift(_ => x);
 
         [Pure]
         public HashSet<A> Apply(Func<A, A, A> f, HashSet<A> fa, HashSet<A> fb) =>

@@ -47,7 +47,7 @@ namespace LanguageExt.ClassInstances
                 Bottom: () => mb);
 
         [Pure]
-        public Either<L, R> Return(Func<Unit, R> f) =>
+        public Either<L, R> Lift(Func<Unit, R> f) =>
             f(unit);
 
         [Pure]
@@ -162,8 +162,8 @@ namespace LanguageExt.ClassInstances
             mb;
 
         [Pure]
-        public Either<L, R> Return(R x) =>
-            Return(_ => x);
+        public Either<L, R> Pure(R x) =>
+            Lift(_ => x);
 
         [Pure]
         public Either<L, R> Empty() =>

@@ -79,7 +79,7 @@ namespace LanguageExt.Tests
             where NumA : struct, Num<A> =>
                 default(MonadA).Bind<MonadA, MA, A>(ma, a =>
                 default(MonadA).Bind<MonadA, MA, A>(mb, b =>
-                default(MonadA).Return(default(NumA).Plus(a, b))));
+                default(MonadA).Pure(default(NumA).Plus(a, b))));
 
         public static MA DoubleAndLift<MONAD, MA, NUM, A>(A num)
             where MONAD : struct, Monad<MA, A>

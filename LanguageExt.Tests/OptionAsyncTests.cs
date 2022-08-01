@@ -26,7 +26,7 @@ namespace LanguageExt.Tests
 
 
             var mc = Some(10).ToAsync().MatchAsync(
-                Some: x => Task.FromResult(x * 10),
+                Some: x => ValueTask.FromResult(x * 10),
                 None: () => 0
             );
 
@@ -79,39 +79,6 @@ namespace LanguageExt.Tests
         private Task DoWork()
         {
             return Task.Run(() => Console.WriteLine("here"));
-        }
-
-        [Fact]
-        public async void Issue206()
-        {
-            var sync = new object();
-            var tasks = new List<Task>();
-            var output = new List<string>();
-
-            Console.WriteLine("OptionAsync");
-            OptionAsync<int> optAsync = Some(4).ToAsync();
-            var tskOptionAsync = optAsync.IfSome(async (i) =>
-            {
-                await Task.Delay(100);
-                var x = DoWork();
-
-                lock (sync)
-                {
-                    tasks.Add(x);
-                    output.Add($"Inner id {x.Id}");
-                }
-
-                await x;
-            });
-            lock (sync)
-            {
-                output.Add($"Outer id {tskOptionAsync.Id}");
-                tasks.Add(tskOptionAsync);
-            }
-            await tskOptionAsync;
-
-            Assert.Equal(TaskStatus.RanToCompletion, tasks[0].Status);
-            Assert.Equal(TaskStatus.RanToCompletion, tasks[1].Status);
         }
 
         [Fact]
@@ -173,43 +140,25 @@ namespace LanguageExt.Tests
         }
 
         [Fact]
-        public async Task BiExistsTest()
-        {
-            Assert.True(await OptionAsync<int>.Some(1).BiExists(i => i == 1, () => false));
-            Assert.False(await OptionAsync<int>.Some(1).BiExists(i => i != 1, () => true));
-            Assert.False(await OptionAsync<int>.None.BiExists(i => i == 1, () => false));
-            Assert.True(await OptionAsync<int>.None.BiExists(i => i != 1, () => true));
-        }
-
-        [Fact]
         public async Task ExistsAsyncTest()
         {
-            Assert.True(await OptionAsync<int>.Some(1).ExistsAsync(i => Task.FromResult(i == 1)));
-            Assert.False(await OptionAsync<int>.None.ExistsAsync(i => Task.FromResult(true)));
+            Assert.True(await OptionAsync<int>.Some(1).ExistsAsync(i => ValueTask.FromResult(i == 1)));
+            Assert.False(await OptionAsync<int>.None.ExistsAsync(i => ValueTask.FromResult(true)));
         }
 
         [Fact]
         public async Task FilterTest()
         {
             Assert.True(await OptionAsync<int>.Some(1).Filter(i => i == 1).IsSome);
-            Assert.True(await OptionAsync<int>.Some(1).FilterAsync(i => Task.FromResult(i == 1)).IsSome);
+            Assert.True(await OptionAsync<int>.Some(1).FilterAsync(i => ValueTask.FromResult(i == 1)).IsSome);
             Assert.False(await OptionAsync<int>.Some(2).Filter(i => i == 1).IsSome);
-            Assert.False(await OptionAsync<int>.Some(2).FilterAsync(i => Task.FromResult(i == 1)).IsSome);
+            Assert.False(await OptionAsync<int>.Some(2).FilterAsync(i => ValueTask.FromResult(i == 1)).IsSome);
             Assert.False(await OptionAsync<int>.None.Filter(i => true).IsSome);
-            Assert.False(await OptionAsync<int>.None.FilterAsync(i => Task.FromResult(true)).IsSome);
+            Assert.False(await OptionAsync<int>.None.FilterAsync(i => ValueTask.FromResult(true)).IsSome);
 
             Assert.True(await OptionAsync<int>.Some(1).Where(i => i == 1).IsSome);
             Assert.False(await OptionAsync<int>.Some(2).Where(i => i == 1).IsSome);
             Assert.False(await OptionAsync<int>.None.Where(i => true).IsSome);
-        }
-
-        [Fact]
-        public async Task ParMapTest()
-        {
-            var multiply = fun<int, int, int>((x, y) => x * y);
-            var oDoubler = SomeAsync(2).ParMap(multiply);
-            var oFour = oDoubler.Map(doubler => doubler(2));
-            Assert.True(await oFour.Exists(i => i == 4));
         }
 
         [Fact]

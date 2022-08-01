@@ -17,7 +17,7 @@
                 .Inst.Bind<M_OUTER_C, OUTER_C, M_INNER_C, INNER_C, C>(ma, a =>
                     TRANS<M_OUTER_B, OUTER_B, M_INNER_B, INNER_B, B>
                         .Inst.Bind<M_OUTER_C, OUTER_C, M_INNER_C, INNER_C, C>(bind(a), b =>
-                            default(M_INNER_C).Return(project(a, b))));
+                            default(M_INNER_C).Pure(project(a, b))));
 
         /// <summary>
         /// Filter operation.  Applies the bound value to the predicate `f`. If
@@ -32,7 +32,7 @@
             TRANS<M_OUTER_A, OUTER_A, M_INNER_A, INNER_A, A>
                 .Inst.Bind<M_OUTER_A, OUTER_A, M_INNER_A, INNER_A, A>(ma, 
                     a => pred(a)
-                        ? default(M_INNER_A).Return(a)
+                        ? default(M_INNER_A).Pure(a)
                         : default(M_INNER_A).Zero());
 
         /// <summary>

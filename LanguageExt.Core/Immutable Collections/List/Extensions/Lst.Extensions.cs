@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Linq;
 using System.Collections.Generic;
 using LanguageExt;
@@ -9,7 +10,7 @@ using System.Text;
 using LanguageExt.TypeClasses;
 using LanguageExt.ClassInstances;
 
-public static class ListExtensions
+public static partial class LstExtensions
 {
     /// <summary>
     /// Monadic join
@@ -225,16 +226,6 @@ public static class ListExtensions
         LanguageExt.List.tail(list);
 
     /// <summary>
-    /// Apply an IEnumerable of values to an IEnumerable of functions
-    /// </summary>
-    /// <param name="fabc">IEnumerable of functions</param>
-    /// <param name="fa">IEnumerable of argument values</param>
-    /// <returns>Returns the result of applying the IEnumerable argument values to the IEnumerable functions</returns>
-    [Pure]
-    public static IEnumerable<B> Apply<A, B>(this IEnumerable<Func<A, B>> fabc, IEnumerable<A> fa) =>
-        ApplEnumerable<A, B>.Inst.Apply(fabc, fa);
-
-    /// <summary>
     /// Inject a value in between each item in the enumerable 
     /// </summary>
     /// <param name="ma">Enumerable to inject values into</param>
@@ -258,7 +249,7 @@ public static class ListExtensions
     }
 
     /// <summary>
-    /// Concact all strings into one
+    /// Concatenate all strings into one
     /// </summary>
     [Pure]
     public static string Concat(this IEnumerable<string> xs)
@@ -271,114 +262,6 @@ public static class ListExtensions
 
         return sb.ToString();
     }
-
-    /// <summary>
-    /// Apply an IEnumerable of values to an IEnumerable of functions
-    /// </summary>
-    /// <param name="fabc">IEnumerable of functions</param>
-    /// <param name="fa">IEnumerable of argument values</param>
-    /// <returns>Returns the result of applying the IEnumerable argument values to the IEnumerable functions</returns>
-    [Pure]
-    public static IEnumerable<B> Apply<A, B>(this Func<A, B> fabc, IEnumerable<A> fa) =>
-        ApplEnumerable<A, B>.Inst.Apply(new[] { fabc }, fa);
-
-    /// <summary>
-    /// Apply an IEnumerable of values to an IEnumerable of functions of arity 2
-    /// </summary>
-    /// <param name="fabc">IEnumerable of functions</param>
-    /// <param name="fa">IEnumerable argument values</param>
-    /// <returns>Returns the result of applying the IEnumerable of argument values to the 
-    /// IEnumerable of functions: an IEnumerable of functions of arity 1</returns>
-    [Pure]
-    public static IEnumerable<Func<B, C>> Apply<A, B, C>(this IEnumerable<Func<A, B, C>> fabc, IEnumerable<A> fa) =>
-        ApplEnumerable<A, B, C>.Inst.Apply(fabc.Map(curry), fa);
-
-    /// <summary>
-    /// Apply an IEnumerable of values to an IEnumerable of functions of arity 2
-    /// </summary>
-    /// <param name="fabc">IEnumerable of functions</param>
-    /// <param name="fa">IEnumerable argument values</param>
-    /// <returns>Returns the result of applying the IEnumerable of argument values to the 
-    /// IEnumerable of functions: an IEnumerable of functions of arity 1</returns>
-    [Pure]
-    public static IEnumerable<Func<B, C>> Apply<A, B, C>(this Func<A, B, C> fabc, IEnumerable<A> fa) =>
-        ApplEnumerable<A, B, C>.Inst.Apply(new[] { curry(fabc) }, fa);
-
-    /// <summary>
-    /// Apply IEnumerable of values to an IEnumerable of functions of arity 2
-    /// </summary>
-    /// <param name="fabc">IEnumerable of functions</param>
-    /// <param name="fa">IEnumerable argument values</param>
-    /// <param name="fb">IEnumerable argument values</param>
-    /// <returns>Returns the result of applying the IEnumerables of arguments to the IEnumerable of functions</returns>
-    [Pure]
-    public static IEnumerable<C> Apply<A, B, C>(this IEnumerable<Func<A, B, C>> fabc, IEnumerable<A> fa, IEnumerable<B> fb) =>
-        ApplEnumerable<A, B, C>.Inst.Apply(fabc.Map(curry), fa, fb);
-
-    /// <summary>
-    /// Apply IEnumerable of values to an IEnumerable of functions of arity 2
-    /// </summary>
-    /// <param name="fabc">IEnumerable of functions</param>
-    /// <param name="fa">IEnumerable argument values</param>
-    /// <param name="fb">IEnumerable argument values</param>
-    /// <returns>Returns the result of applying the IEnumerables of arguments to the IEnumerable of functions</returns>
-    [Pure]
-    public static IEnumerable<C> Apply<A, B, C>(this Func<A, B, C> fabc, IEnumerable<A> fa, IEnumerable<B> fb) =>
-        ApplEnumerable<A, B, C>.Inst.Apply(new[] { curry(fabc) }, fa, fb);
-
-    /// <summary>
-    /// Apply an IEnumerable of values to an IEnumerable of functions of arity 2
-    /// </summary>
-    /// <param name="fabc">IEnumerable of functions</param>
-    /// <param name="fa">IEnumerable argument values</param>
-    /// <returns>Returns the result of applying the IEnumerable of argument values to the 
-    /// IEnumerable of functions: an IEnumerable of functions of arity 1</returns>
-    [Pure]
-    public static IEnumerable<Func<B, C>> Apply<A, B, C>(this IEnumerable<Func<A, Func<B, C>>> fabc, IEnumerable<A> fa) =>
-        ApplEnumerable<A, B, C>.Inst.Apply(fabc, fa);
-
-    /// <summary>
-    /// Apply an IEnumerable of values to an IEnumerable of functions of arity 2
-    /// </summary>
-    /// <param name="fabc">IEnumerable of functions</param>
-    /// <param name="fa">IEnumerable argument values</param>
-    /// <returns>Returns the result of applying the IEnumerable of argument values to the 
-    /// IEnumerable of functions: an IEnumerable of functions of arity 1</returns>
-    [Pure]
-    public static IEnumerable<Func<B, C>> Apply<A, B, C>(this Func<A, Func<B, C>> fabc, IEnumerable<A> fa) =>
-        ApplEnumerable<A, B, C>.Inst.Apply(new[] { fabc }, fa);
-
-    /// <summary>
-    /// Apply IEnumerable of values to an IEnumerable of functions of arity 2
-    /// </summary>
-    /// <param name="fabc">IEnumerable of functions</param>
-    /// <param name="fa">IEnumerable argument values</param>
-    /// <param name="fb">IEnumerable argument values</param>
-    /// <returns>Returns the result of applying the IEnumerables of arguments to the IEnumerable of functions</returns>
-    [Pure]
-    public static IEnumerable<C> Apply<A, B, C>(this IEnumerable<Func<A, Func<B, C>>> fabc, IEnumerable<A> fa, IEnumerable<B> fb) =>
-        ApplEnumerable<A, B, C>.Inst.Apply(fabc, fa, fb);
-
-    /// <summary>
-    /// Apply IEnumerable of values to an IEnumerable of functions of arity 2
-    /// </summary>
-    /// <param name="fabc">IEnumerable of functions</param>
-    /// <param name="fa">IEnumerable argument values</param>
-    /// <param name="fb">IEnumerable argument values</param>
-    /// <returns>Returns the result of applying the IEnumerables of arguments to the IEnumerable of functions</returns>
-    [Pure]
-    public static IEnumerable<C> Apply<A, B, C>(this Func<A, Func<B, C>> fabc, IEnumerable<A> fa, IEnumerable<B> fb) =>
-        ApplEnumerable<A, B, C>.Inst.Apply(new[] { fabc }, fa, fb);
-
-    /// <summary>
-    /// Evaluate fa, then fb, ignoring the result of fa
-    /// </summary>
-    /// <param name="fa">Applicative to evaluate first</param>
-    /// <param name="fb">Applicative to evaluate second and then return</param>
-    /// <returns>Applicative of type FB derived from Applicative of B</returns>
-    [Pure]
-    public static IEnumerable<B> Action<A, B>(this IEnumerable<A> fa, IEnumerable<B> fb) =>
-        ApplEnumerable<A, B>.Inst.Action(fa, fb);
 
     /// <summary>
     /// Projects the values in the enumerable using a map function into a new enumerable (Select in LINQ).
@@ -635,7 +518,7 @@ public static class ListExtensions
     /// <returns>Aggregate value</returns>
     [Pure]
     public static S FoldUntil<S, T>(this IEnumerable<T> list, S state, Func<S, T, S> folder, Func<T, bool> preditem) =>
-        LanguageExt.List.foldUntil<S, T>(list, state, folder, preditem: preditem);
+        LanguageExt.List.foldUntil(list, state, folder, preditem: preditem);
 
     /// <summary>
     /// Applies a function 'folder' to each element of the collection, threading an accumulator 
@@ -947,7 +830,7 @@ public static class ListExtensions
     /// </summary>
     [Pure]
     public static Lst<B> Select<A, B>(this Lst<A> self, Func<A, B> map) =>
-        new Lst<B>(self.AsEnumerable().Select(map));
+        new (self.AsEnumerable().Select(map));
 
     /// <summary>
     /// LINQ Select implementation for Lst
@@ -955,7 +838,7 @@ public static class ListExtensions
     [Pure]
     public static Lst<PredList, B> Select<PredList, A, B>(this Lst<PredList, A> self, Func<A, B> map)
         where PredList : struct, Pred<ListInfo> =>
-        new Lst<PredList, B>(self.AsEnumerable().Select(map));
+        new (self.AsEnumerable().Select(map));
 
     /// <summary>
     /// Monadic bind function for Lst that returns an IEnumerable
@@ -987,7 +870,7 @@ public static class ListExtensions
     /// </summary>
     [Pure]
     public static Lst<B> Bind<A, B>(this Lst<A> self, Func<A, Lst<B>> binder) =>
-        new Lst<B>(self.BindEnumerable(binder));
+        new (self.BindEnumerable(binder));
 
     /// <summary>
     /// Monadic bind function
@@ -995,7 +878,7 @@ public static class ListExtensions
     [Pure]
     public static Lst<PredList, B> Bind<PredList, A, B>(this Lst<PredList, A> self, Func<A, Lst<PredList, B>> binder)
         where PredList : struct, Pred<ListInfo> =>
-        new Lst<PredList, B>(self.BindEnumerable(binder));
+        new (self.BindEnumerable(binder));
 
     /// <summary>
     /// Monadic bind function
@@ -1060,10 +943,11 @@ public static class ListExtensions
     /// <typeparam name="T">Bound value type</typeparam>
     public static IEnumerable<T> SkipLast<T>(this IEnumerable<T> self)
     {
-        var iter = self.GetEnumerator();
-        bool remaining = false;
-        bool first = true;
-        T item = default(T);
+        #nullable disable
+        using var iter = self.GetEnumerator();
+        var remaining = false;
+        var first = true;
+        T item = default;
 
         do
         {
@@ -1075,6 +959,7 @@ public static class ListExtensions
                 first = false;
             }
         } while (remaining);
+        #nullable enable
     }
 
     /// <summary>
@@ -1083,8 +968,9 @@ public static class ListExtensions
     /// <typeparam name="T">Bound value type</typeparam>
     public static IEnumerable<T> SkipLast<T>(this IEnumerable<T> self, int n)
     {
-        var iter = self.GetEnumerator();
-        bool remaining = false;
+        #nullable disable
+        using var iter = self.GetEnumerator();
+        var remaining = false;
         var cache = new Queue<T>(n + 1);
 
         do
@@ -1095,6 +981,7 @@ public static class ListExtensions
                 if (cache.Count > n) yield return cache.Dequeue();
             }
         } while (remaining);
+        #nullable enable
     }
 
     /// <summary>

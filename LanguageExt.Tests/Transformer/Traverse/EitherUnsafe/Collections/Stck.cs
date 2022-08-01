@@ -14,7 +14,7 @@ namespace LanguageExt.Tests.Transformer.Traverse.EitherUnsafeT.Collections
 
             var mb = ma.Traverse(Prelude.identity);
 
-            Assert.True(mb == RightUnsafe(Stck<int>.Empty));
+            Assert.True(mb == RightUnsafe<Error, Stck<int>>(Stck<int>.Empty));
         }
         
         [Fact]
@@ -22,7 +22,7 @@ namespace LanguageExt.Tests.Transformer.Traverse.EitherUnsafeT.Collections
         {
             var ma = Stack(RightUnsafe<Error, int>(1), RightUnsafe<Error, int>(2), RightUnsafe<Error, int>(3));
             var mb = ma.Traverse(Prelude.identity);
-            var mc = RightUnsafe(Stack(1, 2, 3));
+            var mc = RightUnsafe<Error, Stck<int>>(Stack(1, 2, 3));
             
             var mr = mb == mc;
             
@@ -36,7 +36,7 @@ namespace LanguageExt.Tests.Transformer.Traverse.EitherUnsafeT.Collections
 
             var mb = ma.Traverse(Prelude.identity);
 
-            Assert.True(mb == LeftUnsafe(Error.New("alternative")));
+            Assert.True(mb == LeftUnsafe<Error, Stck<int>>(Error.New("alternative")));
         }
     }
 }

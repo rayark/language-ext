@@ -126,11 +126,11 @@ namespace LanguageExt.ClassInstances
             a || b;
 
         [Pure]
-        public Validation<FAIL, SUCCESS> Return(SUCCESS x) =>
+        public Validation<FAIL, SUCCESS> Pure(SUCCESS x) =>
             Validation<FAIL, SUCCESS>.Success(x);
 
         [Pure]
-        public Validation<FAIL, SUCCESS> Return(Func<Unit, SUCCESS> f) =>
+        public Validation<FAIL, SUCCESS> Lift(Func<Unit, SUCCESS> f) =>
             Validation<FAIL, SUCCESS>.Success(f(unit));
 
         [Pure]

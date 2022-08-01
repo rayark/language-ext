@@ -67,8 +67,8 @@ namespace LanguageExt.ClassInstances
         /// <param name="x">The bound monad value</param>
         /// <returns>Monad of A</returns>
         [Pure]
-        public Task<A> ReturnAsync(Task<A> x) =>
-            default(MTaskFirst<A>).ReturnAsync(x);
+        public Task<A> PureAsync(Task<A> x) =>
+            default(MTaskFirst<A>).PureAsync(x);
 
         /// <summary>
         /// Monad return
@@ -76,8 +76,8 @@ namespace LanguageExt.ClassInstances
         /// <typeparam name="A">Type of the bound monad value</typeparam>
         /// <returns>Monad of A</returns>
         [Pure]
-        public Task<A> ReturnAsync(Func<Unit, Task<A>> f) =>
-            default(MTaskFirst<A>).ReturnAsync(f);
+        public Task<A> LiftAsync(Func<Unit, Task<A>> f) =>
+            default(MTaskFirst<A>).LiftAsync(f);
 
         [Pure]
         public Task<A> Zero() =>

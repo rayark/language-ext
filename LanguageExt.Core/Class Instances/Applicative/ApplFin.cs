@@ -8,6 +8,15 @@ using LanguageExt.Common;
 
 namespace LanguageExt.ClassInstances
 {
+    public readonly struct PureFin<A> : 
+        ApplicativePure<Fin<A>, A>
+    {
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Fin<A> Pure(A x) =>
+            Prelude.FinSucc(x);
+    }    
+    
     public readonly struct ApplFin<A, B> : 
         BiFunctor<Fin<A>, Fin<B>, A, Error, B, Error>,
         Applicative<Fin<Func<A, B>>, Fin<A>, Fin<B>, A, B>
@@ -38,7 +47,7 @@ namespace LanguageExt.ClassInstances
         [Pure]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Fin<A> Pure(A x) =>
-            MFin<A>.Inst.Return(x);
+            Prelude.FinSucc(x);
 
         [Pure]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -23,7 +23,7 @@ namespace EffectsExamples
         HasConsole<RT>
     {
         public static Aff<RT, Unit> main =>
-            mainEffect.RunEffect();
+            mainEffect.MkEffect();
         
         static Effect<RT, Unit> mainEffect =>
             repeat(Console<RT>.readKeys)

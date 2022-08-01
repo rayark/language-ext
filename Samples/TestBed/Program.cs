@@ -7,9 +7,14 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Net.Sockets;
 using LanguageExt;
 using System.Text;
 using LanguageExt.Sys;
@@ -20,8 +25,10 @@ using System.Reactive.Subjects;
 using System.Threading;
 using LanguageExt.Sys.Live;
 using System.Threading.Tasks;
+using LanguageExt.ClassInstances;
 using LanguageExt.Common;
 using LanguageExt.Effects.Traits;
+using LanguageExt.Sys.Traits;
 using TestBed;
 using static LanguageExt.Prelude;
 using static LanguageExt.Pipes.Proxy;
@@ -51,9 +58,9 @@ public static class Ext
         where RT : struct, HasCancel<RT> =>
         Producer.merge(qs.Map(q => q.ToProducer<RT, A>()).ToSeq());
 }
-
 public class Program
 {
+    
     static void Main(string[] args)
     {
         ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -295,3 +302,58 @@ public class Program
     static Pipe<Runtime, string, string, Unit> pipeMap =>
         Pipe.map((string x) => $"Hello {x}");
 }
+
+public static class Test123
+{
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `Arr&lt;TryOption&lt;A&gt;&gt;`</param>
+        /// <returns>`Arr&lt;TryOption&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        public static Arr<TryOption<B>> ApplyT< A, B>(this Func<A, B> fab, Arr<TryOption<A>> fa) =>
+            default(ApplArr< TryOption<A>, TryOption<B>>).Apply(
+                 default(MArr< Func<TryOption<A>, TryOption<B>>>).Pure((TryOption<A> a) => default(ApplTryOption< A, B>).Apply(
+                     default(MTryOption< Func<A, B>>).Pure(fab), 
+                     a)),
+                 fa);
+
+        /// <summary>
+        /// Apply `fa` to `fab`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fab">Functor</param>
+        /// <param name="fa">Monad of `Arr&lt;TryOption&lt;A&gt;&gt;`</param>
+        /// <returns>`Arr&lt;TryOption&lt;B&gt;&gt;` which is the result of performing `fab(fa)`</returns>
+        /*public static Arr<TryOption<B>> ApplyT< A, B>(this Arr<TryOption<Func<A, B>>> fab, Arr<TryOption<A>> fa) =>
+            default(MArr<TryOption<Func<A, B>>>).Bind<MArr<TryOption<B>>, Arr<TryOption<B>>, TryOption<B>>(fab, f =>
+                default(MArr<TryOption<A>>).Bind<MArr<TryOption<B>>, Arr<TryOption<B>>, TryOption<B>>(fa, a => 
+                    default(MArr<TryOption<B>>).Pure(default(ApplArr<TryOption<A>, TryOption<B>>).Apply(f, a))));*/
+
+        public static Arr<TryOption<B>> ApplyT< A, B>(this Arr<TryOption<Func<A, B>>> fab, Arr<TryOption<A>> fa) =>
+            default(MArr<TryOption<Func<A, B>>>).Bind<MArr<TryOption<B>>, Arr<TryOption<B>>, TryOption<B>>(fab, f =>
+                default(MArr<TryOption<A>>).Bind<MArr<TryOption<B>>, Arr<TryOption<B>>, TryOption<B>>(fa, a => 
+                    default(MArr<TryOption<B>>).Pure(default(ApplTryOption< A, B>).Apply(f, a))));
+        
+        
+        //          default(MArr<TryOption<B>>).Pure(default(ApplTryOption<A, B>).Apply(f, a))));
+ 
+        /// <summary>
+        /// Apply `fa` and `fb` to `fabc`
+        /// </summary>
+        /// <typeparam name="A">Inner bound value type</typeparam>
+        /// <typeparam name="B">Resulting bound value type</typeparam>
+        /// <param name="fabc">Functor</param>
+        /// <param name="fa">Monad of `Arr&lt;TryOption&lt;A&gt;&gt;`</param>
+        /// <param name="fb">Monad of `Arr&lt;TryOption&lt;A&gt;&gt;`</param>
+        /// <returns>`Arr&lt;TryOption&lt;B&gt;&gt;` which is the result of performing `fabc(fa, fb)`</returns>
+        public static Arr<TryOption<C>> ApplyT< A, B, C>(this Func<A, B, C> fabc, Arr<TryOption<A>> fa, Arr<TryOption<B>> fb) =>
+            curry(fabc).ApplyT(fa).ApplyT(fb);        
+        
+        
+}
+
+// HashSet<Func<Arr<A>, Arr<B>>>

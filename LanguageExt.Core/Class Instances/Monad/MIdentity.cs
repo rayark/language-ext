@@ -55,7 +55,7 @@ namespace LanguageExt.ClassInstances
                 : a;
 
         [Pure]
-        public Identity<A> Return(Func<Unit, A> f) =>
+        public Identity<A> Lift(Func<Unit, A> f) =>
             new Identity<A>(f(unit));
 
         [Pure]
@@ -63,14 +63,14 @@ namespace LanguageExt.ClassInstances
             Identity<A>.Bottom;
 
         [Pure]
-        public Identity<A> Return(A x) =>
-            Return(_ => x);
+        public Identity<A> Pure(A x) =>
+            Lift(_ => x);
 
         [Pure]
         public Identity<A> Apply(Func<A, A, A> f, Identity<A> fa, Identity<A> fb) =>
             default(MIdentity<A>).Bind<MIdentity<A>, Identity<A>, A>(fa, a =>
             default(MIdentity<A>).Bind<MIdentity<A>, Identity<A>, A>(fb, b =>
-            default(MIdentity<A>).Return(_ => f(a, b))));
+            default(MIdentity<A>).Lift(_ => f(a, b))));
 
         [Pure]
         public Task<A> ToAsync(Identity<A> sa) =>

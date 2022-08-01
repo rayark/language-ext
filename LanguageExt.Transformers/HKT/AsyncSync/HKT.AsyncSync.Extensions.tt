@@ -91,9 +91,11 @@ namespace LanguageExt
             var OUTER_C = outerType.OuterTypeC(innerType);
             var OUTER_INT = outerType.OuterTypeInt(innerType);
             var OUTER_BOOL = outerType.OuterTypeBool(innerType);
+            var OUTER_FUNC_AB = outerType.OuterTypeFuncAB(innerType);
             var M_OUTER_A = outerType.MOuterTypeA(innerType);
             var M_OUTER_B = outerType.MOuterTypeB(innerType);
             var M_OUTER_C = outerType.MOuterTypeC(innerType);
+            var M_OUTER_FUNC_AB = outerType.MOuterFuncAB(innerType);
 
             var APPL_INNER_ABC  = outerType.ApplicativeInnerABC(innerType);
             var APPL_INNER_AB   = outerType.ApplicativeInnerAB(innerType);
@@ -130,11 +132,13 @@ namespace LanguageExt
                                         .ReplaceInCodeAndDoc("M_OUTER_C", M_OUTER_C)
                                         .ReplaceInCodeAndDoc("M_OUTER_B", M_OUTER_B)
                                         .ReplaceInCodeAndDoc("M_OUTER_A", M_OUTER_A)
+                                        .ReplaceInCodeAndDoc("M_OUTER_FUNC_AB", M_OUTER_FUNC_AB)
                                         .ReplaceInCodeAndDoc("M_INNER_C", M_INNER_C)
                                         .ReplaceInCodeAndDoc("M_INNER_B", M_INNER_B)
                                         .ReplaceInCodeAndDoc("M_INNER_A", M_INNER_A)
                                         .ReplaceInCodeAndDoc("OUTER_INT", OUTER_INT)
                                         .ReplaceInCodeAndDoc("OUTER_BOOL", OUTER_BOOL)
+                                        .ReplaceInCodeAndDoc("OUTER_FUNC_AB", OUTER_FUNC_AB)
                                         .ReplaceInCodeAndDoc("OUTER_C", OUTER_C)
                                         .ReplaceInCodeAndDoc("OUTER_B", OUTER_B)
                                         .ReplaceInCodeAndDoc("OUTER_A", OUTER_A)
@@ -248,11 +252,13 @@ namespace LanguageExt
         public string OuterTypeC(TypeDesc inner) => OuterType(inner, "C");
         public string OuterTypeInt(TypeDesc inner) => OuterType(inner, "int");
         public string OuterTypeBool(TypeDesc inner) => OuterType(inner, "bool");
+        public string OuterTypeFuncAB(TypeDesc inner) => OuterType(inner, "Func<A, B>");
 
         public string MOuterType(TypeDesc inner, string a) => $"{MName}<" + ArgsDisplay(inner.Type(a)) + ">";
         public string MOuterTypeA(TypeDesc inner) => MOuterType(inner, "A");
         public string MOuterTypeB(TypeDesc inner) => MOuterType(inner, "B");
         public string MOuterTypeC(TypeDesc inner) => MOuterType(inner, "C");
+        public string MOuterFuncAB(TypeDesc inner) => MOuterType(inner, "Func<A, B>");
 
         public string ApplicativeInnerABC(TypeDesc inner) => $"{FName}<{Gens()} {inner.TypeA}, {inner.TypeB}, {inner.TypeC}>";
         public string ApplicativeInnerAB(TypeDesc inner) => $"{FName}<{Gens()} {inner.TypeA}, {inner.TypeB}>";

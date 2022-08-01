@@ -1595,7 +1595,31 @@ public static partial class TryOptionAsyncExtensions
         {
             return new OptionalResult<B>(e);
         }
+    });
 
+    [Pure]
+    public static TryOptionAsync<B> BindAsync<A, B>(this TryOptionAsync<A> ma, Func<A, ValueTask<TryOptionAsync<B>>> f) => Memo(async () =>
+    {
+        try
+        {
+            var ra = await ma().ConfigureAwait(false);
+            if (ra.IsSome)
+            {
+                return await (await f(ra.Value.Value).ConfigureAwait(false))().ConfigureAwait(false);
+            }
+            else if(ra.IsNone)
+            {
+                return OptionalResult<B>.None;
+            }
+            else
+            {
+                return new OptionalResult<B>(ra.Exception);
+            }
+        }
+        catch (Exception e)
+        {
+            return new OptionalResult<B>(e);
+        }
     });
 
     [Pure]
@@ -1628,11 +1652,11 @@ public static partial class TryOptionAsyncExtensions
 
     [Pure]
     public static TryOptionAsyncSuccContext<A, R> Some<A, R>(this TryOptionAsync<A> self, Func<A, R> succHandler) =>
-        new TryOptionAsyncSuccContext<A, R>(self, succHandler, () => default(R));
+        new (self, succHandler, () => default(R));
 
     [Pure]
     public static TryOptionAsyncSuccContext<A> Some<A>(this TryOptionAsync<A> self, Action<A> succHandler) =>
-        new TryOptionAsyncSuccContext<A>(self, succHandler, () => { });
+        new (self, succHandler, () => { });
 
     [Pure]
     public static Task<string> AsString<A>(this TryOptionAsync<A> self) =>
