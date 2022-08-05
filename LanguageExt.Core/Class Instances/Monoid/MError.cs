@@ -8,12 +8,16 @@ namespace LanguageExt.ClassInstances
     /// <summary>
     /// Error monoid
     /// </summary>
-    public readonly struct MError : Monoid<Error>
+    public readonly struct MError : Monoid<Error>, Convertable<Exception, Error>
     {
         [Pure]
         public Error Append(Error x, Error y) => x + y;
 
         [Pure]
         public Error Empty() => Errors.None;
+
+        [Pure]
+        public Error Convert(Exception source) => 
+            source;
     }
 }
