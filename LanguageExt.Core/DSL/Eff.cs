@@ -4,18 +4,12 @@ using System.Collections.Generic;
 using LanguageExt.ClassInstances;
 using LanguageExt.Common;
 
-namespace LanguageExt.Core.DSL;
+namespace LanguageExt.DSL;
 
 using static DSL<MError, Error>;
 
 public record Eff<RT, A>(Morphism<RT, A> Op) : Morphism<RT, A>
 {
-    public static Eff<RT, A> operator |(Eff<RT, A> ma, Eff<RT, A> mb) =>
-        new(Morphism.map<RT, A>(rt => Obj.Choice(ma.Op.Apply(rt), mb.Op.Apply(rt))));
-
-    protected override Prim<A> InvokeProtected<RT1>(State<RT1> state, Prim<RT> value) =>
-        value.Bind(nrt => Op.Invoke(state.LocalRuntime(_ => nrt), Prim.Pure(nrt)));
-    
     public Result<Error, A> Run(RT runtime)
     {
         var state = State<RT>.Create(runtime);
@@ -33,6 +27,24 @@ public record Eff<RT, A>(Morphism<RT, A> Op) : Morphism<RT, A>
     
     public Eff<RT, C> SelectMany<B, C>(Func<A, Eff<RT, B>> bind, Func<A, B, C> project) =>
         new(Morphism.bind(Op, bind, project));
+
+    public Eff<RT, B> Bind<B>(Func<A, IEnumerable<B>> f) =>
+        Bind(a => PreludeExample.liftEff<RT, B>(f(a)));
+    
+    public Eff<RT, B> SelectMany<B>(Func<A, IEnumerable<B>> f) =>
+        Bind(f);
+
+    public Eff<RT, C> SelectMany<B, C>(Func<A, IEnumerable<B>> bind, Func<A, B, C> project) =>
+        Bind(x => bind(x).Map(y => project(x, y)));
+ 
+    public Eff<RT, B> Bind<B>(Func<A, IObservable<B>> f) =>
+        Bind(a => PreludeExample.liftEff<RT, B>(f(a)));
+
+    public Eff<RT, B> SelectMany<B>(Func<A, IObservable<B>> f) =>
+        Bind(f);
+
+    public Eff<RT, C> SelectMany<B, C>(Func<A, IObservable<B>> bind, Func<A, B, C> project) =>
+        Bind(x => bind(x).Select(y => project(x, y)));
 
     public Eff<RT, A> Filter(Func<A, bool> f) =>
         new(Morphism.lambda<RT, A>(Morphism.filter(f).Apply(Op.Apply(Obj<RT>.This))));
@@ -54,6 +66,12 @@ public record Eff<RT, A>(Morphism<RT, A> Op) : Morphism<RT, A>
     
     public Eff<RT, A> Take(int amount)=> 
         new(Morphism.compose(Op, Morphism.take<A>(amount)));
+    
+    public static Eff<RT, A> operator |(Eff<RT, A> ma, Eff<RT, A> mb) =>
+        new(Morphism.map<RT, A>(rt => Obj.Choice(ma.Op.Apply(rt), mb.Op.Apply(rt))));
+
+    protected override Prim<A> InvokeProtected<RT1>(State<RT1> state, Prim<RT> value) =>
+        Op.Invoke(state, value).Interpret(state);
 }
 
 public static class PreludeExample
@@ -100,9 +118,31 @@ public static class PreludeExample
     public static Eff<RT, A> use<RT, A>(Eff<RT, A> ma) where A : IDisposable =>
         new(Morphism.lambda<RT, A>(Obj.Use(ma.Op.Apply(Obj<RT>.This))));
 
-    public static Eff<RT, A> use<RT, A>(Eff<RT, A> ma, Func<A, Unit> release) where A : IDisposable =>
+    public static Eff<RT, A> use<RT, A>(Eff<RT, A> ma, Func<A, Unit> release) =>
         new(Morphism.lambda<RT, A>(Obj.Use(ma.Op.Apply(Obj<RT>.This), Morphism.function(release))));
 
-    public static Eff<RT, A> use<RT, A>(Eff<RT, A> ma, Func<A, Eff<RT, Unit>> release) where A : IDisposable =>
+    public static Eff<RT, A> use<RT, A>(Eff<RT, A> ma, Func<A, Eff<RT, Unit>> release)  =>
         new(Morphism.map<RT, A>(rt => Obj.Use(ma.Op.Apply(rt), Morphism.bind<A, Unit>(x => release(x).Op.Apply(rt)))));
+
+    public static Eff<RT, Unit> release<RT, A>(Eff<RT, A> ma) =>
+        new(Morphism.lambda<RT, Unit>(Obj.Release(ma.Op.Apply(Obj<RT>.This))));
+
+    public static Eff<RT, B> Bind<RT, A, B>(this IEnumerable<A> ma, Func<A, Eff<RT, B>> f) =>
+        liftEff<RT, A>(ma).Bind(f);
+
+    public static Eff<RT, B> SelectMany<RT, A, B>(this IEnumerable<A> ma, Func<A, Eff<RT, B>> f) =>
+        liftEff<RT, A>(ma).Bind(f);
+
+    public static Eff<RT, C> SelectMany<RT, A, B, C>(this IEnumerable<A> ma, Func<A, Eff<RT, B>> bind, Func<A, B, C> project) =>
+        liftEff<RT, A>(ma).SelectMany(bind, project);
+
+    public static Eff<RT, B> Bind<RT, A, B>(this IObservable<A> ma, Func<A, Eff<RT, B>> f) =>
+        liftEff<RT, A>(ma).Bind(f);
+
+    public static Eff<RT, B> SelectMany<RT, A, B>(this IObservable<A> ma, Func<A, Eff<RT, B>> f) =>
+        liftEff<RT, A>(ma).Bind(f);
+
+    public static Eff<RT, C> SelectMany<RT, A, B, C>(this IObservable<A> ma, Func<A, Eff<RT, B>> bind, Func<A, B, C> project) =>
+        liftEff<RT, A>(ma).SelectMany(bind, project);
+
 }

@@ -71,8 +71,9 @@ public class Program
         //                                                                                                    //
         ///////////////////////////////////////////v////////////////////////////////////////////////////////////
 
-        Console.WriteLine(BindAsyncFailure().GetAwaiter().GetResult());
+        DSLTests.Main();
         
+        //Console.WriteLine(BindAsyncFailure().GetAwaiter().GetResult());
         //AtomHashMapTests.Test();
         //await AtomHashMapPerf.Test();
         // await PipesTest();

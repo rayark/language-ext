@@ -7,29 +7,34 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Collections.Generic;
-using System.Text;
-using LanguageExt;
-using LanguageExt.ClassInstances;
+using System.Reactive;
+using System.Reactive.Linq;
+using LanguageExt.Sys.Test;
+using static LanguageExt.DSL.PreludeExample;
 
-namespace TestBed
+namespace TestBed;
+
+using LanguageExt.DSL;
+
+public static class DSLTests
 {
-    public abstract class RobotState
+    public static void Main()
     {
-        public class Unknown : RobotState { public Unknown() { } }
-        public class Up : RobotState { public Up() { } }
-        public class Down : RobotState { public Down() { } }
+        Test1();
     }
+ 
+    public static void Test1()
+    {
+        var seconds = Observable.Interval(TimeSpan.FromSeconds(1)).Take(5);
 
-    public interface Env
-    {
-        MRobot<RobotState> WhereAreYou();
-        MRobot<Unit> MoveRobotUp();
-        MRobot<Unit> MoveRobotDown();
-    }
+        var effect =
+            from s in seconds
+            from x in SuccessEff<Runtime, int>(10)
+            select s * x;
 
-    [LanguageExt.RWS(WriterMonoid: typeof(MUnit), Env: typeof(Env), State: typeof(RobotState))]
-    public partial struct MRobot<A>
-    {
+        var result = effect.Run(Runtime.New());
+        
+        Console.WriteLine(result);
     }
+    
 }

@@ -1,4 +1,12 @@
-﻿using System.IO;
+﻿////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                    //
+//                                                                                                    //
+//     NOTE: This is just my scratch pad for quickly testing stuff, not for human consumption         //
+//                                                                                                    //
+//                                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+using System.IO;
 using System.Text;
 using LanguageExt;
 using LanguageExt.Common;
