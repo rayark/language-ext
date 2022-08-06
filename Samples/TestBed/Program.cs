@@ -1,4 +1,5 @@
-﻿////////////////////////////////////////////////////////////////////////////////////////////////////////
+﻿#nullable enable
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                    //
 //                                                                                                    //
 //     NOTE: This is just my scratch pad for quickly testing stuff, not for human consumption         //
@@ -58,9 +59,17 @@ public static class Ext
         where RT : struct, HasCancel<RT> =>
         Producer.merge(qs.Map(q => q.ToProducer<RT, A>()).ToSeq());
 }
+
+public record struct ST(string X)
+{
+    public ST() : this("")
+    {
+        
+    }
+}
+
 public class Program
 {
-    
     static void Main(string[] args)
     {
         ////////////////////////////////////////////////////////////////////////////////////////////////////////

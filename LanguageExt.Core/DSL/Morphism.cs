@@ -18,10 +18,14 @@ public static partial class DSL<MErr, E>
         public static Morphism<A, B> bind<A, B>(Func<A, Obj<B>> f) =>
             new BindMorphism<A, B>(f);
 
+        public static Morphism<A, C> bind<A, B, C>(Func<A, Obj<B>> bind, Func<A, B, C> project) =>
+            new BindProjectMorphism2<A, B, C>(bind, project);
+
         public static Morphism<A, C> bind<A, B, C>(Morphism<A, B> obj, Func<B, Morphism<A, C>> f) =>
             new BindMorphism2<A, B, C>(obj, f);
 
-        public static Morphism<A, D> bind<A, B, C, D>(Morphism<A, B> Obj, Func<B, Morphism<A, C>> Bind,
+        public static Morphism<A, D> bind<A, B, C, D>(Morphism<A, B> Obj, 
+            Func<B, Morphism<A, C>> Bind,
             Func<B, C, D> Project) =>
             new BindProjectMorphism<A, B, C, D>(Obj, Bind, Project);
 
@@ -104,13 +108,25 @@ public static partial class DSL<MErr, E>
             Obj.Invoke(state, value).Bind(b => Bind(b).Invoke(state, value));
     }
 
-    internal sealed record BindProjectMorphism<A, B, C, D>(Morphism<A, B> Obj, Func<B, Morphism<A, C>> Bind,
-        Func<B, C, D> Project) : Morphism<A, D>
+    internal sealed record BindProjectMorphism<A, B, C, D>(
+        Morphism<A, B> Obj, 
+        Func<B, Morphism<A, C>> Bind, 
+        Func<B, C, D> Project) 
+        : Morphism<A, D>
     {
         protected override Prim<D> InvokeProtected<RT>(State<RT> state, Prim<A> value) =>
             Obj.Invoke(state, value).Bind(b => Bind(b).Invoke(state, value).Map(c => Project(b, c)));
     }
 
+    internal sealed record BindProjectMorphism2<A, B, C>(
+        Func<A, Obj<B>> bind,
+        Func<A, B, C> project)
+        : Morphism<A, C>
+    {
+        protected override Prim<C> InvokeProtected<RT>(State<RT> state, Prim<A> value) =>
+            value.Bind(a => bind(a).Interpret(state).Map(b => project(a, b)));
+    }
+        
     internal sealed record MapMorphism<A, B>(Func<Obj<A>, Obj<B>> Value) : Morphism<A, B>
     {
         protected override Prim<B> InvokeProtected<RT>(State<RT> state, Prim<A> value) =>

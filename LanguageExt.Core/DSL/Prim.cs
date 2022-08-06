@@ -17,7 +17,7 @@ public static class PrimAny
     public static DSL<MErr, E>.Prim<A> Flatten<MErr, E, A>(
         this DSL<MErr, E>.Prim<DSL<MErr, E>.Prim<A>> mma)
         where MErr : struct, Semigroup<E>, Convertable<Exception, E> =>
-        mma.Bind(Prelude.identity);
+        mma.Bind(LanguageExt.Prelude.identity);
 }
 
 public static partial class DSL<MErr, E>
@@ -25,7 +25,7 @@ public static partial class DSL<MErr, E>
 {
     public static class Prim
     {
-        public static readonly Prim<Unit> Unit = Pure(Prelude.unit);
+        public static readonly Prim<Unit> Unit = Pure(LanguageExt.Prelude.unit);
 
         public static Prim<A> Pure<A>(A value) =>
             new PurePrim<A>(value);
@@ -48,8 +48,13 @@ public static partial class DSL<MErr, E>
     {
         public static readonly Prim<A> None = new ManyPrim<A>(Seq<Prim<A>>.Empty);
 
+        public override Prim<A> Interpret<RT>(State<RT> state) =>
+            this;
+
         public abstract Prim<B> Bind<B>(Func<A, Prim<B>> f);
         public abstract Prim<B> Map<B>(Func<A, B> f);
+        public abstract DSL<MErrF, F>.Prim<B> BiMap<MErrF, F, B>(Func<E, F> Left, Func<A, B> Right)
+            where MErrF : struct, Semigroup<F>, Convertable<Exception, F>;
         public abstract Unit Iter(Func<A, Unit> f);
         public virtual Prim<B> Cast<B>() => throw new InvalidCastException();
 
@@ -88,14 +93,14 @@ public static partial class DSL<MErr, E>
         public override Prim<B> Map<B>(Func<A, B> f) =>
             new PurePrim<B>(f(Value));
 
+        public override DSL<MErrF, F>.Prim<B> BiMap<MErrF, F, B>(Func<E, F> Left, Func<A, B> Right) =>
+            DSL<MErrF, F>.Prim.Pure(Right(Value));
+        
         public override Unit Iter(Func<A, Unit> f)
         {
             f(Value);
             return default;
         }
-
-        public override Prim<A> Interpret<RT>(State<RT> state) =>
-            this;
 
         public override Prim<A> Head =>
             this;
@@ -164,14 +169,14 @@ public static partial class DSL<MErr, E>
         public override Prim<B> Map<B>(Func<A, B> f) =>
             Prim.Many(Items.Map(x => x.Map(f)));
 
+        public override DSL<MErrF, F>.Prim<B> BiMap<MErrF, F, B>(Func<E, F> Left, Func<A, B> Right) =>
+            DSL<MErrF, F>.Prim.Many(Items.Map(x => x.BiMap<MErrF, F, B>(Left, Right)));
+
         public override Unit Iter(Func<A, Unit> f)
         {
             Items.Iter(x => x.Iter(f));
             return default;
         }
-
-        public override Prim<A> Interpret<RT>(State<RT> state) =>
-            this;
 
         public override Prim<A> Head =>
             Items.IsEmpty
@@ -227,11 +232,11 @@ public static partial class DSL<MErr, E>
         public override Prim<B> Map<B>(Func<A, B> f) =>
             new LeftPrim<B>(Value);
 
+        public override DSL<MErrF, F>.Prim<B> BiMap<MErrF, F, B>(Func<E, F> Left, Func<A, B> Right) =>
+            DSL<MErrF, F>.Prim.Left<B>(Left(Value));
+
         public override Unit Iter(Func<A, Unit> f) =>
             default;
-
-        public override Prim<A> Interpret<RT>(State<RT> state) =>
-            this;
 
         public override Prim<B> Cast<B>() =>
             Prim.Left<B>(Value);
@@ -288,12 +293,12 @@ public static partial class DSL<MErr, E>
         public override Prim<B> Map<B>(Func<A, B> f) =>
             new ObservablePrim<B>(Items.Select(px => px.Map(f)));
 
+        public override DSL<MErrF, F>.Prim<B> BiMap<MErrF, F, B>(Func<E, F> Left, Func<A, B> Right) =>
+            DSL<MErrF, F>.Prim.Observable(Items.Select(x => x.BiMap<MErrF, F, B>(Left, Right)));
+
         public override Unit Iter(Func<A, Unit> f) =>
             default;
         
-        public override Prim<A> Interpret<RT>(State<RT> state) =>
-            this;
-
         public override Prim<A> Head =>
             new ObservablePrim<A>(Items.Take(1));
 

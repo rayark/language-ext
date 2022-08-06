@@ -29,7 +29,7 @@ public record Eff<RT, A>(Morphism<RT, A> Op) : Morphism<RT, A>
         new(Morphism.bind(Op, bind, project));
 
     public Eff<RT, B> Bind<B>(Func<A, IEnumerable<B>> f) =>
-        Bind(a => PreludeExample.liftEff<RT, B>(f(a)));
+        Bind(a => Prelude.liftEff<RT, B>(f(a)));
     
     public Eff<RT, B> SelectMany<B>(Func<A, IEnumerable<B>> f) =>
         Bind(f);
@@ -38,7 +38,7 @@ public record Eff<RT, A>(Morphism<RT, A> Op) : Morphism<RT, A>
         Bind(x => bind(x).Map(y => project(x, y)));
  
     public Eff<RT, B> Bind<B>(Func<A, IObservable<B>> f) =>
-        Bind(a => PreludeExample.liftEff<RT, B>(f(a)));
+        Bind(a => Prelude.liftEff<RT, B>(f(a)));
 
     public Eff<RT, B> SelectMany<B>(Func<A, IObservable<B>> f) =>
         Bind(f);
@@ -74,7 +74,7 @@ public record Eff<RT, A>(Morphism<RT, A> Op) : Morphism<RT, A>
         Op.Invoke(state, value).Interpret(state);
 }
 
-public static class PreludeExample
+public static partial class Prelude
 {
     public static Eff<RT, RT> runtime<RT>() =>
         new (Morphism<RT>.identity);
@@ -104,16 +104,16 @@ public static class PreludeExample
         new(Morphism.lambda<RT, B>(Morphism.function(ff.Op.Apply(Obj<RT>.This)).Apply(fa.Op.Apply(Obj<RT>.This))));
 
     public static Eff<RT, Func<B, C>> Apply<RT, A, B, C>(this Eff<RT, Func<A, B, C>> ff, Eff<RT, A> fa) =>
-        ff.Map(Prelude.curry).Apply(fa);
+        ff.Map(LanguageExt.Prelude.curry).Apply(fa);
 
     public static Eff<RT, Func<B, Func<C, D>>> Apply<RT, A, B, C, D>(this Eff<RT, Func<A, B, C, D>> ff, Eff<RT, A> fa) =>
-        ff.Map(Prelude.curry).Apply(fa);
+        ff.Map(LanguageExt.Prelude.curry).Apply(fa);
 
     public static Eff<RT, Func<B, Func<C, Func<D, E>>>> Apply<RT, A, B, C, D, E>(this Eff<RT, Func<A, B, C, D, E>> ff, Eff<RT, A> fa) =>
-        ff.Map(Prelude.curry).Apply(fa);
+        ff.Map(LanguageExt.Prelude.curry).Apply(fa);
 
     public static Eff<RT, Func<B, Func<C, Func<D, Func<E, F>>>>> Apply<RT, A, B, C, D, E, F>(this Eff<RT, Func<A, B, C, D, E, F>> ff, Eff<RT, A> fa) =>
-        ff.Map(Prelude.curry).Apply(fa);
+        ff.Map(LanguageExt.Prelude.curry).Apply(fa);
 
     public static Eff<RT, A> use<RT, A>(Eff<RT, A> ma) where A : IDisposable =>
         new(Morphism.lambda<RT, A>(Obj.Use(ma.Op.Apply(Obj<RT>.This))));
@@ -144,5 +144,4 @@ public static class PreludeExample
 
     public static Eff<RT, C> SelectMany<RT, A, B, C>(this IObservable<A> ma, Func<A, Eff<RT, B>> bind, Func<A, B, C> project) =>
         liftEff<RT, A>(ma).SelectMany(bind, project);
-
 }

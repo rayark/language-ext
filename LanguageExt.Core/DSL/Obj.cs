@@ -6,6 +6,15 @@ using LanguageExt.TypeClasses;
 
 namespace LanguageExt.DSL;
 
+public readonly struct MNoLeft : Semigroup<Unit>, Convertable<Exception, Unit>
+{
+    public Unit Append(Unit x, Unit y) =>
+        default;
+
+    public Unit Convert(Exception ex) =>
+        default;
+}
+
 public static class ObjAny
 {
     public static DSL<MError, Error>.Obj<A> Fail<A>(Error value) =>
@@ -24,7 +33,7 @@ public static partial class DSL<MErr, E>
         public static Obj<A> Left<A>(E value)  =>
             new LeftObj<A>(value);
         
-        public static readonly Obj<Unit> Unit = Pure(Prelude.unit);
+        public static readonly Obj<Unit> Unit = Pure(LanguageExt.Prelude.unit);
 
         public static Obj<A> Pure<A>(A value) =>
             new PureObj<A>(value);
@@ -66,7 +75,6 @@ public static partial class DSL<MErr, E>
     public abstract record Obj<A>
     {
         public abstract Prim<A> Interpret<RT>(State<RT> state);
-
         public static readonly Obj<A> This = new ThisObj<A>();
     }
 
@@ -100,10 +108,10 @@ public static partial class DSL<MErr, E>
     internal sealed record ThisObj<A> : Obj<A>
     {
         public override Prim<A> Interpret<RT>(State<RT> state) =>
-            (Prim<A>)state.This;
+            state.This as Prim<A> ?? Prim<A>.None;
 
         public override string ToString() => 
-            $"This";
+            "This";
     }
 
     internal sealed record ApplyObj<X, A>(Morphism<X, A> Morphism, Obj<X> Argument) : Obj<A>
@@ -153,7 +161,7 @@ public static partial class DSL<MErr, E>
         public override Prim<Unit> Interpret<RT>(State<RT> state)
         {
             var r = Value.Interpret(state);
-            state.Release(Value);
+            state.Release(r);
             return Prim.Unit;
         }
 

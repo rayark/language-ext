@@ -55,7 +55,7 @@ public record ResultPure<E, A>(A Value) : Result<E, A>
         rhs switch
         {
             ResultFail<E, A> f                     => f,
-            ResultPure<E, A> p                     => Result.Many<E, A>(Prelude.Seq(Value, p.Value)),
+            ResultPure<E, A> p                     => Result.Many<E, A>(LanguageExt.Prelude.Seq(Value, p.Value)),
             ResultMany<E, A> {Value.IsEmpty: true} => this,
             ResultMany<E, A> p                     => Result.Many<E, A>(Value.Cons(p.Value)),
             _                                      => throw new InvalidOperationException("Result shouldn't be extended")
