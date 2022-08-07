@@ -16,25 +16,37 @@ public readonly struct MFail<L> : Semigroup<L>, Convertable<Exception, L>
         ex.Rethrow<L>();
 }
 
-public record struct Either<L, A>(DSL<MFail<L>, L>.Prim<A> Object)
+public readonly record struct Either<L, A>(Obj<CoProduct<L, A>> Object)
 {
-    public static readonly Either<L, A> Bottom = new(DSL<MFail<L>, L>.Prim<A>.None);
-
-    DSL<MFail<L>, L>.Obj<A> ObjectSafe => Object ?? Bottom;
+    public static readonly Either<L, A> Bottom = new(Prim<CoProduct<L, A>>.None);
+    
+    static readonly Morphism<L, CoProduct<L, A>> leftId = Morphism.function<L, CoProduct<L, A>>(CoProduct.Left<L, A>);
+    
+    Obj<CoProduct<L, A>> ObjectSafe => Object ?? Bottom;
     
     internal static readonly State<Unit> NilState = State<Unit>.Create(default);
-    
+
     public Either<L, B> Map<B>(Func<A, B> f) =>
-        DSL<MFail<L>, L>.Morphism.function(f).Apply(ObjectSafe).ToEither();
+        BiMap(Morphism<L>.identity, Morphism.function(f));
+
+    public Either<L, B> Map<B>(Morphism<A, B> f) =>
+        BiMap(Morphism<L>.identity, f);
+
+    public Either<M, B> BiMap<M, B>(Func<L, M> Left, Func<A, B> Right) =>
+        BiMap(Morphism.function(Left), Morphism.function(Right));
+
+    public Either<M, B> BiMap<M, B>(Morphism<L, M> Left, Morphism<A, B> Right) =>
+        new(BiMorphism.map(Left, Right).Apply(ObjectSafe));
 
     public Either<L, B> Bind<B>(Func<A, Either<L, B>> f) =>
-        DSL<MFail<L>, L>.Morphism.bind<A, B>(x => f(x)).Apply(ObjectSafe).ToEither();
+        new(BiMorphism.bind(Either<L, B>.leftId, Morphism.bind<A, CoProduct<L, B>>(r => f(r).Object))
+            .Apply(ObjectSafe));
 
     public Either<L, B> SelectMany<B>(Func<A, Either<L, B>> f) =>
-        DSL<MFail<L>, L>.Morphism.bind<A, B>(x => f(x)).Apply(ObjectSafe).ToEither();
+        Bind(f);
 
     public Either<L, C> SelectMany<B, C>(Func<A, Either<L, B>> bind, Func<A, B, C> project) =>
-        DSL<MFail<L>, L>.Morphism.bind(x => bind(x), project).Apply(ObjectSafe).ToEither();
+        Bind(x => bind(x).Map(y => project(x, y)));
 
     public Either<L, B> Bind<B>(Func<A, IEnumerable<B>> f) =>
         Bind(a => Prelude.liftEither<L, B>(f(a)));
@@ -55,58 +67,61 @@ public record struct Either<L, A>(DSL<MFail<L>, L>.Prim<A> Object)
         Bind(x => bind(x).Select(y => project(x, y)));
 
     public Either<L, A> Filter(Func<A, bool> f) =>
-        DSL<MFail<L>, L>.Morphism.filter(f).Apply(ObjectSafe).ToEither();
+        Bind(x => f(x) ? Prelude.Right<L, A>(x) : Bottom);
 
     public Either<L, A> Where(Func<A, bool> f) =>
-        DSL<MFail<L>, L>.Morphism.filter(f).Apply(ObjectSafe).ToEither();
-
-    public Either<M, B> BiMap<M, B>(Func<L, M> Left, Func<A, B> Right) =>
-        DSL<MFail<L>, L>.BiMorphism.function<MFail<M>, M, A, B>(Left, Right).Apply(Object);
+        Filter(f);
 
     public Either<L, A> Head =>
-        DSL<MFail<L>, L>.Morphism<A>.head.Apply(ObjectSafe).ToEither();
+        Map(Morphism<A>.head);
 
     public Either<L, A> Tail =>
-        DSL<MFail<L>, L>.Morphism<A>.tail.Apply(ObjectSafe).ToEither();
+        Map(Morphism<A>.tail);
 
     public Either<L, A> Last =>
-        DSL<MFail<L>, L>.Morphism<A>.last.Apply(ObjectSafe).ToEither();
+        Map(Morphism<A>.last);
 
     public Either<L, A> Skip(int amount) =>
-        DSL<MFail<L>, L>.Morphism.skip<A>(amount).Apply(ObjectSafe).ToEither();
+        Map(Morphism.skip<A>(amount));
 
     public Either<L, A> Take(int amount) =>
-        DSL<MFail<L>, L>.Morphism.take<A>(amount).Apply(ObjectSafe).ToEither();
+        Map(Morphism.take<A>(amount));
 
     public static Either<L, A> operator |(Either<L, A> ma, Either<L, A> mb) =>
-        DSL<MFail<L>, L>.Obj.Choice<A>(ma, mb).ToEither();
+        Obj.Choice<L, A>(ma, mb);
 
-    public static implicit operator DSL<MFail<L>, L>.Obj<A>(Either<L, A> ma) =>
+    public static implicit operator Obj<CoProduct<L, A>>(Either<L, A> ma) =>
         ma.ObjectSafe;
 
-    public static implicit operator Either<L, A>(DSL<MFail<L>, L>.Obj<A> obj) =>
+    public static implicit operator Either<L, A>(Obj<CoProduct<L, A>> obj) =>
         obj.ToEither();
+
+    public static implicit operator Either<L, A>(L value) =>
+        new(Prim.Pure(CoProduct.Left<L, A>(value)));
+
+    public static implicit operator Either<L, A>(A value) =>
+        new(Prim.Pure(CoProduct.Right<L, A>(value)));
 }
 
 public static partial class Prelude
 {
-    public static Either<L, A> ToEither<L, A>(this DSL<MFail<L>, L>.Obj<A> ma) =>
+    public static Either<L, A> ToEither<L, A>(this Obj<CoProduct<L, A>> ma) =>
         new(ma.Interpret(Either<L, A>.NilState));
     
     public static Either<L, A> Right<L, A>(A value) =>
-        DSL<MFail<L>, L>.Prim.Pure(value);
+        value;
     
     public static Either<L, A> Left<L, A>(L value) =>
-        DSL<MFail<L>, L>.Prim.Left<A>(value);
+        value;
 
     public static Either<L, A> liftEither<L, A>(IObservable<A> ma) =>
-        DSL<MFail<L>, L>.Prim.Observable(ma.Select(DSL<MFail<L>, L>.Prim.Pure));
+        new(Prim.Observable(ma.Select(x => Prim.Pure(CoProduct.Right<L, A>(x)))));
 
     public static Either<L, A> liftEither<L, A>(IEnumerable<A> ma) =>
-        DSL<MFail<L>, L>.Prim.Many(ma.Map(DSL<MFail<L>, L>.Prim.Pure).ToSeq());
+        new(Prim.Many(ma.Map(x => Prim.Pure(CoProduct.Right<L, A>(x))).ToSeq()));
 
     public static Either<L, B> Apply<L, A, B>(this Either<L, Func<A, B>> ff, Either<L, A> fa) =>
-        DSL<MFail<L>, L>.Morphism.bind<Func<A, B>, B>(f => DSL<MFail<L>, L>.Morphism.function(f).Apply(fa)).Apply(ff);
+        ff.Bind(fa.Map);
 
     public static Either<L, Func<B, C>> Apply<L, A, B, C>(this Either<L, Func<A, B, C>> ff, Either<L, A> fa) =>
         ff.Map(LanguageExt.Prelude.curry).Apply(fa);
@@ -121,16 +136,13 @@ public static partial class Prelude
         ff.Map(LanguageExt.Prelude.curry).Apply(fa);
 
     public static Either<L, A> use<L, A>(Either<L, A> ma) where A : IDisposable =>
-        DSL<MFail<L>, L>.Obj.Use<A>(ma);
+        ma.Map(Morphism.use<A>());
 
     public static Either<L, A> use<L, A>(Either<L, A> ma, Func<A, Unit> release) =>
-        DSL<MFail<L>, L>.Obj.Use(ma, DSL<MFail<L>, L>.Morphism.function(release));
-
-    public static Either<L, A> use<L, A>(Either<L, A> ma, Func<A, Either<L, Unit>> release)  =>
-        DSL<MFail<L>, L>.Obj.Use(ma, DSL<MFail<L>, L>.Morphism.bind<A, Unit>(x => release(x)));
+        ma.Map(Morphism.use(Morphism.function(release)));
 
     public static Either<L, Unit> release<L, A>(Either<L, A> ma) =>
-        DSL<MFail<L>, L>.Obj.Release<A>(ma);
+        ma.Map(Morphism<A>.release);
 
     public static Either<L, B> Bind<L, A, B>(this IEnumerable<A> ma, Func<A, Either<L, B>> f) =>
         liftEither<L, A>(ma).Bind(f);

@@ -1,40 +1,37 @@
 ﻿#nullable enable
 using System;
-using LanguageExt.TypeClasses;
 
 namespace LanguageExt.DSL;
 
-public static partial class DSL<MErr, E>
-    where MErr : struct, Semigroup<E>, Convertable<Exception, E>
+public abstract record BiMorphism<X, Y, A, B> : Morphism<CoProduct<X, A>, CoProduct<Y, B>>;
+
+public static class BiMorphism
 {
-    public static class BiMorphism
-    {
-        public static BiMorphism<MErrF, F, A, B> function<MErrF, F, A, B>(Func<E, F> Left, Func<A, B> Right)
-            where MErrF : struct, Semigroup<F>, Convertable<Exception, F> =>
-            new BiMapMorphism<MErrF, F, A, B>(Left, Right);
-    }
+    public static BiMorphism<X, Y, A, B> map<X, Y, A, B>(Morphism<X, Y> Left, Morphism<A, B> Right) =>
+        new BiMapMorphism<X, Y, A, B>(Left, Right);
 
-    public abstract record BiMorphism<MErrF, F, A, B>
-        where MErrF : struct, Semigroup<F>, Convertable<Exception, F>
-    {
-        public DSL<MErrF, F>.Obj<B> Apply(Obj<A> value) =>
-            new ApplyObj<MErrF, F, A, B>(this, value);
-
-        public abstract DSL<MErrF, F>.Prim<B> Invoke<RT>(State<RT> state, Prim<A> value);
-    }
-
-    internal record BiMapMorphism<MErrF, F, A, B>(Func<E, F> Left, Func<A, B> Right) : BiMorphism<MErrF, F, A, B>
-        where MErrF : struct, Semigroup<F>, Convertable<Exception, F>
-    {
-        public override DSL<MErrF, F>.Prim<B> Invoke<RT>(State<RT> state, Prim<A> value) =>
-            value.BiMap<MErrF, F, B>(Left, Right);
-    }
-
-    internal record ApplyObj<MErrF, F, A, B>(BiMorphism<MErrF, F, A, B> Morphism, Obj<A> Argument) : DSL<MErrF, F>.Obj<B>
-        where MErrF : struct, Semigroup<F>, Convertable<Exception, F>
-    {
-        public override DSL<MErrF, F>.Prim<B> Interpret<RT>(State<RT> state) =>
-            Morphism.Invoke(state, Argument.Interpret(state));
-    }
+    public static BiMorphism<X, Y, A, B> bind<X, Y, A, B>(Morphism<X, CoProduct<Y, B>> Left, Morphism<A, CoProduct<Y, B>> Right) =>
+        new BiBindMorphism<X, Y, A, B>(Left, Right);
 }
 
+public record BiBindMorphism<X, Y, A, B>(Morphism<X, CoProduct<Y, B>> Left, Morphism<A, CoProduct<Y, B>> Right) : BiMorphism<X, Y, A, B>
+{
+    public override Prim<CoProduct<Y, B>> Invoke<RT>(State<RT> state, Prim<CoProduct<X, A>> value) =>
+        value.Bind(p => p switch
+        {
+            CoProductLeft<X, A> left => Left.Invoke(state, Prim.Pure(left.Value)).Interpret(state),
+            CoProductRight<X, A> right => Right.Invoke(state, Prim.Pure(right.Value)).Interpret(state),
+            _ => throw new InvalidOperationException()
+        });
+}
+
+public record BiMapMorphism<X, Y, A, B>(Morphism<X, Y> Left, Morphism<A, B> Right) : BiMorphism<X, Y, A, B>
+{
+    public override Prim<CoProduct<Y, B>> Invoke<RT>(State<RT> state, Prim<CoProduct<X, A>> value) =>
+        value.Bind(p => p switch
+        {
+            CoProductLeft<X, A> left => Left.Invoke(state, Prim.Pure(left.Value)).Map(CoProduct.Left<Y, B>),
+            CoProductRight<X, A> right => Right.Invoke(state, Prim.Pure(right.Value)).Map(CoProduct.Right<Y, B>),
+            _ => throw new InvalidOperationException()
+        });
+}
