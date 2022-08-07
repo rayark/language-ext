@@ -1,26 +1,33 @@
-﻿using System;
+﻿/*
+using System;
 using System.Reactive.Linq;
 using System.Collections.Generic;
-using LanguageExt.ClassInstances;
 using LanguageExt.Common;
 
 namespace LanguageExt.DSL;
 
-using static DSL<MError, Error>;
-
-public record Eff<RT, A>(Morphism<RT, A> Op) : Morphism<RT, A>
+public record Eff<RT, A>(Morphism<RT, CoProduct<Error, A>> Op) : Morphism<RT, CoProduct<Error, A>>
 {
-    public Result<Error, A> Run(RT runtime)
+    public Result<CoProduct<Error, A>> Run(RT runtime)
     {
         var state = State<RT>.Create(runtime);
         return Op.Invoke(state, Prim.Pure(runtime)).ToResult();
     }
 
     public Eff<RT, B> Map<B>(Func<A, B> f) =>
-        new(Morphism.compose(Op, Morphism.function(f)));
+        Map(Morphism.function(f));
+
+    public Eff<RT, B> Map<B>(Morphism<A, B> f) =>
+        new(Morphism.compose(Op, BiMorphism.rightMap<Error, A, B>(f)));
+
+    public Eff<RT, B> BiMap<B>(Func<Error, Error> Fail, Func<A, B> Succ) =>
+        BiMap(Morphism.function(Fail), Morphism.function(Succ));
+
+    public Eff<RT, B> BiMap<B>(Morphism<Error, Error> Fail, Morphism<A, B> Succ) =>
+        new(Morphism.compose(Op, BiMorphism.bimap(Fail, Succ)));
 
     public Eff<RT, B> Bind<B>(Func<A, Eff<RT, B>> f) =>
-        new(Morphism.bind(Op, f));
+        new(Morphism.compose(Op, BiMorphism.rightBind<Error, A, B>(f)));
     
     public Eff<RT, B> SelectMany<B>(Func<A, Eff<RT, B>> f) =>
         new(Morphism.bind(Op, f));
@@ -145,3 +152,4 @@ public static partial class Prelude
     public static Eff<RT, C> SelectMany<RT, A, B, C>(this IObservable<A> ma, Func<A, Eff<RT, B>> bind, Func<A, B, C> project) =>
         liftEff<RT, A>(ma).SelectMany(bind, project);
 }
+*/

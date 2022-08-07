@@ -1,19 +1,11 @@
 ﻿#nullable enable
 using System;
+using System.Collections.Generic;
+using System.Reactive.Linq;
+using System.Threading;
+using LanguageExt.TypeClasses;
 
 namespace LanguageExt.DSL;
-
-/*
-public static class ObjAny
-{
-    public static DSL<MError, Error>.Obj<A> Fail<A>(Error value) =>
-        new DSL<MError, Error>.LeftObj<A>(value);
-    
-    public static DSL<MErr, E>.Obj<A> Flatten<MErr, E, A>(this DSL<MErr, E>.Obj<DSL<MErr, E>.Obj<A>> value)
-        where MErr : struct, Semigroup<E>, Convertable<Exception, E> =>
-        new DSL<MErr, E>.FlattenObj<A>(value);
-}
-*/
 
 public static class Obj
 {
@@ -22,7 +14,7 @@ public static class Obj
     public static Obj<A> Pure<A>(A value) =>
         new PureObj<A>(value);
 
-    public static Obj<A> Many<A>(Seq<Obj<A>> values) =>
+    public static Obj<A> Many<A>(IEnumerable<Obj<A>> values) =>
         new ManyObj<A>(values);
 
     public static Obj<B> Apply<A, B>(Morphism<A, B> morphism, Obj<A> value) =>
@@ -41,7 +33,9 @@ public static class Obj
             (NotMorphism.Default, Morphism.constant<bool, A>(@else)));
 
     public static Obj<CoProduct<E, Unit>> Guard<E>(Obj<bool> predicate, Obj<E> onFalse) =>
-        If(predicate, Unit, Morphism.bind<E, Unit>(Left<Unit>).Apply(onFalse));
+        If(predicate,
+            Pure(CoProduct.Right<E, Unit>(default)),
+            Morphism.bind<E, CoProduct<E, Unit>>(e => Pure(CoProduct.Left<E, Unit>(e))).Apply(onFalse));
 
     public static Obj<Unit> When(Obj<bool> predicate, Obj<Unit> onTrue) =>
         If(predicate, onTrue, Unit);
@@ -57,28 +51,42 @@ public static class Obj
     
     public static Obj<A> Flatten<A>(this Obj<Obj<A>> value) =>
         new FlattenObj<A>(value);
+
+    public static Obj<A> Collect<FaultA, A>(IObservable<Obj<A>> ma) =>
+        new ObservableCollectObj<A>(ma);
+
+    public static Obj<A> Consume<FaultA, A>(IObservable<Obj<A>> ma) =>
+        new ObservableConsumeObj<A>(ma);
 }
 
 public abstract record Obj<A>
 {
     public abstract Prim<A> Interpret<RT>(State<RT> state);
-    public static readonly Obj<A> This = new ThisObj<A>();
+
+    public virtual Obj<B> Bind<B>(Morphism<A, B> f) =>
+        new ApplyObj<A, B>(f, this);
+    
+    public static readonly Obj<A> This = 
+        new ThisObj<A>();
 }
 
 internal sealed record PureObj<A>(A Value) : Obj<A>
 {
     public override Prim<A> Interpret<RT>(State<RT> state) =>
         new PurePrim<A>(Value);
-
+ 
     public override string ToString() => 
         $"Pure({Value})";
 }
 
-internal sealed record ManyObj<A>(Seq<Obj<A>> Values) : Obj<A>
+internal sealed record ManyObj<A>(IEnumerable<Obj<A>> Values) : Obj<A>
 {
     public override Prim<A> Interpret<RT>(State<RT> state) =>
-        Prim.Many(Values.Map(x => x.Interpret(state)));
+        Prim.Many(Values.Map(x => x.Interpret(state)).ToSeq());
 
+    public override Obj<B> Bind<B>(Morphism<A, B> f) =>
+        new ManyObj<B>(Values.Map(f.Apply));
+ 
     public override string ToString() => 
         $"Many{Values}";
 }
@@ -97,14 +105,17 @@ internal sealed record ApplyObj<X, A>(Morphism<X, A> Morphism, Obj<X> Argument) 
     public override Prim<A> Interpret<RT>(State<RT> state) =>
         Morphism.Invoke(state, Argument.Interpret(state));
 
-    public override string ToString() => 
+    public override Obj<B> Bind<B>(Morphism<A, B> f) =>
+        new ApplyObj<X, B>(DSL.Morphism.compose(Morphism, f), Argument);
+
+    public override string ToString() =>
         $"Apply {Morphism}({Argument})";
 }
 
 internal sealed record FlattenObj<A>(Obj<Obj<A>> Value) : Obj<A>
 {
     public override Prim<A> Interpret<RT>(State<RT> state) =>
-        Value.Interpret(state).Map(o => o.Interpret(state)).Flatten();
+        Value.Interpret(state).Map(o => o.Interpret(state)).Flatten(state);
 
     public override string ToString() => 
         $"Flatten";
@@ -117,7 +128,7 @@ internal sealed record ChoiceObj<X, A>(Seq<Obj<CoProduct<X, A>>> Values) : Obj<C
         foreach (var obj in Values)
         {
             var r = obj.Interpret(state);
-            if (r.ForAll(x => x.IsRight)) return r;
+            if (r.ForAll(state, x => x.IsRight)) return r;
         }
         return Prim<CoProduct<X, A>>.None;
     }
@@ -135,7 +146,7 @@ internal sealed record SwitchObj<X, A>(Obj<X> Subject, Seq<(Morphism<X, bool> Ma
         {
             var pr = c.Match.Invoke(state, px);
             var fl = false;
-            var rs = pr.Bind(x =>
+            var rs = pr.Bind(state, x =>
             {
                 if (x)
                 {
@@ -205,22 +216,104 @@ internal sealed record ToUnitObj<A>(Obj<A> Value) : Obj<Unit>
 {
     public override Prim<Unit> Interpret<RT>(State<RT> state)
     {
-        var result = Value.Interpret(state).ToUnit();
-
-        switch (result)
-        {
-            case ManyPrim<A> m: 
-                m.Items.Strict();  // Force side-effects to happen
-                break;
-            
-            case ObservablePrim<A> o:
-                o.ToResult();  // Force observable to run
-                break;
-        }
-        
+        Value.Interpret(state);
         return Prim.Unit;
     }
     
     public override string ToString() => 
         $"{Value}.ToUnit";
+}
+
+public sealed record ObservableCollectObj<A>(IObservable<Obj<A>> Items) : Obj<A>
+{
+    public override Prim<A> Interpret<RT>(State<RT> state)
+    {
+        using var collect = new Collector<RT>(state);
+        using var sub = Items.Subscribe(collect);
+        collect.Wait.WaitOne();
+        collect.Error?.Rethrow<Unit>();
+        return collect.Value;
+    }
+
+    public override Obj<B> Bind<B>(Morphism<A, B> f) =>
+        new ObservableCollectObj<B>(Items.Select(f.Apply));
+
+    public override string ToString() => 
+        $"Prim.Observable<{typeof(A).Name}>";
+
+    class Collector<RT> : IObserver<Obj<A>>, IDisposable
+    {
+        public readonly State<RT> State;
+        public readonly AutoResetEvent Wait = new(false);
+        public Exception? Error;
+        public Prim<A> Value = Prim<A>.None;
+
+        public Collector(State<RT> state) =>
+            State = state;
+
+        public void OnNext(Obj<A> value)
+        {
+            var prim = value.Interpret(State);
+            Value = Value.Append(prim);
+        }            
+
+        public void OnCompleted() =>
+            Wait.Set();
+
+        public void OnError(Exception error)
+        {
+            Error = error;
+            Wait.Set();
+        }
+
+        public void Dispose() =>
+            Wait.Dispose();
+    }
+}
+
+public sealed record ObservableConsumeObj<A>(IObservable<Obj<A>> Items) : Obj<A>
+{
+    public override Prim<A> Interpret<RT>(State<RT> state)
+    {
+        using var consume = new Consumer<RT>(state);
+        using var sub = Items.Subscribe(consume);
+        consume.Wait.WaitOne();
+        consume.Error?.Rethrow<Unit>();
+        return consume.Value;
+    }
+
+    public override Obj<B> Bind<B>(Morphism<A, B> f) =>
+        new ObservableCollectObj<B>(Items.Select(f.Apply));
+
+    public override string ToString() => 
+        $"Prim.Observable<{typeof(A).Name}>";
+            
+    class Consumer<RT> : IObserver<Obj<A>>, IDisposable
+    {
+        public readonly State<RT> State;
+        public readonly AutoResetEvent Wait = new(false);
+        public Prim<A> Value = Prim<A>.None;
+        public Exception? Error;
+
+        public Consumer(State<RT> state) =>
+            State = state;
+
+        public void OnNext(Obj<A> value)
+        {
+            var prim = value.Interpret(State);
+            Value = prim;
+        }
+
+        public void OnCompleted() =>
+            Wait.Set();
+
+        public void OnError(Exception error)
+        {
+            Error = error;
+            Wait.Set();
+        }
+
+        public void Dispose() =>
+            Wait.Dispose();
+    }
 }

@@ -9,8 +9,9 @@
 using System;
 using System.Reactive;
 using System.Reactive.Linq;
+using LanguageExt.Common;
 using LanguageExt.Sys.Test;
-using static LanguageExt.DSL.PreludeExample;
+using static LanguageExt.DSL.Prelude;
 
 namespace TestBed;
 
@@ -29,10 +30,12 @@ public static class DSLTests
 
         var effect =
             from s in seconds
-            from x in SuccessEff<Runtime, int>(10)
+            from x in Right<Error, int>(10)
             select s * x;
-
-        var result = effect.Run(Runtime.New());
+        
+        var result = effect.MatchMany(Left: _ => 0, Right: r => r);
+        
+        //var result = effect.Run(Runtime.New());
         
         Console.WriteLine(result);
     }

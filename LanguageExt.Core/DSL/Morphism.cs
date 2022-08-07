@@ -9,6 +9,9 @@ public static class Morphism
     public static Morphism<A, B> function<A, B>(Func<A, B> f) =>
         new FunMorphism<A, B>(f);
 
+    public static Morphism<A, Morphism<B, C>> function<A, B, C>(Func<A, B, C> f) =>
+        new FunMorphism<A, Morphism<B, C>>(x => function((B y) => f(x, y)));
+
     public static Morphism<A, B> function<A, B>(Obj<Func<A, B>> f) =>
         new ObjFunMorphism<A, B>(f);
 
@@ -58,11 +61,30 @@ public static class Morphism
 
     public static Morphism<A, A> use<A>(Morphism<A, Unit> release) =>
         new UseMorphism2<A>(release);
+
+    public static Morphism<A, B> isObj<ObjB, MB, A, B>(Morphism<A, MB> morphism) 
+        where ObjB : struct, IsObj<MB, B> =>
+        new IsObjMorphism<ObjB, MB, A, B>(morphism);
+
+    public static Morphism<A, B> isObj<ObjB, MB, A, B>(Func<A, MB> morphism) 
+        where ObjB : struct, IsObj<MB, B> =>
+        new IsObjMorphism2<ObjB, MB, A, B>(morphism);
+    
+    public static Morphism<A, bool> forall<A>(Morphism<A, bool> morphism) => 
+        new ForAllMorphism<A>(morphism);
+    
+    public static Morphism<A, bool> exists<A>(Morphism<A, bool> morphism) => 
+        new ExistsMorphism<A>(morphism);
+    
+    public static Morphism<A, A> appendRight<A>(Obj<A> left) => 
+        new AppendRightMorphism<A>(left);
+    
+    public static Morphism<A, A> appendLeft<A>(Obj<A> left) => 
+        new AppendLeftMorphism<A>(left);
 }
 
 public static class Morphism<A>
 {
-    public static readonly Morphism<A, Obj<A>> pure = new PureMorphism<A>();
     public static readonly Morphism<A, A> head = new HeadMorphism<A>();
     public static readonly Morphism<A, A> tail = new TailMorphism<A>();
     public static readonly Morphism<A, A> last = new LastMorphism<A>();
@@ -73,7 +95,7 @@ public static class Morphism<A>
 public abstract record Morphism<A, B>
 {
     public Obj<B> Apply(Obj<A> value) =>
-        new ApplyObj<A, B>(this, value);
+        value.Bind(this);
 
     public abstract Prim<B> Invoke<RT>(State<RT> state, Prim<A> value);
 }
@@ -93,19 +115,19 @@ internal sealed record FunMorphism<A, B>(Func<A, B> Value) : Morphism<A, B>
 internal sealed record ObjFunMorphism<A, B>(Obj<Func<A, B>> Value) : Morphism<A, B>
 {
     public override Prim<B> Invoke<RT>(State<RT> state, Prim<A> value) =>
-        Value.Interpret(state).Bind(value.Map);
+        Value.Interpret(state).Bind(state, value.Map);
 }
 
 internal sealed record BindMorphism<A, B>(Func<A, Obj<B>> Value) : Morphism<A, B>
 {
     public override Prim<B> Invoke<RT>(State<RT> state, Prim<A> value) =>
-        value.Bind(x => Value(x).Interpret(state));
+        value.Bind(state, x => Value(x).Interpret(state));
 }
 
 internal sealed record BindMorphism2<A, B, C>(Morphism<A, B> Obj, Func<B, Morphism<A, C>> Bind) : Morphism<A, C>
 {
     public override Prim<C> Invoke<RT>(State<RT> state, Prim<A> value) =>
-        Obj.Invoke(state, value).Bind(b => Bind(b).Invoke(state, value));
+        Obj.Invoke(state, value).Bind(state, b => Bind(b).Invoke(state, value));
 }
 
 internal sealed record BindProjectMorphism<A, B, C, D>(
@@ -115,7 +137,7 @@ internal sealed record BindProjectMorphism<A, B, C, D>(
     : Morphism<A, D>
 {
     public override Prim<D> Invoke<RT>(State<RT> state, Prim<A> value) =>
-        Obj.Invoke(state, value).Bind(b => Bind(b).Invoke(state, value).Map(c => Project(b, c)));
+        Obj.Invoke(state, value).Bind(state, b => Bind(b).Invoke(state, value).Map(c => Project(b, c)));
 }
 
 internal sealed record BindProjectMorphism2<A, B, C>(
@@ -124,7 +146,7 @@ internal sealed record BindProjectMorphism2<A, B, C>(
     : Morphism<A, C>
 {
     public override Prim<C> Invoke<RT>(State<RT> state, Prim<A> value) =>
-        value.Bind(a => bind(a).Interpret(state).Map(b => project(a, b)));
+        value.Bind(state, a => bind(a).Interpret(state).Map(b => project(a, b)));
 }
     
 internal sealed record MapMorphism<A, B>(Func<Obj<A>, Obj<B>> Value) : Morphism<A, B>
@@ -142,14 +164,14 @@ internal sealed record LambdaMorphism<A, B>(Obj<B> Body) : Morphism<A, B>
 internal sealed record FilterMorphism<A>(Func<A, bool> Predicate) : Morphism<A, A>
 {
     public override Prim<A> Invoke<RT>(State<RT> state, Prim<A> value) =>
-        value.Bind(v => Predicate(v) ? value : Prim<A>.None);
+        value.Bind(state, v => Predicate(v) ? value : Prim<A>.None);
 }
 
 internal sealed record FilterMorphism2<A>(Morphism<A, bool> Predicate) : Morphism<A, A>
 {
     public override Prim<A> Invoke<RT>(State<RT> state, Prim<A> value) =>
         Predicate.Invoke(state, value)
-            .Bind(x => x ? value : Prim<A>.None);
+            .Bind(state, x => x ? value : Prim<A>.None);
 }
 
 internal sealed record ComposeMorphism<A, B, C>(Morphism<A, B> Left, Morphism<B, C> Right) : Morphism<A, C>
@@ -210,12 +232,6 @@ internal sealed record LastMorphism<A> : Morphism<A, A>
         value.Tail;
 }
 
-internal sealed record PureMorphism<A> : Morphism<A, Obj<A>>
-{
-    public override Prim<Obj<A>> Invoke<RT>(State<RT> state, Prim<A> value) =>
-        Prim.Pure<Obj<A>>(value);
-}
-
 internal sealed record UseMorphism<A> : Morphism<A, A>
     where A : IDisposable
 {
@@ -252,4 +268,44 @@ internal sealed record ReleaseMorphism<A> : Morphism<A, Unit>
         state.Release(value);
         return Prim.Unit;
     }
+}
+
+internal sealed record IsObjMorphism<ObjB, MB, A, B>(Morphism<A, MB> Morphism) : Morphism<A, B>
+    where ObjB : struct, IsObj<MB, B>
+{
+    public override Prim<B> Invoke<RT>(State<RT> state, Prim<A> value) =>
+        Morphism.Invoke(state, value).Map(default(ObjB).ToObject).Flatten().Interpret(state);
+}
+
+internal sealed record IsObjMorphism2<ObjB, MB, A, B>(Func<A, MB> Morphism) : Morphism<A, B>
+    where ObjB : struct, IsObj<MB, B>
+{
+    public override Prim<B> Invoke<RT>(State<RT> state, Prim<A> value) =>
+        value.Map(Morphism).Map(default(ObjB).ToObject).Flatten().Interpret(state);
+}
+
+internal sealed record ForAllMorphism<A>(Morphism<A, bool> Morphism) : Morphism<A, bool>
+{
+    public override Prim<bool> Invoke<RT>(State<RT> state, Prim<A> value) =>
+        Prim.Pure(Morphism.Apply(value).Interpret(state).ForAll(state, static x => x));
+
+}
+
+internal sealed record ExistsMorphism<A>(Morphism<A, bool> Morphism) : Morphism<A, bool>
+{
+    public override Prim<bool> Invoke<RT>(State<RT> state, Prim<A> value) =>
+        Prim.Pure(Morphism.Apply(value).Interpret(state).Exists(state, static x => x));
+
+}
+
+internal sealed record AppendLeftMorphism<A>(Obj<A> Left) : Morphism<A, A>
+{
+    public override Prim<A> Invoke<RT>(State<RT> state, Prim<A> value) =>
+        Left.Interpret(state).Append(value.Interpret(state));
+}
+
+internal sealed record AppendRightMorphism<A>(Obj<A> Right) : Morphism<A, A>
+{
+    public override Prim<A> Invoke<RT>(State<RT> state, Prim<A> value) =>
+        value.Interpret(state).Append(Right.Interpret(state));
 }
