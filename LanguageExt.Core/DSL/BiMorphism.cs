@@ -103,7 +103,7 @@ public static class BiMorphism
 public record BiBindMorphism<X, Y, A, B>(Morphism<X, CoProduct<Y, B>> Left, Morphism<A, CoProduct<Y, B>> Right) : BiMorphism<X, Y, A, B>
 {
     public override Prim<CoProduct<Y, B>> Invoke<RT>(State<RT> state, Prim<CoProduct<X, A>> value) =>
-        value.Bind(state, p => p switch
+        value.Bind(p => p switch
         {
             CoProductLeft<X, A> left => Left.Invoke(state, Prim.Pure(left.Value)).Interpret(state),
             CoProductRight<X, A> right => Right.Invoke(state, Prim.Pure(right.Value)).Interpret(state),
@@ -114,7 +114,7 @@ public record BiBindMorphism<X, Y, A, B>(Morphism<X, CoProduct<Y, B>> Left, Morp
 public record BiBindMorphism2<X, Y, A, B>(Morphism<X, Obj<CoProduct<Y, B>>> Left, Morphism<A, Obj<CoProduct<Y, B>>> Right) : BiMorphism<X, Y, A, B>
 {
     public override Prim<CoProduct<Y, B>> Invoke<RT>(State<RT> state, Prim<CoProduct<X, A>> value) =>
-        value.Bind(state, p => p switch
+        value.Bind(p => p switch
         {
             CoProductLeft<X, A> left => Left.Invoke(state, Prim.Pure(left.Value)).Interpret(state).Flatten().Interpret(state),
             CoProductRight<X, A> right => Right.Invoke(state, Prim.Pure(right.Value)).Interpret(state).Flatten().Interpret(state),
@@ -125,7 +125,7 @@ public record BiBindMorphism2<X, Y, A, B>(Morphism<X, Obj<CoProduct<Y, B>>> Left
 public record BiMapMorphism<X, Y, A, B>(Morphism<X, Y> Left, Morphism<A, B> Right) : BiMorphism<X, Y, A, B>
 {
     public override Prim<CoProduct<Y, B>> Invoke<RT>(State<RT> state, Prim<CoProduct<X, A>> value) =>
-        value.Bind(state, p => p switch
+        value.Bind(p => p switch
         {
             CoProductLeft<X, A> left => Left.Invoke(state, Prim.Pure(left.Value)).Map(CoProduct.Left<Y, B>),
             CoProductRight<X, A> right => Right.Invoke(state, Prim.Pure(right.Value)).Map(CoProduct.Right<Y, B>),

@@ -18,8 +18,8 @@ public static class Prim
                 ? value.Head
                 : new ManyPrim<A>(value);
     
-    public static Prim<A> Flatten<RT, A>(this Prim<Prim<A>> mma, State<RT> state) =>
-        mma.Bind(state, LanguageExt.Prelude.identity);
+    public static Prim<A> Flatten<A>(this Prim<Prim<A>> mma) =>
+        mma.Bind(LanguageExt.Prelude.identity);
 }
 
 public abstract record Prim<A> : Obj<A>, IDisposable
@@ -29,17 +29,18 @@ public abstract record Prim<A> : Obj<A>, IDisposable
     public override Prim<A> Interpret<RT>(State<RT> state) =>
         this;
 
-    public abstract Prim<B> Bind<RT, B>(State<RT> state, Func<A, Obj<B>> f);
+    public abstract Prim<B> Bind<B>(Func<A, Prim<B>> f);
     public abstract Prim<B> Map<B>(Func<A, B> f);
+    public abstract Prim<S> Fold<S>(Prim<S> state, Func<S, A, S> f);
     public abstract Prim<A> Append(Prim<A> rhs);
 
-    public abstract Prim<A> Head { get; }
-    public abstract Prim<A> Last { get; }
-    public abstract Prim<A> Tail { get; }
-    public abstract Prim<A> Skip(int amount);
-    public abstract Prim<A> Take(int amount);
-    public abstract bool ForAll<RT>(State<RT> state, Func<A, bool> f);
-    public abstract bool Exists<RT>(State<RT> state, Func<A, bool> f);
+    public new abstract Prim<A> Head { get; }
+    public new abstract Prim<A> Last { get; }
+    public new abstract Prim<A> Tail { get; }
+    public new abstract Prim<A> Skip(int amount);
+    public new abstract Prim<A> Take(int amount);
+    public abstract bool ForAll(Func<A, bool> f);
+    public abstract bool Exists(Func<A, bool> f);
 
     /// <summary>
     /// Dispose
@@ -49,16 +50,19 @@ public abstract record Prim<A> : Obj<A>, IDisposable
 
 public sealed record PurePrim<A>(A Value) : Prim<A>
 {
-    public override Prim<B> Bind<RT, B>(State<RT> state, Func<A, Obj<B>> f) =>
-        f(Value).Interpret(state);
+    public override Prim<B> Bind<B>(Func<A, Prim<B>> f) =>
+        f(Value);
 
     public override Prim<B> Map<B>(Func<A, B> f) =>
         new PurePrim<B>(f(Value));
 
-    public override bool ForAll<RT>(State<RT> state, Func<A, bool> f) => 
+    public override Prim<S> Fold<S>(Prim<S> state, Func<S, A, S> f) =>
+        state.Map(s => f(s, Value));
+    
+    public override bool ForAll(Func<A, bool> f) => 
         f(Value);
     
-    public override bool Exists<RT>(State<RT> state, Func<A, bool> f) => 
+    public override bool Exists(Func<A, bool> f) => 
         f(Value);
  
     public override Prim<A> Append(Prim<A> rhs) =>
@@ -99,12 +103,15 @@ public sealed record PurePrim<A>(A Value) : Prim<A>
 
 public sealed record ManyPrim<A>(Seq<Prim<A>> Items) : Prim<A>
 {
-    public override Prim<B> Bind<RT, B>(State<RT> state, Func<A, Obj<B>> f) =>
-        Prim.Many(Items.Map(x => x.Bind(state, f)));
+    public override Prim<B> Bind<B>(Func<A, Prim<B>> f) =>
+        Prim.Many(Items.Map(x => x.Bind(f)));
 
     public override Prim<B> Map<B>(Func<A, B> f) =>
         Prim.Many(Items.Map(x => x.Map(f)));
- 
+
+    public override Prim<S> Fold<S>(Prim<S> state, Func<S, A, S> f) =>
+        state.Bind(s => Items.Fold(Prim.Pure(s), (s1, px) => px.Fold(s1, f)));
+
     public override Prim<A> Append(Prim<A> rhs) =>
         rhs switch
         {
@@ -114,11 +121,11 @@ public sealed record ManyPrim<A>(Seq<Prim<A>> Items) : Prim<A>
             _                    => throw new InvalidOperationException("Result shouldn't be extended")
         };
 
-    public override bool ForAll<RT>(State<RT> state, Func<A, bool> f) => 
-        Items.ForAll(x => x.ForAll(state, f));
+    public override bool ForAll(Func<A, bool> f) => 
+        Items.ForAll(x => x.ForAll(f));
     
-    public override bool Exists<RT>(State<RT> state, Func<A, bool> f) => 
-        Items.Exists(x => x.Exists(state, f));
+    public override bool Exists(Func<A, bool> f) => 
+        Items.Exists(x => x.Exists(f));
  
     public override Prim<A> Head =>
         Items.IsEmpty

@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Reactive.Linq;
 using System.Threading;
-using LanguageExt.TypeClasses;
 
 namespace LanguageExt.DSL;
 
@@ -52,11 +51,18 @@ public static class Obj
     public static Obj<A> Flatten<A>(this Obj<Obj<A>> value) =>
         new FlattenObj<A>(value);
 
-    public static Obj<A> Collect<FaultA, A>(IObservable<Obj<A>> ma) =>
-        new ObservableCollectObj<A>(ma);
+    public static Obj<CoProduct<X, A>> attempt<X, A>(Obj<A> @try, Func<Exception, X> @catch) =>
+        new TryObj<X, A>(@try, @catch);
 
-    public static Obj<A> Consume<FaultA, A>(IObservable<Obj<A>> ma) =>
-        new ObservableConsumeObj<A>(ma);
+    public static Obj<B> ApplyT<A, B>(this Obj<Morphism<A, B>> mm, Obj<A> x) =>
+        mm.Bind(Morphism.bind<Morphism<A, B>, B>(m => m.Apply(x)));
+
+    public static Obj<Morphism<A, C>> ApplyT<A, B, C>(this Obj<Morphism<A, B>> mx, Morphism<B, C> my) =>
+        mx.Bind(Morphism.function<Morphism<A, B>, Morphism<A, C>>(m => m.Compose(my)));
+
+    public static Obj<Morphism<A, C>> ApplyT<A, B, C>(this Obj<Morphism<A, B>> mx, Obj<Morphism<B, C>> my) =>
+        mx.Bind(Morphism.bind<Morphism<A, B>, Morphism<A, C>>(x =>
+            Morphism.function<Morphism<B, C>, Morphism<A, C>>(x.Compose).Apply(my)));
 }
 
 public abstract record Obj<A>
@@ -68,6 +74,12 @@ public abstract record Obj<A>
     
     public static readonly Obj<A> This = 
         new ThisObj<A>();
+
+    public virtual Obj<A> Head => Bind(Morphism<A>.head);
+    public virtual Obj<A> Last => Bind(Morphism<A>.last);
+    public virtual Obj<A> Tail => Bind(Morphism<A>.tail);
+    public virtual Obj<A> Skip(int amount) => Bind(Morphism.skip<A>(amount));
+    public virtual Obj<A> Take(int amount) => Bind(Morphism.take<A>(amount));
 }
 
 internal sealed record PureObj<A>(A Value) : Obj<A>
@@ -115,7 +127,7 @@ internal sealed record ApplyObj<X, A>(Morphism<X, A> Morphism, Obj<X> Argument) 
 internal sealed record FlattenObj<A>(Obj<Obj<A>> Value) : Obj<A>
 {
     public override Prim<A> Interpret<RT>(State<RT> state) =>
-        Value.Interpret(state).Map(o => o.Interpret(state)).Flatten(state);
+        Value.Interpret(state).Map(o => o.Interpret(state)).Flatten();
 
     public override string ToString() => 
         $"Flatten";
@@ -128,7 +140,7 @@ internal sealed record ChoiceObj<X, A>(Seq<Obj<CoProduct<X, A>>> Values) : Obj<C
         foreach (var obj in Values)
         {
             var r = obj.Interpret(state);
-            if (r.ForAll(state, x => x.IsRight)) return r;
+            if (r.ForAll(x => x.IsRight)) return r;
         }
         return Prim<CoProduct<X, A>>.None;
     }
@@ -146,7 +158,7 @@ internal sealed record SwitchObj<X, A>(Obj<X> Subject, Seq<(Morphism<X, bool> Ma
         {
             var pr = c.Match.Invoke(state, px);
             var fl = false;
-            var rs = pr.Bind(state, x =>
+            var rs = pr.Bind(x =>
             {
                 if (x)
                 {
@@ -224,7 +236,8 @@ internal sealed record ToUnitObj<A>(Obj<A> Value) : Obj<Unit>
         $"{Value}.ToUnit";
 }
 
-public sealed record ObservableCollectObj<A>(IObservable<Obj<A>> Items) : Obj<A>
+/*
+internal  sealed record ObservableCollectObj<A>(IObservable<Obj<A>> Items) : Obj<A>
 {
     public override Prim<A> Interpret<RT>(State<RT> state)
     {
@@ -237,9 +250,24 @@ public sealed record ObservableCollectObj<A>(IObservable<Obj<A>> Items) : Obj<A>
 
     public override Obj<B> Bind<B>(Morphism<A, B> f) =>
         new ObservableCollectObj<B>(Items.Select(f.Apply));
+    
+    public override Obj<A> Head => 
+        new ObservableCollectObj<A>(Items.FirstAsync());
+
+    public override Obj<A> Last => 
+        new ObservableCollectObj<A>(Items.LastAsync());
+
+    public override Obj<A> Tail => 
+        new ObservableCollectObj<A>(Items.Skip(1));
+
+    public override Obj<A> Skip(int amount) => 
+        new ObservableCollectObj<A>(Items.Skip(amount));
+
+    public override Obj<A> Take(int amount) => 
+        new ObservableCollectObj<A>(Items.Take(amount));
 
     public override string ToString() => 
-        $"Prim.Observable<{typeof(A).Name}>";
+        $"Obj.Observable<{typeof(A).Name}>";
 
     class Collector<RT> : IObserver<Obj<A>>, IDisposable
     {
@@ -271,7 +299,7 @@ public sealed record ObservableCollectObj<A>(IObservable<Obj<A>> Items) : Obj<A>
     }
 }
 
-public sealed record ObservableConsumeObj<A>(IObservable<Obj<A>> Items) : Obj<A>
+internal sealed record ObservableConsumeObj<A>(IObservable<Obj<A>> Items) : Obj<A>
 {
     public override Prim<A> Interpret<RT>(State<RT> state)
     {
@@ -283,10 +311,25 @@ public sealed record ObservableConsumeObj<A>(IObservable<Obj<A>> Items) : Obj<A>
     }
 
     public override Obj<B> Bind<B>(Morphism<A, B> f) =>
-        new ObservableCollectObj<B>(Items.Select(f.Apply));
+        new ObservableConsumeObj<B>(Items.Select(f.Apply));
+    
+    public override Obj<A> Head => 
+        new ObservableConsumeObj<A>(Items.FirstAsync());
 
+    public override Obj<A> Last => 
+        new ObservableConsumeObj<A>(Items.LastAsync());
+
+    public override Obj<A> Tail => 
+        new ObservableConsumeObj<A>(Items.Skip(1));
+
+    public override Obj<A> Skip(int amount) => 
+        new ObservableConsumeObj<A>(Items.Skip(amount));
+
+    public override Obj<A> Take(int amount) => 
+        new ObservableConsumeObj<A>(Items.Take(amount));
+    
     public override string ToString() => 
-        $"Prim.Observable<{typeof(A).Name}>";
+        $"Obj.Observable<{typeof(A).Name}>";
             
     class Consumer<RT> : IObserver<Obj<A>>, IDisposable
     {
@@ -316,4 +359,23 @@ public sealed record ObservableConsumeObj<A>(IObservable<Obj<A>> Items) : Obj<A>
         public void Dispose() =>
             Wait.Dispose();
     }
+}
+*/
+
+internal sealed record TryObj<X, A>(Obj<A> Value, Func<Exception, X> Catch) : Obj<CoProduct<X, A>>
+{
+    public override Prim<CoProduct<X, A>> Interpret<RT>(State<RT> state)
+    {
+        try
+        {
+            return Value.Interpret(state).Map(CoProduct.Right<X, A>);
+        }
+        catch (Exception e)
+        {
+            return Prim.Pure(CoProduct.Left<X, A>(Catch(e)));
+        }
+    }
+    
+    public override string ToString() => 
+        $"{Value}.ToUnit";
 }

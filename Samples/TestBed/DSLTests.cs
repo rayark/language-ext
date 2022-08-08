@@ -10,7 +10,6 @@ using System;
 using System.Reactive;
 using System.Reactive.Linq;
 using LanguageExt.Common;
-using LanguageExt.Sys.Test;
 using static LanguageExt.DSL.Prelude;
 
 namespace TestBed;
@@ -28,16 +27,23 @@ public static class DSLTests
     {
         var seconds = Observable.Interval(TimeSpan.FromSeconds(1)).Take(5);
 
-        var effect =
-            from s in seconds
-            from x in Right<Error, int>(10)
-            select s * x;
+        var effect = (from s in map(seconds)
+                      from x in Right<Error, int>(10)
+                      select s * x)
+                     .ToEither();
+
+        var result = effect.MatchMany(Left: e => 0, Right: r => r);
         
-        var result = effect.MatchMany(Left: _ => 0, Right: r => r);
+        Console.WriteLine(result);  // [0, 10, 20, 30, 40]
         
+        //var result = effect.MatchMany(Left: _ => 0, Right: r => r);
         //var result = effect.Run(Runtime.New());
-        
-        Console.WriteLine(result);
+    }
+
+    static Either<Error, Unit> log(string x)
+    {
+        System.Console.WriteLine(x);
+        return Right<Error, Unit>(default);
     }
     
 }

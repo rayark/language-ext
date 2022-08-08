@@ -7,6 +7,6 @@ public record Product<A, B>(Obj<A> First, Obj<B> Second) : Obj<(A, B)>
     {
         var pa = First.Interpret(state);
         var pb = Second.Interpret(state);
-        return pa.Bind(state, a => pb.Map(b => (a, b)));
+        return pa.Bind(a => pb.Map(b => (a, b)));
     }
 }
