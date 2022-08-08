@@ -33,8 +33,12 @@ public static class DSLTests
                      .ToEither();
 
         var result = effect.MatchMany(Left: e => 0, Right: r => r);
-        
+
         Console.WriteLine(result);  // [0, 10, 20, 30, 40]
+        
+        var xxx = from x in Right<Error, string?>(null)
+                  from y in Right<Error, string?>(null)
+                  select x + y;
         
         //var result = effect.MatchMany(Left: _ => 0, Right: r => r);
         //var result = effect.Run(Runtime.New());

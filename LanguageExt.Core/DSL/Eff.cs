@@ -1,24 +1,42 @@
-﻿/*
-using System;
+﻿using System;
 using System.Reactive.Linq;
 using System.Collections.Generic;
 using LanguageExt.Common;
 
 namespace LanguageExt.DSL;
 
-public record Eff<RT, A>(Morphism<RT, CoProduct<Error, A>> Op) : Morphism<RT, CoProduct<Error, A>>
+public readonly struct MorphismEff<RT, A> : IsMorphism<Eff<RT, A>, RT, CoProduct<Error, A>>
 {
-    public Result<CoProduct<Error, A>> Run(RT runtime)
+    public Morphism<RT, CoProduct<Error, A>> ToMorphism(Eff<RT, A> value) => 
+        value.Op;
+}
+
+public record Eff<RT, A>(Morphism<RT, CoProduct<Error, A>> Op)
+{
+    public Fin<A> Run(RT runtime)
     {
-        var state = State<RT>.Create(runtime);
-        return Op.Invoke(state, Prim.Pure(runtime)).ToResult();
+        try
+        {
+            var state = State<RT>.Create(runtime);
+            return Op.Invoke(state, Prim.Pure(runtime)).ToFin();
+        }
+        catch (Exception e)
+        {
+            return (Error)e;
+        }
     }
+    
+    // -----------------------------------------------------------------------------------------------------------------
+    // Map
 
     public Eff<RT, B> Map<B>(Func<A, B> f) =>
         Map(Morphism.function(f));
 
     public Eff<RT, B> Map<B>(Morphism<A, B> f) =>
-        new(Morphism.compose(Op, BiMorphism.rightMap<Error, A, B>(f)));
+        BiMap(Morphism<Error>.identity, f);
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // Bi-map
 
     public Eff<RT, B> BiMap<B>(Func<Error, Error> Fail, Func<A, B> Succ) =>
         BiMap(Morphism.function(Fail), Morphism.function(Succ));
@@ -26,16 +44,29 @@ public record Eff<RT, A>(Morphism<RT, CoProduct<Error, A>> Op) : Morphism<RT, Co
     public Eff<RT, B> BiMap<B>(Morphism<Error, Error> Fail, Morphism<A, B> Succ) =>
         new(Morphism.compose(Op, BiMorphism.bimap(Fail, Succ)));
 
+    // -----------------------------------------------------------------------------------------------------------------
+    // Bind
+
+    //Morphism<RT, CoProduct<Error, A>>
+
+    public Eff<RT, B> Bind<B>(Morphism<A, Morphism<RT, CoProduct<Error, B>>> f) =>
+        new(Morphism.kleisli(Op, f));
+    
+    public Eff<RT, B> Bind<B>(Morphism<A, Eff<RT, B>> f) =>
+        new(Morphism.kleisli<MorphismEff<RT, B>, Eff<RT, B>, RT, Error, A, B>(Op, f));
+
     public Eff<RT, B> Bind<B>(Func<A, Eff<RT, B>> f) =>
-        new(Morphism.compose(Op, BiMorphism.rightBind<Error, A, B>(f)));
+        new(Morphism.kleisli<MorphismEff<RT, B>, Eff<RT, B>, RT, Error, A, B>(Op, Morphism.function(f)));
     
     public Eff<RT, B> SelectMany<B>(Func<A, Eff<RT, B>> f) =>
-        new(Morphism.bind(Op, f));
+        Bind(f);
     
     public Eff<RT, C> SelectMany<B, C>(Func<A, Eff<RT, B>> bind, Func<A, B, C> project) =>
-        new(Morphism.bind(Op, bind, project));
+        Bind(x => bind(x).Map(y => project(x, y)));
 
-    public Eff<RT, B> Bind<B>(Func<A, IEnumerable<B>> f) =>
+    
+    
+    /*public Eff<RT, B> Bind<B>(Func<A, IEnumerable<B>> f) =>
         Bind(a => Prelude.liftEff<RT, B>(f(a)));
     
     public Eff<RT, B> SelectMany<B>(Func<A, IEnumerable<B>> f) =>
@@ -51,56 +82,56 @@ public record Eff<RT, A>(Morphism<RT, CoProduct<Error, A>> Op) : Morphism<RT, Co
         Bind(f);
 
     public Eff<RT, C> SelectMany<B, C>(Func<A, IObservable<B>> bind, Func<A, B, C> project) =>
-        Bind(x => bind(x).Select(y => project(x, y)));
+        Bind(x => bind(x).Select(y => project(x, y)));*/
 
     public Eff<RT, A> Filter(Func<A, bool> f) =>
-        new(Morphism.lambda<RT, A>(Morphism.filter(f).Apply(Op.Apply(Obj<RT>.This))));
+        Bind(x => f(x) ? Prelude.SuccessEff<RT, A>(x) : Prelude.FailEff<RT, A>("bottom"));
 
     public Eff<RT, A> Where(Func<A, bool> f) =>
-        new(Morphism.lambda<RT, A>(Morphism.filter(f).Apply(Op.Apply(Obj<RT>.This))));
+        Filter(f);
 
     public Eff<RT, A> Head =>
-        new(Morphism.compose(Op, Morphism<A>.head));
+        Map(Morphism<A>.head);
     
     public Eff<RT, A> Tail => 
-        new(Morphism.compose(Op, Morphism<A>.tail));
+        Map(Morphism<A>.tail);
     
     public Eff<RT, A> Last => 
-        new(Morphism.compose(Op, Morphism<A>.last));
+        Map(Morphism<A>.last);
     
     public Eff<RT, A> Skip(int amount)=> 
-        new(Morphism.compose(Op, Morphism.skip<A>(amount)));
+        Map(Morphism.skip<A>(amount));
     
     public Eff<RT, A> Take(int amount)=> 
-        new(Morphism.compose(Op, Morphism.take<A>(amount)));
+        Map(Morphism.take<A>(amount));
     
     public static Eff<RT, A> operator |(Eff<RT, A> ma, Eff<RT, A> mb) =>
-        new(Morphism.map<RT, A>(rt => Obj.Choice(ma.Op.Apply(rt), mb.Op.Apply(rt))));
-
-    protected override Prim<A> InvokeProtected<RT1>(State<RT1> state, Prim<RT> value) =>
-        Op.Invoke(state, value).Interpret(state);
+        new(Morphism.map<RT, CoProduct<Error, A>>(rt => Obj.Choice(ma.Op.Apply(rt), mb.Op.Apply(rt))));
 }
 
 public static partial class Prelude
 {
     public static Eff<RT, RT> runtime<RT>() =>
-        new (Morphism<RT>.identity);
+        new(Morphism.function<RT, CoProduct<Error, RT>>(CoProduct.Right<Error, RT>));
 
     public static Eff<OuterRT, A> localEff<OuterRT, InnerRT, A>(Func<OuterRT, InnerRT> f, Eff<InnerRT, A> ma) =>
-        new(Morphism.lambda<OuterRT, A>(ma.Apply(Morphism.function(f).Apply(Obj<OuterRT>.This))));
-    
+        new(Morphism.bind<OuterRT, CoProduct<Error, A>>(ort => ma.Op.Apply(Prim.Pure(f(ort)))));
+
     public static Eff<RT, A> SuccessEff<RT, A>(A value) =>
-        new (Morphism.constant<RT, A>(Obj.Pure(value)));
+        new(Morphism.constant<RT, CoProduct<Error, A>>(Prim.Pure(CoProduct.Right<Error, A>(value))));
     
     public static Eff<RT, A> FailEff<RT, A>(Error value) =>
-        new (Morphism.constant<RT, A>(Obj.Left<A>(value)));
+        new(Morphism.constant<RT, CoProduct<Error, A>>(Prim.Pure(CoProduct.Left<Error, A>(value))));
 
     public static Eff<RT, A> EffMaybe<RT, A>(Func<RT, Fin<A>> f) =>
-        new(Morphism.bind<RT, A>(rt => f(rt).Match(Succ: Obj.Pure, Fail: Obj.Left<A>)));
+        new(Morphism.bind<RT, CoProduct<Error, A>>(rt => f(rt)
+            .Match(Succ: x => Obj.Pure(CoProduct.Right<Error, A>(x)),
+                   Fail: x => Obj.Pure(CoProduct.Left<Error, A>(x)))));
 
     public static Eff<RT, A> Eff<RT, A>(Func<RT, A> f) =>
-        new(Morphism.function(f));
-
+        new(Morphism.bind<RT, CoProduct<Error, A>>(rt => Prim.Pure(CoProduct.Right<Error, A>(f(rt)))));
+    
+    /*
     public static Eff<RT, A> liftEff<RT, A>(IObservable<A> ma) =>
         new(Morphism.constant<RT, A>(Prim.Observable(ma.Select(Prim.Pure))));
 
@@ -151,5 +182,6 @@ public static partial class Prelude
 
     public static Eff<RT, C> SelectMany<RT, A, B, C>(this IObservable<A> ma, Func<A, Eff<RT, B>> bind, Func<A, B, C> project) =>
         liftEff<RT, A>(ma).SelectMany(bind, project);
+                */
+
 }
-*/

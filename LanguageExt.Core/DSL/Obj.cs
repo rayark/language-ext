@@ -1,8 +1,7 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Generic;
-using System.Reactive.Linq;
-using System.Threading;
+using LanguageExt.Common;
 
 namespace LanguageExt.DSL;
 
@@ -63,6 +62,9 @@ public static class Obj
     public static Obj<Morphism<A, C>> ApplyT<A, B, C>(this Obj<Morphism<A, B>> mx, Obj<Morphism<B, C>> my) =>
         mx.Bind(Morphism.bind<Morphism<A, B>, Morphism<A, C>>(x =>
             Morphism.function<Morphism<B, C>, Morphism<A, C>>(x.Compose).Apply(my)));
+
+    public static Obj<A> ToObj<A>(this Obj<CoProduct<Error, A>> Object) =>
+        new ToObj<A>(Object);
 }
 
 public abstract record Obj<A>
@@ -89,6 +91,15 @@ internal sealed record PureObj<A>(A Value) : Obj<A>
  
     public override string ToString() => 
         $"Pure({Value})";
+}
+
+internal sealed record FailObj<A>(Error Error) : Obj<A>
+{
+    public override Prim<A> Interpret<RT>(State<RT> state) =>
+        new FailPrim<A>(Error);
+ 
+    public override string ToString() => 
+        $"Fail({Error})";
 }
 
 internal sealed record ManyObj<A>(IEnumerable<Obj<A>> Values) : Obj<A>
@@ -378,4 +389,30 @@ internal sealed record TryObj<X, A>(Obj<A> Value, Func<Exception, X> Catch) : Ob
     
     public override string ToString() => 
         $"{Value}.ToUnit";
+}
+
+internal sealed record ToObj<A>(Obj<CoProduct<Error, A>> Object) : Obj<A>
+{
+    public override Prim<A> Interpret<RT>(State<RT> state) =>
+        Object.Interpret(state).Bind(Go);
+
+    static Prim<A> Go(CoProduct<Error, A> value) =>
+        value switch
+        {
+            PurePrim<CoProduct<Error, A>> c =>
+                c.Value switch
+                {
+                    CoProductRight<Error, A> r => Prim.Pure<A>(r.Value),
+                    CoProductLeft<Error, A> l => Prim.Fail<A>(l.Value),
+                    CoProductFail<Error, A> f => Prim.Fail<A>(f.Value),
+                    _ => throw new NotSupportedException()
+                },
+
+            ManyPrim<CoProduct<Error, A>> cs =>
+                cs.Bind(Go),
+
+            FailPrim<CoProduct<Error, A>> f => Prim.Fail<A>(f.Value),
+
+            _ => throw new NotSupportedException()
+        };
 }

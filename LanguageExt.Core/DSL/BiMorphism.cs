@@ -107,6 +107,7 @@ public record BiBindMorphism<X, Y, A, B>(Morphism<X, CoProduct<Y, B>> Left, Morp
         {
             CoProductLeft<X, A> left => Left.Invoke(state, Prim.Pure(left.Value)).Interpret(state),
             CoProductRight<X, A> right => Right.Invoke(state, Prim.Pure(right.Value)).Interpret(state),
+            CoProductFail<X, B> f => Prim.Fail<CoProduct<Y, B>>(f.Value),
             _ => throw new InvalidOperationException()
         });
 }
@@ -118,6 +119,7 @@ public record BiBindMorphism2<X, Y, A, B>(Morphism<X, Obj<CoProduct<Y, B>>> Left
         {
             CoProductLeft<X, A> left => Left.Invoke(state, Prim.Pure(left.Value)).Interpret(state).Flatten().Interpret(state),
             CoProductRight<X, A> right => Right.Invoke(state, Prim.Pure(right.Value)).Interpret(state).Flatten().Interpret(state),
+            CoProductFail<X, B> f => Prim.Fail<CoProduct<Y, B>>(f.Value),
             _ => throw new InvalidOperationException()
         });
 }
@@ -129,6 +131,7 @@ public record BiMapMorphism<X, Y, A, B>(Morphism<X, Y> Left, Morphism<A, B> Righ
         {
             CoProductLeft<X, A> left => Left.Invoke(state, Prim.Pure(left.Value)).Map(CoProduct.Left<Y, B>),
             CoProductRight<X, A> right => Right.Invoke(state, Prim.Pure(right.Value)).Map(CoProduct.Right<Y, B>),
+            CoProductFail<X, B> f => Prim.Fail<CoProduct<Y, B>>(f.Value),
             _ => throw new InvalidOperationException()
         });
 }

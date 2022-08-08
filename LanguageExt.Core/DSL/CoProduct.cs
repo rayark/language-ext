@@ -1,20 +1,11 @@
 ﻿using System;
-using LanguageExt.TypeClasses;
+using LanguageExt.Common;
 
 namespace LanguageExt.DSL;
 
-public readonly struct FaultCoProduct<ErrA, A, B> : IsFaulted<CoProduct<A, B>>
-    where ErrA : struct, Convertable<Exception, A>, Semigroup<A>
-{
-    public bool IsFaulted(CoProduct<A, B> value) => 
-        value is CoProductLeft<A, B>;
-
-    public Prim<CoProduct<A, B>> MakeFail(Exception e) =>
-        Prim.Pure(CoProduct.Left<A, B>(default(ErrA).Convert(e)));
-}
-
 public static class CoProduct
 {
+    public static CoProduct<A, B> Fail<A, B>(Error value) => new CoProductFail<A, B>(value);
     public static CoProduct<A, B> Left<A, B>(A value) => new CoProductLeft<A, B>(value);
     public static CoProduct<A, B> Right<A, B>(B value) => new CoProductRight<A, B>(value);
 }
@@ -26,6 +17,7 @@ public abstract record CoProduct<A, B>
     public abstract CoProduct<X, Y> BiMap<X, Y>(Func<A, X> Left, Func<B, Y> Right);
     public abstract bool IsRight { get; }
     public abstract bool IsLeft { get; }
+    public abstract bool IsError { get; }
 
     public static readonly Morphism<A, CoProduct<A, B>> leftId = 
         Morphism.function<A, CoProduct<A, B>>(CoProduct.Left<A, B>);
@@ -53,8 +45,9 @@ public record CoProductLeft<A, B>(A Value) : CoProduct<A, B>
 
     public override bool IsRight => false;
     public override bool IsLeft => true;
-
+    public override bool IsError => false;
 }
+
 public record CoProductRight<A, B>(B Value) : CoProduct<A, B>
 {
     public override CoProduct<X, B> LeftMap<X>(Func<A, X> Left) =>
@@ -68,5 +61,22 @@ public record CoProductRight<A, B>(B Value) : CoProduct<A, B>
 
     public override bool IsRight => true;
     public override bool IsLeft => false;
+    public override bool IsError => false;
 }
+
+public record CoProductFail<A, B>(Error Value) : CoProduct<A, B>
+{
+    public override CoProduct<X, B> LeftMap<X>(Func<A, X> Left) =>
+        new CoProductFail<X, B>(Value);
     
+    public override CoProduct<A, Y> RightMap<Y>(Func<B, Y> Right) =>
+        new CoProductFail<A, Y>(Value);
+    
+    public override CoProduct<X, Y> BiMap<X, Y>(Func<A, X> Left, Func<B, Y> Right) =>
+        new CoProductFail<X, Y>(Value);
+
+    public override bool IsRight => false;
+    public override bool IsLeft => true;
+    public override bool IsError => true;
+
+}

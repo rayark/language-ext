@@ -1,21 +1,8 @@
 ﻿#nullable enable
 
 using System;
-using System.Reactive.Linq;
-using System.Collections.Generic;
-using LanguageExt.Common;
-using LanguageExt.TypeClasses;
 
 namespace LanguageExt.DSL;
-
-public readonly struct MFail<L> : Semigroup<L>, Convertable<Exception, L>
-{
-    public L Append(L x, L y) =>
-        x;
-
-    public L Convert(Exception ex) =>
-        ex.Rethrow<L>();
-}
 
 public readonly struct ObjEither<L, A> : IsObj<Either<L, A>, CoProduct<L, A>>
 {
@@ -30,51 +17,6 @@ public readonly record struct Either<L, A>(Obj<CoProduct<L, A>> Object)
     internal Obj<CoProduct<L, A>> ObjectSafe => Object ?? Bottom;
 
     static readonly State<Unit> NilState = new (default, null);
-
-    // -----------------------------------------------------------------------------------------------------------------
-    // Match
-
-    public B Match<B>(Func<L, B> Left, Func<A, B> Right)
-    {
-        return Go(ObjectSafe.Interpret(NilState));
-
-        B Go(Prim<CoProduct<L, A>> ma) =>
-            ma.Interpret(NilState) switch
-            {
-                PurePrim<CoProduct<L, A>> {Value: CoProductRight<L, A> r} => Right(r.Value),
-                PurePrim<CoProduct<L, A>> {Value: CoProductLeft<L, A> l} => Left(l.Value),
-                ManyPrim<CoProduct<L, A>> m => Go(m.Head),
-                _ => throw new NotSupportedException()
-            };
-    }
-    
-    public Seq<B> MatchMany<B>(Func<L, B> Left, Func<A, B> Right)
-    {
-        return Go(ObjectSafe.Interpret(NilState));
-
-        Seq<B> Go(Prim<CoProduct<L, A>> ma) =>
-            ma.Interpret(NilState) switch
-            {
-                PurePrim<CoProduct<L, A>> {Value: CoProductRight<L, A> r} => LanguageExt.Prelude.Seq1(Right(r.Value)),
-                PurePrim<CoProduct<L, A>> {Value: CoProductLeft<L, A> l} => LanguageExt.Prelude.Seq1(Left(l.Value)),
-                ManyPrim<CoProduct<L, A>> m => m.Items.Map(Go).Flatten(),
-                _ => throw new NotSupportedException()
-            };
-    }
-    
-    public Seq<B> MatchMany<B>(Func<L, Seq<B>> Left, Func<A, Seq<B>> Right)
-    {
-        return Go(ObjectSafe.Interpret(NilState));
-
-        Seq<B> Go(Prim<CoProduct<L, A>> ma) =>
-            ma.Interpret(NilState) switch
-            {
-                PurePrim<CoProduct<L, A>> {Value: CoProductRight<L, A> r} => Right(r.Value),
-                PurePrim<CoProduct<L, A>> {Value: CoProductLeft<L, A> l} => Left(l.Value),
-                ManyPrim<CoProduct<L, A>> m => m.Items.Map(Go).Flatten(),
-                _ => throw new NotSupportedException()
-            };
-    }
 
     // -----------------------------------------------------------------------------------------------------------------
     // Map
@@ -179,6 +121,8 @@ public readonly record struct Either<L, A>(Obj<CoProduct<L, A>> Object)
     public Either<L, C> SelectMany<B, C>(Morphism<A, Obj<CoProduct<L, B>>> bind, Morphism<A, Morphism<B, C>> project) =>
         new(BiMorphism.rightBind(bind, project).Apply(ObjectSafe));
 
+    // -----------------------------------------------------------------------------------------------------------------
+    // Filtering
 
     public Either<L, A> Filter(Func<A, bool> f) =>
         Bind(x => f(x) ? Prelude.Right<L, A>(x) : Bottom);
@@ -186,6 +130,9 @@ public readonly record struct Either<L, A>(Obj<CoProduct<L, A>> Object)
     public Either<L, A> Where(Func<A, bool> f) =>
         Filter(f);
 
+    // -----------------------------------------------------------------------------------------------------------------
+    // Many item processing
+    
     public Either<L, A> Head =>
         ObjectSafe.Head;
 
@@ -200,7 +147,113 @@ public readonly record struct Either<L, A>(Obj<CoProduct<L, A>> Object)
 
     public Either<L, A> Take(int amount) =>
         ObjectSafe.Take(amount);
+    
+    // -----------------------------------------------------------------------------------------------------------------
+    // Matching
 
+    public B Match<B>(Func<L, B> Left, Func<A, B> Right)
+    {
+        return Go(ObjectSafe.Interpret(NilState));
+
+        B Go(Prim<CoProduct<L, A>> ma) =>
+            ma switch
+            {
+                PurePrim<CoProduct<L, A>> {Value: CoProductRight<L, A> r} => Right(r.Value),
+                PurePrim<CoProduct<L, A>> {Value: CoProductLeft<L, A> l} => Left(l.Value),
+                PurePrim<CoProduct<L, A>> {Value: CoProductFail<L, A> f} => f.Value.Throw<B>(),
+                ManyPrim<CoProduct<L, A>> m => Go(m.Head),
+                FailPrim<CoProduct<L, A>> f => f.Value.Throw<B>(),
+                _ => throw new NotSupportedException()
+            };
+    }
+    
+    public Seq<B> MatchMany<B>(Func<L, B> Left, Func<A, B> Right)
+    {
+        return Go(ObjectSafe.Interpret(NilState));
+
+        Seq<B> Go(Prim<CoProduct<L, A>> ma) =>
+            ma switch
+            {
+                PurePrim<CoProduct<L, A>> {Value: CoProductRight<L, A> r} => LanguageExt.Prelude.Seq1(Right(r.Value)),
+                PurePrim<CoProduct<L, A>> {Value: CoProductLeft<L, A> l} => LanguageExt.Prelude.Seq1(Left(l.Value)),
+                PurePrim<CoProduct<L, A>> {Value: CoProductFail<L, A> f} => f.Value.Throw<Seq<B>>(),
+                ManyPrim<CoProduct<L, A>> m => m.Items.Map(Go).Flatten(),
+                FailPrim<CoProduct<L, A>> f => f.Value.Throw<Seq<B>>(),
+                _ => throw new NotSupportedException()
+            };
+    }
+    
+    public Seq<B> MatchMany<B>(Func<L, Seq<B>> Left, Func<A, Seq<B>> Right)
+    {
+        return Go(ObjectSafe.Interpret(NilState));
+
+        Seq<B> Go(Prim<CoProduct<L, A>> ma) =>
+            ma switch
+            {
+                PurePrim<CoProduct<L, A>> {Value: CoProductRight<L, A> r} => Right(r.Value),
+                PurePrim<CoProduct<L, A>> {Value: CoProductLeft<L, A> l} => Left(l.Value),
+                PurePrim<CoProduct<L, A>> {Value: CoProductFail<L, A> f} => f.Value.Throw<Seq<B>>(),
+                ManyPrim<CoProduct<L, A>> m => m.Items.Map(Go).Flatten(),
+                FailPrim<CoProduct<L, A>> f => f.Value.Throw<Seq<B>>(),
+                _ => throw new NotSupportedException()
+            };
+    }
+    
+    
+    // -----------------------------------------------------------------------------------------------------------------
+    // Repeat
+
+    public Either<L, A> Repeat(Schedule schedule) =>
+        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe).Repeat(schedule)
+            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+
+    public Either<L, A> RepeatWhile(Schedule schedule, Func<A, bool> pred) =>
+        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe).RepeatWhile(schedule, pred)
+            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+
+    public Either<L, A> RepeatUntil(Schedule schedule, Func<A, bool> pred) =>
+        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe).RepeatUntil(schedule, pred)
+            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+    
+    // -----------------------------------------------------------------------------------------------------------------
+    // Retry
+
+    public Either<L, A> Retry(Schedule schedule) =>
+        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe)
+            .Repeat(schedule)
+            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+
+    public Either<L, A> RetryWhile(Schedule schedule, Func<A, bool> pred) =>
+        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe)
+            .RepeatWhile(schedule, pred)
+            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+
+    public Either<L, A> RetryUntil(Schedule schedule, Func<A, bool> pred) =>
+        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe)
+            .RepeatUntil(schedule, pred)
+            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+    
+    // -----------------------------------------------------------------------------------------------------------------
+    // Folding
+
+    public Either<L, S> Fold<S>(Schedule schedule, S state, Func<S, A, S> fold)=>
+        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe)
+            .Fold(schedule, state, fold)
+            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+
+    public Either<L, S> FoldWhile<S>(Schedule schedule, S state, Func<S, A, S> fold, Func<A, bool> pred)=>
+        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe)
+            .FoldWhile(schedule, state, fold, pred)
+            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+
+    public Either<L, S> FoldUntil<S>(Schedule schedule, S state, Func<S, A, S> fold, Func<A, bool> pred)=>
+        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe)
+            .FoldWhile(schedule, state, fold, pred)
+            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // Operators
+    
     public static Either<L, A> operator |(Either<L, A> ma, Either<L, A> mb) =>
         Obj.Choice<L, A>(ma, mb);
 
@@ -215,100 +268,4 @@ public readonly record struct Either<L, A>(Obj<CoProduct<L, A>> Object)
 
     public static implicit operator Either<L, A>(A value) =>
         new(Prim.Pure(CoProduct.Right<L, A>(value)));
-}
-
-public static partial class Prelude
-{
-    public static Either<L, A> ToEither<L, A>(this Obj<CoProduct<L, A>> ma) =>
-        new(ma);
-    
-    public static Either<L, A> ToEither<L, A>(this Morphism<CoProduct<L, Unit>, CoProduct<L, A>> ma) =>
-        new(ma.Apply(Prim.Pure(CoProduct.Right<L, Unit>(default))));
-    
-    public static Either<L, B> ToEither<L, A, B>(this Morphism<CoProduct<L, A>, CoProduct<L, B>> ma, A value) =>
-        new(ma.Apply(Prim.Pure(CoProduct.Right<L, A>(value))));
-    
-    public static Either<L, A> Right<L, A>(A value) =>
-        value;
-    
-    public static Either<L, A> Left<L, A>(L value) =>
-        value;
-
-    public static Morphism<Unit, A> map<A>(IObservable<A> ma) => 
-        Morphism.each(ma);
-
-    public static Morphism<CoProduct<X, Unit>, CoProduct<X, A>> bimap<X, A>(IObservable<A> ma) =>
-        BiMorphism.bimap(Morphism<X>.identity, Morphism.each(ma));
-
-    public static Obj<A> map<A>(IEnumerable<A> ma) =>
-        Obj.Many(ma.Map(Prim.Pure));
-
-    public static Either<L, B> Apply<L, A, B>(this Either<L, Func<A, B>> ff, Either<L, A> fa) =>
-        ff.Bind(fa.Map);
-
-    public static Either<L, Func<B, C>> Apply<L, A, B, C>(this Either<L, Func<A, B, C>> ff, Either<L, A> fa) =>
-        ff.Map(LanguageExt.Prelude.curry).Apply(fa);
-
-    public static Either<L, Func<B, Func<C, D>>> Apply<L, A, B, C, D>(this Either<L, Func<A, B, C, D>> ff, Either<L, A> fa) =>
-        ff.Map(LanguageExt.Prelude.curry).Apply(fa);
-
-    public static Either<L, Func<B, Func<C, Func<D, E>>>> Apply<L, A, B, C, D, E>(this Either<L, Func<A, B, C, D, E>> ff, Either<L, A> fa) =>
-        ff.Map(LanguageExt.Prelude.curry).Apply(fa);
-
-    public static Either<L, Func<B, Func<C, Func<D, Func<E, F>>>>> Apply<L, A, B, C, D, E, F>(this Either<L, Func<A, B, C, D, E, F>> ff, Either<L, A> fa) =>
-        ff.Map(LanguageExt.Prelude.curry).Apply(fa);
-
-    public static Either<L, A> use<L, A>(Either<L, A> ma) where A : IDisposable =>
-        ma.Map(Morphism.use<A>());
-
-    public static Either<L, A> use<L, A>(Either<L, A> ma, Func<A, Unit> release) =>
-        ma.Map(Morphism.use(Morphism.function(release)));
-
-    public static Either<L, Unit> release<L, A>(Either<L, A> ma) =>
-        ma.Map(Morphism<A>.release);
-
-    public static Either<L, B> Bind<L, A, B>(this Obj<CoProduct<L, A>> ma, Func<A, Either<L, B>> f) =>
-        new Either<L, A>(ma).Bind(f);
-
-    public static Either<L, B> SelectMany<L, A, B>(this Obj<CoProduct<L, A>> ma, Func<A, Either<L, B>> f) =>
-        new Either<L, A>(ma).Bind(f);
-
-    public static Either<L, C> SelectMany<L, A, B, C>(this Obj<CoProduct<L, A>> ma, Func<A, Either<L, B>> bind, Func<A, B, C> project) =>
-        new Either<L, A>(ma).SelectMany(bind, project);
-
-    
-    public static Morphism<CoProduct<L, A>, CoProduct<L, C>> Bind<L, A, B, C>(
-        this Morphism<CoProduct<L, A>, CoProduct<L, B>> ma, 
-        Func<B, Either<L, C>> f) =>
-        ma.Compose(BiMorphism.rightBind<ObjEither<L, C>, Either<L, C>, L, B, C>(f));
-    
-    public static Morphism<CoProduct<L, A>, CoProduct<L, C>> SelectMany<L, A, B, C>(
-        this Morphism<CoProduct<L, A>, CoProduct<L, B>> ma, 
-        Func<B, Either<L, C>> f) =>
-        ma.Bind(f);
-    
-    public static Morphism<CoProduct<L, A>, CoProduct<L, D>> SelectMany<L, A, B, C, D>(
-        this Morphism<CoProduct<L, A>, CoProduct<L, B>> ma, 
-        Func<B, Either<L, C>> bind,
-        Func<B, C, D> project) =>
-        ma.Compose(BiMorphism.rightBind<ObjEither<L, C>, Either<L, C>, L, B, C, D>(
-            bind, 
-            Morphism.function(project)));
-
-
-    public static Morphism<CoProduct<L, A>, CoProduct<L, C>> Bind<L, A, B, C>(
-        this Morphism<A, B> ma,
-        Func<B, Either<L, C>> f) =>
-        BiMorphism.rightMap<L, A, B>(ma).Bind(f);
-    
-    public static Morphism<CoProduct<L, A>, CoProduct<L, C>> SelectMany<L, A, B, C>(
-        this Morphism<A, B> ma,
-        Func<B, Either<L, C>> f) =>
-        BiMorphism.rightMap<L, A, B>(ma).Bind(f);
-    
-    public static Morphism<CoProduct<L, A>, CoProduct<L, D>> SelectMany<L, A, B, C, D>(
-        this Morphism<A, B> ma,
-        Func<B, Either<L, C>> bind,
-        Func<B, C, D> project) =>
-        BiMorphism.rightMap<L, A, B>(ma).SelectMany(bind, project);
 }

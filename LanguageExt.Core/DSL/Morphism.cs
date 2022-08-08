@@ -3,6 +3,7 @@ using System;
 using LanguageExt.TypeClasses;
 using System.Reactive.Linq;
 using System.Threading;
+using LanguageExt.Common;
 
 namespace LanguageExt.DSL;
 
@@ -36,6 +37,17 @@ public static class Morphism
 
     public static Morphism<A, C> compose<A, B, C>(Morphism<A, B> f, Morphism<B, C> g) =>
         f.Compose(g);
+
+    public static Morphism<RT, CoProduct<E, B>> kleisli<RT, E, A, B>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Morphism<A, Morphism<RT, CoProduct<E, B>>> MY) =>
+        new KleisliMorphism<RT, E, A, B>(MX, MY);
+
+    public static Morphism<RT, CoProduct<E, B>> kleisli<MorphR, MR, RT, E, A, B>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Morphism<A, MR> MY) 
+        where MorphR : struct, IsMorphism<MR, RT, CoProduct<E, B>> =>
+        new KleisliMorphism2<MorphR, MR, RT, E, A, B>(MX, MY);
 
     public static Morphism<A, B> constant<A, B>(Obj<B> value) =>
         new ConstMorphism<A, B>(value);
@@ -97,6 +109,9 @@ public static class Morphism
     public static Morphism<bool, bool> not => 
         NotMorphism.Default;
 
+    public static Morphism<A, B> ToMorphism<A, B>(this Morphism<A, CoProduct<Error, B>> Morphism) =>
+        new ToMorphism<A, B>(Morphism);
+
     /// <summary>
     /// Schedule morphism
     /// </summary>
@@ -105,20 +120,31 @@ public static class Morphism
     /// <param name="State">Initial state (if the effect is a fold)</param>
     /// <param name="FoldM">Fold morphism</param>
     /// <param name="Predicate">Continue processing predicate morphism</param>
-    /// <param name="Left">Function to turn an `Exception` into an `X`</param>
-    /// <typeparam name="S"></typeparam>
-    /// <typeparam name="X"></typeparam>
-    /// <typeparam name="A"></typeparam>
-    /// <typeparam name="B"></typeparam>
+    /// <returns></returns>
+    public static Morphism<A, S> schedule<S, A, B>(
+        Morphism<A, B> Morphism,
+        Schedule Schedule,
+        Obj<S> State,
+        Morphism<S, Morphism<B, S>> FoldM,
+        Morphism<B, bool> Predicate) =>
+        new ScheduleMorphism<S, A, B>(Morphism, Schedule, State, FoldM, Predicate);
+
+    /// <summary>
+    /// Schedule morphism
+    /// </summary>
+    /// <param name="Morphism">Morphism to 'schedule' (i.e. this is what's repeated, retried, etc.)</param>
+    /// <param name="Schedule">Schedule</param>
+    /// <param name="State">Initial state (if the effect is a fold)</param>
+    /// <param name="FoldM">Fold morphism</param>
+    /// <param name="Predicate">Continue processing predicate morphism</param>
     /// <returns></returns>
     public static Morphism<CoProduct<X, A>, CoProduct<X, S>> schedule<S, X, A, B>(
         Morphism<CoProduct<X, A>, CoProduct<X, B>> Morphism,
         Schedule Schedule,
         Obj<S> State,
         Morphism<S, Morphism<B, S>> FoldM,
-        Morphism<CoProduct<X, B>, bool> Predicate,
-        Func<Exception, X> Left) =>
-        new ScheduleMorphism<S, X, A, B>(Morphism, Schedule, State, FoldM, Predicate, Left);
+        Morphism<CoProduct<X, B>, bool> Predicate) =>
+        new ScheduleMorphism2<S, X, A, B>(Morphism, Schedule, State, FoldM, Predicate);
 }
 
 public static class Morphism<A>
@@ -135,6 +161,9 @@ public abstract record Morphism<A, B>
     public Obj<B> Apply(Obj<A> value) =>
         value.Bind(this);
 
+    public Morphism<A, CoProduct<Error, B>> ToBiMorphism() =>
+        new ToBiMorphism<A, B>(this);
+    
     public abstract Prim<B> Invoke<RT>(State<RT> state, Prim<A> value);
     
     public virtual Morphism<A, C> Compose<C>(Morphism<B, C> f) =>
@@ -493,13 +522,66 @@ internal class Collector<A> : IObserver<Prim<A>>, IDisposable
         Wait.Dispose();
 }
 
-internal record ScheduleMorphism<S, X, A, B>(
+internal record ScheduleMorphism<S, A, B>(
+    Morphism<A, B> Morphism, 
+    Schedule Schedule,
+    Obj<S> State,
+    Morphism<S, Morphism<B, S>> FoldM, 
+    Morphism<B, bool> Predicate) :
+    Morphism<A, S>
+{
+    public override Prim<S> Invoke<RT>(State<RT> state, Prim<A> value)
+    {
+        static (Prim<B> EffectResult, Prim<S> State) RunAndFold(
+            State<RT> state, 
+            Morphism<A, B> effect, 
+            Prim<A> value,
+            Prim<S> foldState, 
+            Morphism<S, Morphism<B, S>> fold)
+        {
+            try
+            {
+                var newResult = effect.Invoke(state, value);
+                var newState = newResult.IsSucc
+                    ? fold.Apply(foldState).ApplyT(newResult).Interpret(state)
+                    : foldState;
+
+                return (newResult, newState);
+            }
+            catch (Exception e)
+            {
+                return (Prim.Fail<B>(e), foldState);
+            }
+        }
+        
+        var durations = Schedule.Run();
+
+        var results = RunAndFold(state, Morphism, value, State.Interpret(state), FoldM);
+        
+        if(!Predicate.Invoke(state, results.EffectResult).ForAll(static x => x))
+            return FinalResult(results.EffectResult, results.State);
+
+        var wait = new AutoResetEvent(false);
+        using var enumerator = durations.GetEnumerator();
+        while (enumerator.MoveNext() && Predicate.Invoke(state, results.EffectResult).ForAll(static x => x))
+        {
+            if (enumerator.Current != Duration.Zero) wait.WaitOne((int)enumerator.Current);
+            results = RunAndFold(state, Morphism, value, results.State, FoldM);
+        }
+
+        return FinalResult(results.EffectResult, results.State);
+    }
+
+    static Prim<S> FinalResult(Prim<B> effectResult, Prim<S> state) =>
+        effectResult is FailPrim<B> f ? Prim.Fail<S>(f.Value) : state;
+}
+
+internal record ScheduleMorphism2<S, X, A, B>(
     Morphism<CoProduct<X, A>, CoProduct<X, B>> Morphism, 
     Schedule Schedule,
     Obj<S> State,
     Morphism<S, Morphism<B, S>> FoldM, 
-    Morphism<CoProduct<X, B>, bool> Predicate,
-    Func<Exception, X> Left) :
+    Morphism<CoProduct<X, B>, bool> Predicate) :
     Morphism<CoProduct<X, A>, CoProduct<X, S>>
 {
     public override Prim<CoProduct<X, S>> Invoke<RT>(State<RT> state, Prim<CoProduct<X, A>> value)
@@ -509,8 +591,7 @@ internal record ScheduleMorphism<S, X, A, B>(
             Morphism<CoProduct<X, A>, CoProduct<X, B>> effect, 
             Prim<CoProduct<X, A>> value,
             Prim<S> foldState, 
-            Morphism<S, Morphism<B, S>> fold, 
-            Func<Exception, X> left)
+            Morphism<S, Morphism<B, S>> fold)
         {
             try
             {
@@ -523,13 +604,13 @@ internal record ScheduleMorphism<S, X, A, B>(
             }
             catch (Exception e)
             {
-                return (Prim.Pure(CoProduct.Left<X, B>(left(e))), foldState);
+                return (Prim.Fail<CoProduct<X, B>>(e), foldState);
             }
         }
         
         var durations = Schedule.Run();
 
-        var results = RunAndFold(state, Morphism, value, State.Interpret(state), FoldM, Left);
+        var results = RunAndFold(state, Morphism, value, State.Interpret(state), FoldM);
         
         if(!Predicate.Invoke(state, results.EffectResult).ForAll(static x => x))
             return results.EffectResult.Bind(r => FinalResult(r, results.State));
@@ -539,7 +620,7 @@ internal record ScheduleMorphism<S, X, A, B>(
         while (enumerator.MoveNext() && Predicate.Invoke(state, results.EffectResult).ForAll(static x => x))
         {
             if (enumerator.Current != Duration.Zero) wait.WaitOne((int)enumerator.Current);
-            results = RunAndFold(state, Morphism, value, results.State, FoldM, Left);
+            results = RunAndFold(state, Morphism, value, results.State, FoldM);
         }
 
         return results.EffectResult.Bind(r => FinalResult(r, results.State));
@@ -550,6 +631,53 @@ internal record ScheduleMorphism<S, X, A, B>(
         {
             CoProductRight<X, B>  => state.Map(CoProduct.Right<X, S>),
             CoProductLeft<X, B> l => Prim.Pure(CoProduct.Left<X, S>(l.Value)),
+            CoProductFail<X, B> f => Prim.Fail<CoProduct<X, S>>(f.Value),
             _ => throw new NotSupportedException()
         };
+}
+
+internal record ToBiMorphism<A, B>(Morphism<A, B> Morphism) : Morphism<A, CoProduct<Error, B>>
+{
+    public override Prim<CoProduct<Error, B>> Invoke<RT>(State<RT> state, Prim<A> value) =>
+        Morphism.Invoke(state, value) switch
+        {
+            FailPrim<A> f => Prim.Pure(CoProduct.Left<Error, B>(f.Value)),
+            var p =>  p.Map(CoProduct.Right<Error, B>)
+        };
+}
+
+internal record ToMorphism<A, B>(Morphism<A, CoProduct<Error, B>> Morphism) : Morphism<A, B>
+{
+    public override Prim<B> Invoke<RT>(State<RT> state, Prim<A> value) =>
+        Morphism.Invoke(state, value).ToObj().Interpret(state);
+}
+
+internal record KleisliMorphism<RT, E, A, B>(Morphism<RT, CoProduct<E, A>> MX, Morphism<A, Morphism<RT, CoProduct<E, B>>> MY) : 
+    Morphism<RT, CoProduct<E, B>>
+{
+    public override Prim<CoProduct<E, B>> Invoke<RT1>(State<RT1> state, Prim<RT> value) =>
+        MX.Invoke(state, value).Bind(c => c switch
+            {
+                CoProductRight<E, A> p => MY.Invoke(state, Prim.Pure(p.Value)).ApplyT(value).Interpret(state),
+                CoProductLeft<E, A> p  => Prim.Pure(CoProduct.Left<E, B>(p.Value)),
+                CoProductFail<E, A> p  => Prim.Pure(CoProduct.Fail<E, B>(p.Value)),
+                _ => throw new NotSupportedException()
+            });
+}
+
+internal record KleisliMorphism2<MorphR, MR, RT, E, A, B>(
+    Morphism<RT, CoProduct<E, A>> MX, 
+    Morphism<A, MR> MY) : 
+    Morphism<RT, CoProduct<E, B>>
+    where MorphR : struct, IsMorphism<MR, RT, CoProduct<E, B>>
+{
+    public override Prim<CoProduct<E, B>> Invoke<RT1>(State<RT1> state, Prim<RT> value) =>
+        MX.Invoke(state, value).Bind(c => c switch
+        {
+            CoProductRight<E, A> p => MY.Invoke(state, Prim.Pure(p.Value))
+                                        .Bind(mr => default(MorphR).ToMorphism(mr).Invoke(state, value)),
+            CoProductLeft<E, A> p  => Prim.Pure(CoProduct.Left<E, B>(p.Value)),
+            CoProductFail<E, A> p  => Prim.Pure(CoProduct.Fail<E, B>(p.Value)),
+            _ => throw new NotSupportedException()
+        });
 }
