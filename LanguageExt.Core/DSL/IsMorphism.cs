@@ -1,6 +1,6 @@
 ﻿namespace LanguageExt.DSL;
 
-public interface IsMorphism<in M, A, B>
+public interface IsMorphism<A, B>
 {
-    Morphism<A, B> ToMorphism(M value);
+    Morphism<A, B> ToMorphism();
 }

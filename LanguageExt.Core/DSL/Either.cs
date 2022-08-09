@@ -1,28 +1,26 @@
 ﻿#nullable enable
 
 using System;
+using LanguageExt.Common;
 
 namespace LanguageExt.DSL;
 
-public readonly struct ObjEither<L, A> : IsObj<Either<L, A>, CoProduct<L, A>>
+public readonly record struct Either<L, A>(Morphism<Unit, CoProduct<L, A>> Op) : IsMorphism<Unit, CoProduct<L, A>>
 {
-    public Obj<CoProduct<L, A>> ToObject(Either<L, A> value) => 
-        value.ObjectSafe;
-}
-
-public readonly record struct Either<L, A>(Obj<CoProduct<L, A>> Object)
-{
-    public static readonly Either<L, A> Bottom = new(Prim<CoProduct<L, A>>.None);
+    public static readonly Either<L, A> Bottom = new(Morphism.constant<Unit, CoProduct<L, A>>(Prim<CoProduct<L, A>>.None));
     
-    internal Obj<CoProduct<L, A>> ObjectSafe => Object ?? Bottom;
+    internal Morphism<Unit, CoProduct<L, A>> OpSafe => Op ?? Bottom.Op;
 
-    static readonly State<Unit> NilState = new (default, null);
+    static State<Unit> NilState => new (default, null);
+
+    public Morphism<Unit, CoProduct<L, A>> ToMorphism() => 
+        OpSafe;
 
     // -----------------------------------------------------------------------------------------------------------------
     // Map
 
     public Either<L, B> Map<B>(Func<A, B> f) =>
-        BiMap(Morphism<L>.identity, Morphism.function(f));
+        BiMap(static x => x, f);
 
     public Either<L, B> Map<B>(Morphism<A, B> f) =>
         BiMap(Morphism<L>.identity, f);
@@ -31,48 +29,42 @@ public readonly record struct Either<L, A>(Obj<CoProduct<L, A>> Object)
     // BiMap
 
     public Either<M, B> BiMap<M, B>(Func<L, M> Left, Func<A, B> Right) =>
-        BiMap(Morphism.function(Left), Morphism.function(Right));
+        Morphism.compose(OpSafe, BiMorphism.bimap(Left, Right));
 
     public Either<M, B> BiMap<M, B>(Morphism<L, M> Left, Morphism<A, B> Right) =>
-        new(BiMorphism.bimap(Left, Right).Apply(ObjectSafe));
+        Morphism.compose(OpSafe, BiMorphism.bimap(Left, Right));
 
     // -----------------------------------------------------------------------------------------------------------------
     // Bind
 
     public Either<L, B> Bind<B>(Func<A, Either<L, B>> f) =>
-        new(BiMorphism.rightBind<ObjEither<L, B>, Either<L,B>, L, A, B>(f).Apply(ObjectSafe));
-    
+        new(Morphism.kleisli<Either<L, B>, Unit, L, A, B>(OpSafe, f));
+
     public Either<L, B> Bind<B>(Func<A, CoProduct<L, B>> f) =>
-        Bind(Morphism.function(f));
+        new(Morphism.kleisli(OpSafe, f)); 
 
-    public Either<L, B> Bind<B>(Func<A, Obj<CoProduct<L, B>>> f) =>
-        Bind(Morphism.function(f));
+    public Either<L, B> Bind<B>(Func<A, Morphism<Unit, CoProduct<L, B>>> f) =>
+        new(Morphism.kleisli(OpSafe, f));
     
-    public Either<L, B> Bind<B>(Morphism<A, CoProduct<L, B>> f) =>
-        new(BiMorphism.rightBind(f).Apply(ObjectSafe));
-
-    public Either<L, B> Bind<B>(Morphism<A, Obj<CoProduct<L, B>>> f) =>
-        new(BiMorphism.rightBind(f).Apply(ObjectSafe));
+    public Either<L, B> Bind<B>(Morphism<A, Morphism<Unit, CoProduct<L, B>>> f) =>
+        new(Morphism.kleisli(OpSafe, f));
     
     // -----------------------------------------------------------------------------------------------------------------
     // BiBind
-    
+
     public Either<M, B> BiBind<M, B>(Func<L, Either<M, B>> Left, Func<A, Either<M, B>> Right) =>
-        new(BiMorphism.bibind<ObjEither<M, B>, Either<M, B>, L, M, A, B>(
-            Morphism.function(Left),
-            Morphism.function(Right)).Apply(ObjectSafe));
+        new(Morphism.bikleisli<Either<M, B>, Unit, L, M, A, B>(OpSafe, Left, Right));
     
     public Either<M, B> BiBind<M, B>(Func<L, CoProduct<M, B>> Left, Func<A, CoProduct<M, B>> Right) =>
-        BiBind(Morphism.function(Left), Morphism.function(Right));
-
-    public Either<M, B> BiBind<M, B>(Func<L, Obj<CoProduct<M, B>>> Left, Func<A, Obj<CoProduct<M, B>>> Right) =>
-        BiBind(Morphism.bind(Left), Morphism.bind(Right));
+        new(Morphism.bikleisli(OpSafe, Left, Right));
 
     public Either<M, B> BiBind<M, B>(Morphism<L, CoProduct<M, B>> Left, Morphism<A, CoProduct<M, B>> Right) =>
-        new(BiMorphism.bibind(Left, Right).Apply(ObjectSafe));
+        new(Morphism.bikleisli(OpSafe, Left, Right));
 
-    public Either<M, B> BiBind<M, B>(Morphism<L, Obj<CoProduct<M, B>>> Left, Morphism<A, Obj<CoProduct<M, B>>> Right) =>
-        new(BiMorphism.bibind(Left, Right).Apply(ObjectSafe));
+    public Either<M, B> BiBind<M, B>(
+        Morphism<L, Morphism<Unit, CoProduct<M, B>>> Left,
+        Morphism<A, Morphism<Unit, CoProduct<M, B>>> Right) =>
+            new(Morphism.bikleisli(OpSafe, Left, Right));
 
     // -----------------------------------------------------------------------------------------------------------------
     // Select
@@ -87,45 +79,38 @@ public readonly record struct Either<L, A>(Obj<CoProduct<L, A>> Object)
     // SelectMany
     
     public Either<L, B> SelectMany<B>(Func<A, Either<L, B>> f) =>
-        Bind(f);
-    
+        new(Morphism.kleisli<Either<L, B>, Unit, L, A, B>(OpSafe, f));
+
     public Either<L, B> SelectMany<B>(Func<A, CoProduct<L, B>> f) =>
-        Bind(f);
+        new(Morphism.kleisli(OpSafe, f)); 
 
-    public Either<L, B> SelectMany<B>(Func<A, Obj<CoProduct<L, B>>> f) =>
-        Bind(f);
+    public Either<L, B> SelectMany<B>(Func<A, Morphism<Unit, CoProduct<L, B>>> f) =>
+        new(Morphism.kleisli(OpSafe, f));
     
-    public Either<L, B> SelectMany<B>(Morphism<A, CoProduct<L, B>> f) =>
-        Bind(f);
-
-    public Either<L, B> SelectMany<B>(Morphism<A, Obj<CoProduct<L, B>>> f) =>
-        Bind(f);
+    public Either<L, B> SelectMany<B>(Morphism<A, Morphism<Unit, CoProduct<L, B>>> f) =>
+        new(Morphism.kleisli(OpSafe, f));
 
     // -----------------------------------------------------------------------------------------------------------------
     // SelectMany
 
-    public Either<L, C> SelectMany<B, C>(Func<A, Either<L, B>> bind, Func<A, B, C> project) =>
-        new(BiMorphism.rightBind<ObjEither<L, B>, Either<L, B>, L, A, B, C>(
-            Morphism.function(bind), 
-            Morphism.function(project)).Apply(ObjectSafe));
-    
-    public Either<L, C> SelectMany<B, C>(Func<A, CoProduct<L, B>> bind, Func<A, B, C> project) =>
-        SelectMany(Morphism.function(bind), Morphism.function(project));
+    public Either<L, C> SelectMany<B, C>(Func<A, Either<L, B>> f, Func<A, B, C> project) =>
+        new(Morphism.kleisliProject(OpSafe, f, project));
 
-    public Either<L, C> SelectMany<B, C>(Func<A, Obj<CoProduct<L, B>>> bind, Func<A, B, C> project) =>
-        SelectMany(Morphism.function(bind), Morphism.function(project));
-    
-    public Either<L, C> SelectMany<B, C>(Morphism<A, CoProduct<L, B>> bind, Morphism<A, Morphism<B, C>> project) =>
-        new(BiMorphism.rightBind(bind, project).Apply(ObjectSafe));
+    public Either<L, C> SelectMany<B, C>(Func<A, CoProduct<L, B>> f, Func<A, B, C> project) =>
+        new(Morphism.kleisliProject(OpSafe, f, project)); 
 
-    public Either<L, C> SelectMany<B, C>(Morphism<A, Obj<CoProduct<L, B>>> bind, Morphism<A, Morphism<B, C>> project) =>
-        new(BiMorphism.rightBind(bind, project).Apply(ObjectSafe));
+    public Either<L, C> SelectMany<B, C>(Func<A, Morphism<Unit, CoProduct<L, B>>> f, Morphism<A, Morphism<B, C>> project) =>
+        new(Morphism.kleisliProject(OpSafe, f, project));
+    
+    public Either<L, C> SelectMany<B, C>(Morphism<A, Morphism<Unit, CoProduct<L, B>>> f, Morphism<A, Morphism<B, C>> project) =>
+        new(Morphism.kleisliProject(OpSafe, f, project));
+    
 
     // -----------------------------------------------------------------------------------------------------------------
     // Filtering
 
     public Either<L, A> Filter(Func<A, bool> f) =>
-        Bind(x => f(x) ? Prelude.Right<L, A>(x) : Bottom);
+        Op.Filter(x => x is CoProductRight<L, A> r && f(r.Value));
 
     public Either<L, A> Where(Func<A, bool> f) =>
         Filter(f);
@@ -134,26 +119,26 @@ public readonly record struct Either<L, A>(Obj<CoProduct<L, A>> Object)
     // Many item processing
     
     public Either<L, A> Head =>
-        ObjectSafe.Head;
+        Op.Head;
 
     public Either<L, A> Tail =>
-        ObjectSafe.Tail;
+        Op.Tail;
 
     public Either<L, A> Last =>
-        ObjectSafe.Last;
+        Op.Last;
 
     public Either<L, A> Skip(int amount) =>
-        ObjectSafe.Skip(amount);
+        Op.Skip(amount);
 
     public Either<L, A> Take(int amount) =>
-        ObjectSafe.Take(amount);
+        Op.Take(amount);
     
     // -----------------------------------------------------------------------------------------------------------------
     // Matching
 
     public B Match<B>(Func<L, B> Left, Func<A, B> Right)
     {
-        return Go(ObjectSafe.Interpret(NilState));
+        return Go(Op.Invoke(NilState, Prim.Unit));
 
         B Go(Prim<CoProduct<L, A>> ma) =>
             ma switch
@@ -169,7 +154,7 @@ public readonly record struct Either<L, A>(Obj<CoProduct<L, A>> Object)
     
     public Seq<B> MatchMany<B>(Func<L, B> Left, Func<A, B> Right)
     {
-        return Go(ObjectSafe.Interpret(NilState));
+        return Go(OpSafe.Invoke(NilState, Prim.Unit));
 
         Seq<B> Go(Prim<CoProduct<L, A>> ma) =>
             ma switch
@@ -185,7 +170,7 @@ public readonly record struct Either<L, A>(Obj<CoProduct<L, A>> Object)
     
     public Seq<B> MatchMany<B>(Func<L, Seq<B>> Left, Func<A, Seq<B>> Right)
     {
-        return Go(ObjectSafe.Interpret(NilState));
+        return Go(OpSafe.Invoke(NilState, Prim.Unit));
 
         Seq<B> Go(Prim<CoProduct<L, A>> ma) =>
             ma switch
@@ -204,68 +189,62 @@ public readonly record struct Either<L, A>(Obj<CoProduct<L, A>> Object)
     // Repeat
 
     public Either<L, A> Repeat(Schedule schedule) =>
-        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe).Repeat(schedule)
-            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+        Op.Repeat(schedule);
 
     public Either<L, A> RepeatWhile(Schedule schedule, Func<A, bool> pred) =>
-        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe).RepeatWhile(schedule, pred)
-            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+        Op.RepeatWhile(schedule, pred);
 
     public Either<L, A> RepeatUntil(Schedule schedule, Func<A, bool> pred) =>
-        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe).RepeatUntil(schedule, pred)
-            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+        Op.RepeatUntil(schedule, pred);
     
     // -----------------------------------------------------------------------------------------------------------------
     // Retry
 
     public Either<L, A> Retry(Schedule schedule) =>
-        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe)
-            .Repeat(schedule)
-            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+        Op.Retry(schedule);
 
-    public Either<L, A> RetryWhile(Schedule schedule, Func<A, bool> pred) =>
-        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe)
-            .RepeatWhile(schedule, pred)
-            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+    public Either<L, A> RetryWhile(Schedule schedule, Func<L, bool> pred) =>
+        Op.RetryWhile(schedule, pred);
 
-    public Either<L, A> RetryUntil(Schedule schedule, Func<A, bool> pred) =>
-        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe)
-            .RepeatUntil(schedule, pred)
-            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+    public Either<L, A> RetryUntil(Schedule schedule, Func<L, bool> pred) =>
+        Op.RetryUntil(schedule, pred);
     
     // -----------------------------------------------------------------------------------------------------------------
     // Folding
 
     public Either<L, S> Fold<S>(Schedule schedule, S state, Func<S, A, S> fold)=>
-        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe)
-            .Fold(schedule, state, fold)
-            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+        Op.Fold(schedule, state, fold);
 
     public Either<L, S> FoldWhile<S>(Schedule schedule, S state, Func<S, A, S> fold, Func<A, bool> pred)=>
-        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe)
-            .FoldWhile(schedule, state, fold, pred)
-            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+        Op.FoldWhile(schedule, state, fold, pred);
 
     public Either<L, S> FoldUntil<S>(Schedule schedule, S state, Func<S, A, S> fold, Func<A, bool> pred)=>
-        Morphism.constant<CoProduct<L, Unit>, CoProduct<L, A>>(ObjectSafe)
-            .FoldWhile(schedule, state, fold, pred)
-            .Apply(Prim.Pure(CoProduct.Right<L, Unit>(default)));
+        Op.FoldWhile(schedule, state, fold, pred);
 
     // -----------------------------------------------------------------------------------------------------------------
     // Operators
     
     public static Either<L, A> operator |(Either<L, A> ma, Either<L, A> mb) =>
-        Obj.Choice<L, A>(ma, mb);
+        Obj.Choice(ma.Op.Apply(Prim.Unit), mb.Op.Apply(Prim.Unit));
 
-    public static implicit operator Obj<CoProduct<L, A>>(Either<L, A> ma) =>
-        ma.ObjectSafe;
+    public static Either<L, A> operator !(Either<L, A> mx) =>
+        mx.Op.Invoke(NilState, Prim.Unit);
+    
+    public static implicit operator Morphism<Unit, CoProduct<L, A>>(Either<L, A> ma) =>
+        ma.OpSafe;
 
     public static implicit operator Either<L, A>(Obj<CoProduct<L, A>> obj) =>
         obj.ToEither();
 
+    public static implicit operator Either<L, A>(CoProduct<L, A> obj) =>
+        obj.ToEither();
+
+    public static implicit operator Either<L, A>(Morphism<Unit, CoProduct<L, A>> obj) =>
+        obj.ToEither();
+
     public static implicit operator Either<L, A>(L value) =>
-        new(Prim.Pure(CoProduct.Left<L, A>(value)));
+        Prelude.Left<L, A>(value);
 
     public static implicit operator Either<L, A>(A value) =>
-        new(Prim.Pure(CoProduct.Right<L, A>(value)));
+        Prelude.Right<L, A>(value);
 }

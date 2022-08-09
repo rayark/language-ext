@@ -62,6 +62,9 @@ public static class Obj
     public static Obj<Morphism<A, C>> ApplyT<A, B, C>(this Obj<Morphism<A, B>> mx, Obj<Morphism<B, C>> my) =>
         mx.Bind(Morphism.bind<Morphism<A, B>, Morphism<A, C>>(x =>
             Morphism.function<Morphism<B, C>, Morphism<A, C>>(x.Compose).Apply(my)));
+    
+    public static Prim<B> InvokeT<RT, A, B>(this Obj<Morphism<A, B>> mm, State<RT> state, Prim<A> x) =>
+        mm.Bind(Morphism.bind<Morphism<A, B>, B>(m => m.Invoke(state, x))).Interpret(state);
 
     public static Obj<A> ToObj<A>(this Obj<CoProduct<Error, A>> Object) =>
         new ToObj<A>(Object);

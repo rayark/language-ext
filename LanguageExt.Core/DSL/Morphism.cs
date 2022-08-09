@@ -43,12 +43,134 @@ public static class Morphism
         Morphism<A, Morphism<RT, CoProduct<E, B>>> MY) =>
         new KleisliMorphism<RT, E, A, B>(MX, MY);
 
-    public static Morphism<RT, CoProduct<E, B>> kleisli<MorphR, MR, RT, E, A, B>(
+    public static Morphism<RT, CoProduct<E, B>> kleisli<RT, E, A, B>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Func<A, Morphism<RT, CoProduct<E, B>>> MY) =>
+        new KleisliMorphism<RT, E, A, B>(MX, function(MY));
+
+    public static Morphism<RT, CoProduct<E, B>> kleisli<MR, RT, E, A, B>(
         Morphism<RT, CoProduct<E, A>> MX,
         Morphism<A, MR> MY) 
-        where MorphR : struct, IsMorphism<MR, RT, CoProduct<E, B>> =>
-        new KleisliMorphism2<MorphR, MR, RT, E, A, B>(MX, MY);
+        where MR : IsMorphism<RT, CoProduct<E, B>> =>
+        new KleisliMorphism2<MR, RT, E, A, B>(MX, MY);
 
+    public static Morphism<RT, CoProduct<E, B>> kleisli<MR, RT, E, A, B>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Func<A, MR> MY)
+        where MR : IsMorphism<RT, CoProduct<E, B>> =>
+        new KleisliMorphism2<MR, RT, E, A, B>(MX, function(MY));
+    
+    public static Morphism<RT, CoProduct<E, B>> kleisli<RT, E, A, B>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Morphism<A, CoProduct<E, B>> MY) =>
+        new KleisliMorphism3<RT, E, A, B>(MX, MY);
+
+    public static Morphism<RT, CoProduct<E, B>> kleisli<RT, E, A, B>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Func<A, CoProduct<E, B>> MY) =>
+        new KleisliMorphism3<RT, E, A, B>(MX, function(MY));
+
+    public static Morphism<RT, CoProduct<F, B>> bikleisli<RT, E, F, A, B>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Morphism<E, Morphism<RT, CoProduct<F, B>>> Left,
+        Morphism<A, Morphism<RT, CoProduct<F, B>>> Right) =>
+        new BiKleisliMorphism<RT, E, F, A, B>(MX, Left, Right);
+
+    public static Morphism<RT, CoProduct<F, B>> bikleisli<MR, RT, E, F, A, B>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Morphism<E, MR> Left,
+        Morphism<A, MR> Right) 
+        where MR : IsMorphism<RT, CoProduct<F, B>> =>
+        new BiKleisliMorphism2<MR, RT, E, F, A, B>(MX, Left, Right);
+
+    public static Morphism<RT, CoProduct<F, B>> bikleisli<MR, RT, E, F, A, B>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Func<E, MR> Left,
+        Func<A, MR> Right) 
+        where MR : IsMorphism<RT, CoProduct<F, B>> =>
+        new BiKleisliMorphism2<MR, RT, E, F, A, B>(MX, function(Left), function(Right));
+
+    public static Morphism<RT, CoProduct<F, B>> bikleisli<RT, E, F, A, B>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Morphism<E, CoProduct<F, B>> Left,
+        Morphism<A, CoProduct<F, B>> Right) =>
+        new BiKleisliMorphism3<RT, E, F, A, B>(MX, Left, Right);
+
+    public static Morphism<RT, CoProduct<F, B>> bikleisli<RT, E, F, A, B>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Func<E, CoProduct<F, B>> Left,
+        Func<A, CoProduct<F, B>> Right) =>
+        new BiKleisliMorphism3<RT, E, F, A, B>(MX, function(Left), function(Right));
+
+    
+    public static Morphism<RT, CoProduct<E, C>> kleisliProject<RT, E, A, B, C>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Morphism<A, Morphism<RT, CoProduct<E, B>>> MY,
+        Morphism<A, Morphism<B, C>> project) =>
+        new KleisliProjectMorphism<RT, E, A, B, C>(MX, MY, project);
+
+    public static Morphism<RT, CoProduct<E, C>> kleisliProject<RT, E, A, B, C>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Morphism<A, Morphism<RT, CoProduct<E, B>>> MY,
+        Func<A, B, C> project) =>
+        new KleisliProjectMorphism<RT, E, A, B, C>(MX, MY, function(project));
+
+    
+    public static Morphism<RT, CoProduct<E, C>> kleisliProject<RT, E, A, B, C>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Func<A, Morphism<RT, CoProduct<E, B>>> MY,
+        Func<A, B, C> project) =>
+        new KleisliProjectMorphism<RT, E, A, B, C>(MX, function(MY), function(project));
+    
+    public static Morphism<RT, CoProduct<E, C>> kleisliProject<RT, E, A, B, C>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Func<A, Morphism<RT, CoProduct<E, B>>> MY,
+        Morphism<A, Morphism<B, C>> project) =>
+        new KleisliProjectMorphism<RT, E, A, B, C>(MX, function(MY), project);
+
+    
+    public static Morphism<RT, CoProduct<E, C>> kleisliProject<MR, RT, E, A, B, C>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Morphism<A, MR> MY,
+        Morphism<A, Morphism<B, C>> project) 
+        where MR : IsMorphism<RT, CoProduct<E, B>> =>
+        new KleisliProjectMorphism2<MR, RT, E, A, B, C>(MX, MY, project);
+
+    public static Morphism<RT, CoProduct<E, C>> kleisliProject<MR, RT, E, A, B, C>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Func<A, MR> MY,
+        Func<A, B, C> project)
+        where MR : IsMorphism<RT, CoProduct<E, B>> =>
+        new KleisliProjectMorphism2<MR, RT, E, A, B, C>(MX, function(MY), function(project));
+
+    
+    public static Morphism<RT, CoProduct<E, C>> kleisliProject<RT, E, A, B, C>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Morphism<A, CoProduct<E, B>> MY,
+        Morphism<A, Morphism<B, C>> project) =>
+        new KleisliProjectMorphism3<RT, E, A, B, C>(MX, MY, project);
+
+    public static Morphism<RT, CoProduct<E, C>> kleisliProject<RT, E, A, B, C>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Morphism<A, CoProduct<E, B>> MY,
+        Func<A, B, C> project) =>
+        new KleisliProjectMorphism3<RT, E, A, B, C>(MX, MY, function(project));
+
+    
+    public static Morphism<RT, CoProduct<E, C>> kleisliProject<RT, E, A, B, C>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Func<A, CoProduct<E, B>> MY,
+        Func<A, B, C> project) =>
+        new KleisliProjectMorphism3<RT, E, A, B, C>(MX, function(MY), function(project));
+    
+    public static Morphism<RT, CoProduct<E, C>> kleisliProject<RT, E, A, B, C>(
+        Morphism<RT, CoProduct<E, A>> MX,
+        Func<A, CoProduct<E, B>> MY,
+        Morphism<A, Morphism<B, C>> project) =>
+        new KleisliProjectMorphism3<RT, E, A, B, C>(MX, function(MY), project);
+
+    
+    
     public static Morphism<A, B> constant<A, B>(Obj<B> value) =>
         new ConstMorphism<A, B>(value);
 
@@ -145,6 +267,23 @@ public static class Morphism
         Morphism<S, Morphism<B, S>> FoldM,
         Morphism<CoProduct<X, B>, bool> Predicate) =>
         new ScheduleMorphism2<S, X, A, B>(Morphism, Schedule, State, FoldM, Predicate);
+
+    /// <summary>
+    /// Schedule morphism
+    /// </summary>
+    /// <param name="Morphism">Morphism to 'schedule' (i.e. this is what's repeated, retried, etc.)</param>
+    /// <param name="Schedule">Schedule</param>
+    /// <param name="State">Initial state (if the effect is a fold)</param>
+    /// <param name="FoldM">Fold morphism</param>
+    /// <param name="Predicate">Continue processing predicate morphism</param>
+    /// <returns></returns>
+    public static Morphism<E, CoProduct<A, S>> schedule<S, E, A, B>(
+        Morphism<E, CoProduct<A, B>> Morphism,
+        Schedule Schedule,
+        Obj<S> State,
+        Morphism<S, Morphism<B, S>> FoldM,
+        Morphism<CoProduct<A, B>, bool> Predicate) =>
+        new ScheduleMorphism3<S, E, A, B>(Morphism, Schedule, State, FoldM, Predicate);
 }
 
 public static class Morphism<A>
@@ -154,6 +293,15 @@ public static class Morphism<A>
     public static readonly Morphism<A, A> last = new LastMorphism<A>();
     public static readonly Morphism<A, A> identity = new IdentityMorphism<A>();
     public static readonly Morphism<A, Unit> release = ReleaseMorphism<A>.Default;
+}
+
+public static class Morphism<RT, A, B>
+{
+    public static readonly Morphism<A, Morphism<RT, CoProduct<A, B>>> left =
+        Morphism.function<A, Morphism<RT, CoProduct<A, B>>>(a => Morphism.function<RT, CoProduct<A, B>>(_ => CoProduct.Left<A, B>(a)));
+    
+    public static readonly Morphism<B, Morphism<RT, CoProduct<A, B>>> right =
+        Morphism.function<B, Morphism<RT, CoProduct<A, B>>>(b => Morphism.function<RT, CoProduct<A, B>>(_ => CoProduct.Right<A, B>(b)));
 }
 
 public abstract record Morphism<A, B>
@@ -177,6 +325,12 @@ public abstract record Morphism<A, B>
 
     public virtual Morphism<A, B> Tail => 
         new ComposeMorphism<A, B, B>(this, Morphism<B>.tail);
+
+    public Morphism<A, B> Filter(Func<B, bool> f) => 
+        Filter(Morphism.function(f));
+
+    public virtual Morphism<A, B> Filter(Morphism<B, bool> f) => 
+        new ComposeMorphism<A, B, B>(this, Morphism.filter(f));
 
     public virtual Morphism<A, B> Skip(int amount) => 
         new ComposeMorphism<A, B, B>(this, Morphism.skip<B>(amount));
@@ -217,8 +371,9 @@ public abstract record Morphism<A, B>
     public Morphism<A, C> Bind<C>(Func<B, Obj<C>> f) =>
         Compose(Morphism.bind(f));
 
-    public Morphism<A, D> SelectMany<C, D>(Func<B, Obj<C>> bind, Func<B, C, D> project) =>
-        Compose(Morphism.bind<B, D>(b => bind(b).Bind(Morphism.bind<C, D>(c => Obj.Pure(project(b, c))))));
+    //  TODO
+    //public Morphism<A, D> SelectMany<C, D>(Func<B, Obj<C>> bind, Func<B, C, D> project) =>
+    //    Compose(Morphism.bind<B, D>(b => bind(b).Bind(Morphism.bind<C, D>(c => Obj.Pure(project(b, c))))));
 }
 
 internal sealed record ConstMorphism<A, B>(Obj<B> Value) : Morphism<A, B>
@@ -299,6 +454,9 @@ internal sealed record ComposeMorphism<A, B, C>(Morphism<A, B> Left, Morphism<B,
 {
     public override Prim<C> Invoke<RT>(State<RT> state, Prim<A> value) =>
         Right.Invoke(state, Left.Invoke(state, value));
+
+    public override Morphism<A, D> Compose<D>(Morphism<C, D> f) =>
+        new ComposeMorphism<A, B, D>(Left, Right.Compose(f));
 }
 
 internal sealed record ManyMorphism<A, B>(Seq<Morphism<A, B>> Values) : Morphism<A, B>
@@ -485,7 +643,26 @@ internal sealed record ObservableMorphism<A, B>(IObservable<Obj<A>> Items, Morph
             var state = State<Unit>.Create(default);
             try
             {
-                return Next.Compose(predicate).Apply(x).Interpret(state).ForAll(static x => x);
+                return Next.Compose(predicate)
+                           .Invoke(state, x.Interpret(state))
+                           .ForAll(static x => x);
+            }
+            finally
+            {
+                state.CleanUp();
+            }
+
+        }), Next);
+
+    public override Morphism<Unit, B> Filter(Morphism<B, bool> f) => 
+        new ObservableMorphism<A, B>(Items.Where(x =>
+        {
+            var state = State<Unit>.Create(default);
+            try
+            {
+                return Next.Compose(f)
+                           .Invoke(state, x.Interpret(state))
+                           .ForAll(static x => x);
             }
             finally
             {
@@ -576,20 +753,20 @@ internal record ScheduleMorphism<S, A, B>(
         effectResult is FailPrim<B> f ? Prim.Fail<S>(f.Value) : state;
 }
 
-internal record ScheduleMorphism2<S, X, A, B>(
-    Morphism<CoProduct<X, A>, CoProduct<X, B>> Morphism, 
+internal record ScheduleMorphism2<S, E, A, B>(
+    Morphism<CoProduct<E, A>, CoProduct<E, B>> Morphism, 
     Schedule Schedule,
     Obj<S> State,
     Morphism<S, Morphism<B, S>> FoldM, 
-    Morphism<CoProduct<X, B>, bool> Predicate) :
-    Morphism<CoProduct<X, A>, CoProduct<X, S>>
+    Morphism<CoProduct<E, B>, bool> Predicate) :
+    Morphism<CoProduct<E, A>, CoProduct<E, S>>
 {
-    public override Prim<CoProduct<X, S>> Invoke<RT>(State<RT> state, Prim<CoProduct<X, A>> value)
+    public override Prim<CoProduct<E, S>> Invoke<RT>(State<RT> state, Prim<CoProduct<E, A>> value)
     {
-        static (Prim<CoProduct<X, B>> EffectResult, Prim<S> State) RunAndFold(
+        static (Prim<CoProduct<E, B>> EffectResult, Prim<S> State) RunAndFold(
             State<RT> state, 
-            Morphism<CoProduct<X, A>, CoProduct<X, B>> effect, 
-            Prim<CoProduct<X, A>> value,
+            Morphism<CoProduct<E, A>, CoProduct<E, B>> effect, 
+            Prim<CoProduct<E, A>> value,
             Prim<S> foldState, 
             Morphism<S, Morphism<B, S>> fold)
         {
@@ -597,14 +774,14 @@ internal record ScheduleMorphism2<S, X, A, B>(
             {
                 var newResult = effect.Invoke(state, value);
                 var newState = newResult.ForAll(x => x.IsRight)
-                    ? fold.Apply(foldState).ApplyT(newResult.Map(x => ((CoProductRight<X, B>)x).Value)).Interpret(state)
+                    ? fold.Apply(foldState).ApplyT(newResult.Map(x => ((CoProductRight<E, B>)x).Value)).Interpret(state)
                     : foldState;
 
                 return (newResult, newState);
             }
             catch (Exception e)
             {
-                return (Prim.Fail<CoProduct<X, B>>(e), foldState);
+                return (Prim.Fail<CoProduct<E, B>>(e), foldState);
             }
         }
         
@@ -626,12 +803,72 @@ internal record ScheduleMorphism2<S, X, A, B>(
         return results.EffectResult.Bind(r => FinalResult(r, results.State));
     }
 
-    static Prim<CoProduct<X, S>> FinalResult(CoProduct<X, B> effectResult, Prim<S> state) =>
+    static Prim<CoProduct<E, S>> FinalResult(CoProduct<E, B> effectResult, Prim<S> state) =>
         effectResult switch
         {
-            CoProductRight<X, B>  => state.Map(CoProduct.Right<X, S>),
-            CoProductLeft<X, B> l => Prim.Pure(CoProduct.Left<X, S>(l.Value)),
-            CoProductFail<X, B> f => Prim.Fail<CoProduct<X, S>>(f.Value),
+            CoProductRight<E, B>  => state.Map(CoProduct.Right<E, S>),
+            CoProductLeft<E, B> l => Prim.Pure(CoProduct.Left<E, S>(l.Value)),
+            CoProductFail<E, B> f => Prim.Fail<CoProduct<E, S>>(f.Value),
+            _ => throw new NotSupportedException()
+        };
+}
+
+internal record ScheduleMorphism3<S, X, A, B>(
+    Morphism<X, CoProduct<A, B>> Morphism, 
+    Schedule Schedule,
+    Obj<S> State,
+    Morphism<S, Morphism<B, S>> FoldM, 
+    Morphism<CoProduct<A, B>, bool> Predicate) :
+    Morphism<X, CoProduct<A, S>>
+{
+    public override Prim<CoProduct<A, S>> Invoke<RT>(State<RT> state, Prim<X> value)
+    {
+        static (Prim<CoProduct<A, B>> EffectResult, Prim<S> State) RunAndFold(
+            State<RT> state, 
+            Morphism<X, CoProduct<A, B>> effect, 
+            Prim<X> value,
+            Prim<S> foldState, 
+            Morphism<S, Morphism<B, S>> fold)
+        {
+            try
+            {
+                var newResult = effect.Invoke(state, value);
+                var newState = newResult.ForAll(x => x.IsRight)
+                    ? fold.Apply(foldState).ApplyT(newResult.Map(x => ((CoProductRight<A, B>)x).Value)).Interpret(state)
+                    : foldState;
+
+                return (newResult, newState);
+            }
+            catch (Exception e)
+            {
+                return (Prim.Fail<CoProduct<A, B>>(e), foldState);
+            }
+        }
+        
+        var durations = Schedule.Run();
+
+        var results = RunAndFold(state, Morphism, value, State.Interpret(state), FoldM);
+        
+        if(!Predicate.Invoke(state, results.EffectResult).ForAll(static x => x))
+            return results.EffectResult.Bind(r => FinalResult(r, results.State));
+
+        var wait = new AutoResetEvent(false);
+        using var enumerator = durations.GetEnumerator();
+        while (enumerator.MoveNext() && Predicate.Invoke(state, results.EffectResult).ForAll(static x => x))
+        {
+            if (enumerator.Current != Duration.Zero) wait.WaitOne((int)enumerator.Current);
+            results = RunAndFold(state, Morphism, value, results.State, FoldM);
+        }
+
+        return results.EffectResult.Bind(r => FinalResult(r, results.State));
+    }
+
+    static Prim<CoProduct<A, S>> FinalResult(CoProduct<A, B> effectResult, Prim<S> state) =>
+        effectResult switch
+        {
+            CoProductRight<A, B>  => state.Map(CoProduct.Right<A, S>),
+            CoProductLeft<A, B> l => Prim.Pure(CoProduct.Left<A, S>(l.Value)),
+            CoProductFail<A, B> f => Prim.Fail<CoProduct<A, S>>(f.Value),
             _ => throw new NotSupportedException()
         };
 }
@@ -665,19 +902,162 @@ internal record KleisliMorphism<RT, E, A, B>(Morphism<RT, CoProduct<E, A>> MX, M
             });
 }
 
-internal record KleisliMorphism2<MorphR, MR, RT, E, A, B>(
+internal record KleisliMorphism2<MR, RT, E, A, B>(
     Morphism<RT, CoProduct<E, A>> MX, 
     Morphism<A, MR> MY) : 
     Morphism<RT, CoProduct<E, B>>
-    where MorphR : struct, IsMorphism<MR, RT, CoProduct<E, B>>
+    where MR : IsMorphism<RT, CoProduct<E, B>>
 {
     public override Prim<CoProduct<E, B>> Invoke<RT1>(State<RT1> state, Prim<RT> value) =>
         MX.Invoke(state, value).Bind(c => c switch
         {
             CoProductRight<E, A> p => MY.Invoke(state, Prim.Pure(p.Value))
-                                        .Bind(mr => default(MorphR).ToMorphism(mr).Invoke(state, value)),
+                                        .Bind(mr => mr.ToMorphism().Invoke(state, value)),
             CoProductLeft<E, A> p  => Prim.Pure(CoProduct.Left<E, B>(p.Value)),
             CoProductFail<E, A> p  => Prim.Pure(CoProduct.Fail<E, B>(p.Value)),
             _ => throw new NotSupportedException()
         });
+}
+
+internal record KleisliMorphism3<RT, E, A, B>(Morphism<RT, CoProduct<E, A>> MX, Morphism<A, CoProduct<E, B>> MY) : 
+    Morphism<RT, CoProduct<E, B>>
+{
+    public override Prim<CoProduct<E, B>> Invoke<RT1>(State<RT1> state, Prim<RT> value) =>
+        MX.Invoke(state, value).Bind(c => c switch
+        {
+            CoProductRight<E, A> p => MY.Invoke(state, Prim.Pure(p.Value)),
+            CoProductLeft<E, A> p  => Prim.Pure(CoProduct.Left<E, B>(p.Value)),
+            CoProductFail<E, A> p  => Prim.Pure(CoProduct.Fail<E, B>(p.Value)),
+            _ => throw new NotSupportedException()
+        });
+}
+
+internal record BiKleisliMorphism<RT, E, F, A, B>(
+    Morphism<RT, CoProduct<E, A>> MX, 
+    Morphism<E, Morphism<RT, CoProduct<F, B>>> Left,
+    Morphism<A, Morphism<RT, CoProduct<F, B>>> Right
+    ) : 
+    Morphism<RT, CoProduct<F, B>>
+{
+    public override Prim<CoProduct<F, B>> Invoke<RT1>(State<RT1> state, Prim<RT> value) =>
+        MX.Invoke(state, value).Bind(c => c switch
+        {
+            CoProductRight<E, A> p => Right.Invoke(state, Prim.Pure(p.Value)).ApplyT(value).Interpret(state),
+            CoProductLeft<E, A> p  => Left.Invoke(state, Prim.Pure(p.Value)).ApplyT(value).Interpret(state),
+            CoProductFail<E, A> p  => Prim.Pure(CoProduct.Fail<F, B>(p.Value)),
+            _ => throw new NotSupportedException()
+        });
+}
+
+internal record BiKleisliMorphism2<MR, RT, E, F, A, B>(
+    Morphism<RT, CoProduct<E, A>> MX, 
+    Morphism<E, MR> Left,
+    Morphism<A, MR> Right
+    ) : 
+    Morphism<RT, CoProduct<F, B>>
+    where MR : IsMorphism<RT, CoProduct<F, B>>
+{
+    public override Prim<CoProduct<F, B>> Invoke<RT1>(State<RT1> state, Prim<RT> value) =>
+        MX.Invoke(state, value).Bind(c => c switch
+        {
+            CoProductRight<E, A> p => Right.Invoke(state, Prim.Pure(p.Value)).Bind(mr => mr.ToMorphism().Invoke(state, value)),
+            CoProductLeft<E, A> p  => Left.Invoke(state, Prim.Pure(p.Value)).Bind(mr => mr.ToMorphism().Invoke(state, value)),
+            CoProductFail<E, A> p  => Prim.Pure(CoProduct.Fail<F, B>(p.Value)),
+            _ => throw new NotSupportedException()
+        });
+}
+
+
+internal record BiKleisliMorphism3<RT, E, F, A, B>(
+    Morphism<RT, CoProduct<E, A>> MX, 
+    Morphism<E, CoProduct<F, B>> Left,
+    Morphism<A, CoProduct<F, B>> Right
+) : 
+    Morphism<RT, CoProduct<F, B>>
+{
+    public override Prim<CoProduct<F, B>> Invoke<RT1>(State<RT1> state, Prim<RT> value) =>
+        MX.Invoke(state, value).Bind(c => c switch
+        {
+            CoProductRight<E, A> p => Right.Invoke(state, Prim.Pure(p.Value)),
+            CoProductLeft<E, A> p  => Left.Invoke(state, Prim.Pure(p.Value)),
+            CoProductFail<E, A> p  => Prim.Pure(CoProduct.Fail<F, B>(p.Value)),
+            _ => throw new NotSupportedException()
+        });
+}
+
+internal record KleisliProjectMorphism<RT, E, A, B, C>(
+    Morphism<RT, CoProduct<E, A>> MX, 
+    Morphism<A, Morphism<RT, CoProduct<E, B>>> MY, 
+    Morphism<A, Morphism<B, C>> Project) : 
+    Morphism<RT, CoProduct<E, C>>
+{
+    public override Prim<CoProduct<E, C>> Invoke<RT1>(State<RT1> state, Prim<RT> value) =>
+        MX.Invoke(state, value).Bind(c => c switch
+            {
+                CoProductRight<E, A> a => 
+                    MY.Invoke(state, Prim.Pure(a.Value)).InvokeT(state, value).Map(cb => cb switch
+                    {
+                        CoProductRight<E, B> b => Project.Invoke(state, Prim.Pure(a.Value))
+                                                         .InvokeT(state, Prim.Pure(b.Value))
+                                                         .Map(CoProduct.Right<E, C>),   
+                        CoProductLeft<E, B> p  => Prim.Pure(CoProduct.Left<E, C>(p.Value)),
+                        CoProductFail<E, B> p  => Prim.Pure(CoProduct.Fail<E, C>(p.Value)),
+                        _ => throw new NotSupportedException()
+                    }).Flatten(),
+                CoProductLeft<E, A> p  => Prim.Pure(CoProduct.Left<E, C>(p.Value)),
+                CoProductFail<E, A> p  => Prim.Pure(CoProduct.Fail<E, C>(p.Value)),
+                _ => throw new NotSupportedException()
+            });
+
+}
+
+internal record KleisliProjectMorphism2<MR, RT, E, A, B, C>(
+    Morphism<RT, CoProduct<E, A>> MX, 
+    Morphism<A, MR> MY, 
+    Morphism<A, Morphism<B, C>> Project) : 
+    Morphism<RT, CoProduct<E, C>>
+    where MR : IsMorphism<RT, CoProduct<E, B>>
+{
+        public override Prim<CoProduct<E, C>> Invoke<RT1>(State<RT1> state, Prim<RT> value) =>
+        MX.Invoke(state, value).Bind(c => c switch
+            {
+                CoProductRight<E, A> a => 
+                    MY.Invoke(state, Prim.Pure(a.Value)).Bind(mr => mr.ToMorphism().Invoke(state, value).Map(cb => cb switch
+                    {
+                        CoProductRight<E, B> b => Project.Invoke(state, Prim.Pure(a.Value))
+                                                         .InvokeT(state, Prim.Pure(b.Value))
+                                                         .Map(CoProduct.Right<E, C>),   
+                        CoProductLeft<E, B> p  => Prim.Pure(CoProduct.Left<E, C>(p.Value)),
+                        CoProductFail<E, B> p  => Prim.Pure(CoProduct.Fail<E, C>(p.Value)),
+                        _ => throw new NotSupportedException()
+                    })).Flatten(),
+                CoProductLeft<E, A> p  => Prim.Pure(CoProduct.Left<E, C>(p.Value)),
+                CoProductFail<E, A> p  => Prim.Pure(CoProduct.Fail<E, C>(p.Value)),
+                _ => throw new NotSupportedException()
+            });
+}
+
+internal record KleisliProjectMorphism3<RT, E, A, B, C>(
+    Morphism<RT, CoProduct<E, A>> MX, 
+    Morphism<A, CoProduct<E, B>> MY, 
+    Morphism<A, Morphism<B, C>> Project) : 
+    Morphism<RT, CoProduct<E, C>>
+{
+    public override Prim<CoProduct<E, C>> Invoke<RT1>(State<RT1> state, Prim<RT> value) =>
+        MX.Invoke(state, value).Bind(c => c switch
+            {
+                CoProductRight<E, A> a => 
+                    MY.Invoke(state, Prim.Pure(a.Value)).Map(cb => cb switch
+                    {
+                        CoProductRight<E, B> b => Project.Invoke(state, Prim.Pure(a.Value))
+                                                         .InvokeT(state, Prim.Pure(b.Value))
+                                                         .Map(CoProduct.Right<E, C>),   
+                        CoProductLeft<E, B> p  => Prim.Pure(CoProduct.Left<E, C>(p.Value)),
+                        CoProductFail<E, B> p  => Prim.Pure(CoProduct.Fail<E, C>(p.Value)),
+                        _ => throw new NotSupportedException()
+                    }).Flatten(),
+                CoProductLeft<E, A> p  => Prim.Pure(CoProduct.Left<E, C>(p.Value)),
+                CoProductFail<E, A> p  => Prim.Pure(CoProduct.Fail<E, C>(p.Value)),
+                _ => throw new NotSupportedException()
+            });    
 }

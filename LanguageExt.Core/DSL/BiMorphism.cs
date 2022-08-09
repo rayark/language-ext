@@ -16,6 +16,9 @@ public static class BiMorphism
     public static BiMorphism<X, Y, A, B> bimap<X, Y, A, B>(Morphism<X, Y> Left, Morphism<A, B> Right) =>
         new BiMapMorphism<X, Y, A, B>(Left, Right);
 
+    public static BiMorphism<X, Y, A, B> bimap<X, Y, A, B>(Func<X, Y> Left, Func<A, B> Right) =>
+        new BiMapMorphism<X, Y, A, B>(Morphism.function(Left), Morphism.function(Right));
+
     
     public static BiMorphism<X, X, A, B> rightBind<X, A, B>(Morphism<A, CoProduct<X, B>> Right) =>
         new BiBindMorphism<X, X, A, B>(CoProduct<X, B>.leftId, Right);
