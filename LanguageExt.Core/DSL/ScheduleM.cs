@@ -1,30 +1,32 @@
-﻿using System;
+﻿/*
+using System;
+using LanguageExt.DSL.Transducers;
 using LanguageExt.TypeClasses;
 
 namespace LanguageExt.DSL;
 
 internal static class ScheduleM
 {
-    public static Morphism<CoProduct<X, A>, CoProduct<X, B>> Repeat<X, A, B>(
-        this Morphism<CoProduct<X, A>, CoProduct<X, B>> ma,
+    public static Transducer<CoProduct<X, A>, CoProduct<X, B>> Repeat<X, A, B>(
+        this Transducer<CoProduct<X, A>, CoProduct<X, B>> ma,
         Schedule schedule) =>
-        Morphism.schedule(
+        Transducer.schedule(
             ma,
             schedule,
             Prim<B>.None,
             Morphism.function<B, B, B>((_, x) => x),
             Morphism.function<CoProduct<X, B>, bool>(p => p.IsRight));
 
-    public static Morphism<CoProduct<X, A>, CoProduct<X, B>> RepeatWhile<X, A, B>(
-        this Morphism<CoProduct<X, A>, CoProduct<X, B>> ma,
+    public static Transducer<CoProduct<X, A>, CoProduct<X, B>> RepeatWhile<X, A, B>(
+        this Transducer<CoProduct<X, A>, CoProduct<X, B>> ma,
         Schedule schedule,
         Func<B, bool> pred) =>
-        Morphism.schedule(
+        Transducer.schedule(
             ma,
             schedule,
             Prim<B>.None,
-            Morphism.function<B, B, B>((_, x) => x),
-            Morphism.function<CoProduct<X, B>, bool>(p => p is CoProductRight<X, B> r && pred(r.Value)));
+            Transducer.function<B, B, B>((_, x) => x),
+            Transducer.function<CoProduct<X, B>, bool>(p => p is CoProductRight<X, B> r && pred(r.Value)));
 
     public static Morphism<CoProduct<X, A>, CoProduct<X, B>> RepeatUntil<X, A, B>(
         this Morphism<CoProduct<X, A>, CoProduct<X, B>> ma,
@@ -182,3 +184,4 @@ internal static class ScheduleM
 
     
 }
+*/

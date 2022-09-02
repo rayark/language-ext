@@ -1,4 +1,5 @@
-﻿#nullable enable
+﻿/*
+#nullable enable
 using System;
 
 namespace LanguageExt.DSL;
@@ -138,3 +139,4 @@ public record BiMapMorphism<X, Y, A, B>(Morphism<X, Y> Left, Morphism<A, B> Righ
             _ => throw new InvalidOperationException()
         });
 }
+*/

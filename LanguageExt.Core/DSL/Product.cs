@@ -1,4 +1,5 @@
-﻿#nullable enable
+﻿/*
+#nullable enable
 namespace LanguageExt.DSL;
 
 public record Product<A, B>(Obj<A> First, Obj<B> Second) : Obj<(A, B)>
@@ -10,3 +11,4 @@ public record Product<A, B>(Obj<A> First, Obj<B> Second) : Obj<(A, B)>
         return pa.Bind(a => pb.Map(b => (a, b)));
     }
 }
+*/

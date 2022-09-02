@@ -1,4 +1,5 @@
-﻿#nullable enable
+﻿/*
+#nullable enable
 
 using System;
 
@@ -77,3 +78,4 @@ public static partial class Prelude
         Func<A, B, C> project) =>
         Morphism.constant<Unit, CoProduct<L, A>>(Prim.Pure(ma)).SelectMany(bind, project);
 }
+*/

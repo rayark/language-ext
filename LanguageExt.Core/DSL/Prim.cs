@@ -1,6 +1,7 @@
 ﻿#nullable enable
 
 using System;
+using System.Collections.Generic;
 using LanguageExt.Common;
 
 namespace LanguageExt.DSL;
@@ -14,6 +15,9 @@ public static class Prim
 
     public static Prim<A> Pure<A>(A value) =>
         new PurePrim<A>(value);
+
+    public static Prim<A> Many<A>(IEnumerable<Prim<A>> value) =>
+        Many(value.ToSeq());
 
     public static Prim<A> Many<A>(Seq<Prim<A>> value) =>
         value.IsEmpty
@@ -58,27 +62,27 @@ public static class Prim
     }
 }
 
-public abstract record Prim<A> : Obj<A>, IDisposable
+public abstract record Prim<A> : IDisposable
 {
     public static readonly Prim<A> None = new ManyPrim<A>(Seq<Prim<A>>.Empty);
-
-    public override Prim<A> Interpret<RT>(State<RT> state) =>
-        this;
-
+    
     public abstract Prim<B> Bind<B>(Func<A, Prim<B>> f);
     public abstract Prim<B> Map<B>(Func<A, B> f);
+    public abstract Prim<A> Filter(Func<A, bool> f);
     public abstract Prim<S> Fold<S>(Prim<S> state, Func<S, A, S> f);
     public abstract Prim<A> Append(Prim<A> rhs);
+    public abstract Unit Iter(Action<A> f);
 
     public abstract bool IsSucc { get; }
     public abstract bool IsFail { get; }
     public abstract bool IsMany { get; }
+    public abstract bool IsEmpty { get; }
 
-    public new abstract Prim<A> Head { get; }
-    public new abstract Prim<A> Last { get; }
-    public new abstract Prim<A> Tail { get; }
-    public new abstract Prim<A> Skip(int amount);
-    public new abstract Prim<A> Take(int amount);
+    public abstract Prim<A> Head { get; }
+    public abstract Prim<A> Last { get; }
+    public abstract Prim<A> Tail { get; }
+    public abstract Prim<A> Skip(int amount);
+    public abstract Prim<A> Take(int amount);
     public abstract bool ForAll(Func<A, bool> f);
     public abstract bool Exists(Func<A, bool> f);
     
@@ -86,6 +90,12 @@ public abstract record Prim<A> : Obj<A>, IDisposable
     /// Dispose
     /// </summary>
     public abstract void Dispose();
+
+    public static Prim<A> operator +(Prim<A> lhs, Prim<A> rhs) =>
+        lhs.Append(rhs);
+
+    public static Prim<A> operator +(Prim<A> lhs, A rhs) =>
+        lhs.Append(Prim.Pure(rhs));
 }
 
 public sealed record FailPrim<A>(Error Value) : Prim<A>
@@ -98,6 +108,9 @@ public sealed record FailPrim<A>(Error Value) : Prim<A>
 
     public override Prim<S> Fold<S>(Prim<S> state, Func<S, A, S> f) =>
         Prim.Fail<S>(Value);
+
+    public override Prim<A> Filter(Func<A, bool> f) =>
+        this;
     
     public override bool ForAll(Func<A, bool> f) => 
         false;
@@ -112,6 +125,9 @@ public sealed record FailPrim<A>(Error Value) : Prim<A>
             _                                 => this
         };
 
+    public override Unit Iter(Action<A> f) =>
+        default;
+
     public override bool IsSucc =>
         false;
 
@@ -120,7 +136,10 @@ public sealed record FailPrim<A>(Error Value) : Prim<A>
     
     public override bool IsMany =>
         false;    
- 
+     
+    public override bool IsEmpty =>
+        true;    
+
     public override Prim<A> Head =>
         this;
 
@@ -135,7 +154,7 @@ public sealed record FailPrim<A>(Error Value) : Prim<A>
 
     public override Prim<A> Take(int amount) =>
         this;
-
+    
     /// <summary>
     /// Dispose
     /// </summary>
@@ -156,6 +175,9 @@ public sealed record PurePrim<A>(A Value) : Prim<A>
     public override Prim<B> Map<B>(Func<A, B> f) =>
         new PurePrim<B>(f(Value));
 
+    public override Prim<A> Filter(Func<A, bool> f) =>
+        f(Value) ? this : None;
+    
     public override Prim<S> Fold<S>(Prim<S> state, Func<S, A, S> f) =>
         state.Map(s => f(s, Value));
     
@@ -164,7 +186,13 @@ public sealed record PurePrim<A>(A Value) : Prim<A>
     
     public override bool Exists(Func<A, bool> f) => 
         f(Value);
- 
+
+    public override Unit Iter(Action<A> f)
+    {
+        f(Value);
+        return default;
+    }
+
     public override Prim<A> Append(Prim<A> rhs) =>
         rhs switch
         {
@@ -183,6 +211,9 @@ public sealed record PurePrim<A>(A Value) : Prim<A>
     
     public override bool IsMany =>
         false;    
+    
+    public override bool IsEmpty =>
+        false;    
 
     public override Prim<A> Head =>
         this;
@@ -198,7 +229,7 @@ public sealed record PurePrim<A>(A Value) : Prim<A>
 
     public override Prim<A> Take(int amount) =>
         amount == 0 ? this : None;
-
+    
     /// <summary>
     /// Dispose
     /// </summary>
@@ -219,6 +250,21 @@ public sealed record ManyPrim<A>(Seq<Prim<A>> Items) : Prim<A>
     public override Prim<B> Map<B>(Func<A, B> f) =>
         Prim.Many(Items.Map(x => x.Map(f)));
 
+    public override Prim<A> Filter(Func<A, bool> f)
+    {
+        return Prim.Many(Go().ToSeq());
+
+        IEnumerable<Prim<A>> Go()
+        {
+            foreach (var item in Items)
+            {
+                var pitem = item.Filter(f);
+                if (pitem.IsFail) yield return pitem;
+                if (!pitem.IsEmpty) yield return pitem;
+            }
+        }
+    }
+    
     public override Prim<S> Fold<S>(Prim<S> state, Func<S, A, S> f) =>
         state.Bind(s => Items.Fold(Prim.Pure(s), (s1, px) => px.Fold(s1, f)));
 
@@ -226,10 +272,11 @@ public sealed record ManyPrim<A>(Seq<Prim<A>> Items) : Prim<A>
         rhs switch
         {
             _ when Items.IsEmpty => rhs,
-            PurePrim<A> p        => Prim.Many(Items.Add(Prim.Pure(p.Value))),
-            ManyPrim<A> p        => Prim.Many(Items + p.Items),
-            FailPrim<A> p        => p,
-            _                    => throw new InvalidOperationException("Result shouldn't be extended")
+            PurePrim<A> p                     => Prim.Many(Items.Add(rhs)),
+            ManyPrim<A> {Items.IsEmpty: true} => this,
+            ManyPrim<A> p                     => Prim.Many(Items + p.Items),
+            FailPrim<A> p                     => p,
+            _                                 => throw new InvalidOperationException("Result shouldn't be extended")
         };
 
     public override bool ForAll(Func<A, bool> f) => 
@@ -238,6 +285,9 @@ public sealed record ManyPrim<A>(Seq<Prim<A>> Items) : Prim<A>
     public override bool Exists(Func<A, bool> f) => 
         Items.Exists(x => x.Exists(f));
   
+    public override Unit Iter(Action<A> f) => 
+        Items.Iter(p => p.Iter(f));
+ 
     public override bool IsSucc =>
         true;
 
@@ -246,6 +296,9 @@ public sealed record ManyPrim<A>(Seq<Prim<A>> Items) : Prim<A>
     
     public override bool IsMany =>
         true;    
+    
+    public override bool IsEmpty =>
+        Items.IsEmpty;    
 
     public override Prim<A> Head =>
         Items.IsEmpty

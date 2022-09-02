@@ -1,4 +1,5 @@
-﻿#nullable enable
+﻿/*
+#nullable enable
 
 using System;
 using LanguageExt.Common;
@@ -248,3 +249,4 @@ public readonly record struct Either<L, A>(Morphism<Unit, CoProduct<L, A>> Op) :
     public static implicit operator Either<L, A>(A value) =>
         Prelude.Right<L, A>(value);
 }
+*/

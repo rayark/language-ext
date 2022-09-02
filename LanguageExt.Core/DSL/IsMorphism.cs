@@ -1,6 +1,8 @@
-﻿namespace LanguageExt.DSL;
+﻿using LanguageExt.DSL.Transducers;
 
-public interface IsMorphism<A, B>
+namespace LanguageExt.DSL;
+
+public interface IsTransducer<in A, out B>
 {
-    Morphism<A, B> ToMorphism();
+    Transducer<A, B> ToTransducer();
 }
