@@ -4,15 +4,15 @@ namespace LanguageExt.DSL.Transducers;
 
 public abstract record BiTransducer<X, Y, A, B>
 {
-    public virtual (Func<TState<S>, X, TResult<S>> Left, Func<TState<T>, A, TResult<T>> Right) BiTransform<S, T>(
+    public (Func<TState<S>, X, TResult<S>> Left, Func<TState<T>, A, TResult<T>> Right) BiTransform<S, T>(
         Func<TState<S>, Y, TResult<S>> reduceLeft,
         Func<TState<T>, B, TResult<T>> reduceRight) =>
         (LeftTransducer.Transform(reduceLeft), RightTransducer.Transform(reduceRight));
 
-    public virtual Func<TState<S>, X, TResult<S>> LeftTransform<S>(Func<TState<S>, Y, TResult<S>> reduceLeft) =>
+    public Func<TState<S>, X, TResult<S>> LeftTransform<S>(Func<TState<S>, Y, TResult<S>> reduceLeft) =>
         LeftTransducer.Transform(reduceLeft);
 
-    public virtual Func<TState<T>, A, TResult<T>> RightTransform<T>(Func<TState<T>, B, TResult<T>> reduceRight) =>
+    public Func<TState<T>, A, TResult<T>> RightTransform<T>(Func<TState<T>, B, TResult<T>> reduceRight) =>
         RightTransducer.Transform(reduceRight);
 
     public abstract Transducer<X, Y> LeftTransducer { get; }
@@ -68,7 +68,4 @@ public static class BiTransducer
     
     public static BiTransducer<X, X, A, A> filterRight<X, A>(Func<A, bool> Right) =>
         new BiFilterTransducer<X, A>(static _ => true, Right);
-
-    public static Obj<CoProduct<Y, B>> Apply<X, Y, A, B>(this BiTransducer<X, Y, A, B> mf, Obj<CoProduct<X, A>> ma) =>
-        ma.BiMap(mf);
 }

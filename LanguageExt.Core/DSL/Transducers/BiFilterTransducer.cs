@@ -7,8 +7,8 @@ internal sealed record BiFilterTransducer<X, A>(Func<X, bool> LeftPredicate, Fun
     BiTransducer<X, X, A, A>
 {
     public override Transducer<X, X> LeftTransducer => 
-        new FilterTransducer<X>(LeftPredicate);
+        Transducer.filter(LeftPredicate);
     
     public override Transducer<A, A> RightTransducer => 
-        new FilterTransducer<A>(RightPredicate);
+        Transducer.filter(RightPredicate);
 }

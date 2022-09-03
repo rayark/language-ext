@@ -9,10 +9,10 @@ internal sealed record BiComposeTransducer<X, Y, Z, A, B, C>(
     ) : BiTransducer<X, Z, A, C>
 {
     public override Transducer<X, Z> LeftTransducer => 
-        new ComposeTransducer<X, Y, Z>(First.LeftTransducer, Second.LeftTransducer);
+        Transducer.compose(First.LeftTransducer, Second.LeftTransducer);
     
     public override Transducer<A, C> RightTransducer => 
-        new ComposeTransducer<A, B, C>(First.RightTransducer, Second.RightTransducer);
+        Transducer.compose(First.RightTransducer, Second.RightTransducer);
 }
 
 internal sealed record BiComposeTransducer2<X, Y, Z, A, B, C>(
@@ -21,8 +21,8 @@ internal sealed record BiComposeTransducer2<X, Y, Z, A, B, C>(
 ) : BiTransducer<X, Z, A, C>
 {
     public override Transducer<X, Z> LeftTransducer => 
-        new ComposeTransducer<X, Y, Z>(LeftFirst, LeftSecond);
+        Transducer.compose(LeftFirst, LeftSecond);
     
     public override Transducer<A, C> RightTransducer => 
-        new ComposeTransducer<A, B, C>(RightFirst, RightSecond);
+        Transducer.compose(RightFirst, RightSecond);
 }
