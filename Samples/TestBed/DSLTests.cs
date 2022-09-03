@@ -53,14 +53,20 @@ public static class DSLTests
     {
         var seconds = Observable.Interval(TimeSpan.FromSeconds(1)).Take(5);
 
-        var effect = from s in map(seconds)
+        var effect = from s  in map(seconds)
                      from _1 in logEff<Runtime>("X")
-                     from x in SuccessEff<Runtime, int>(10)
+                     from x  in SuccessEff<Runtime, int>(10)
                      from _2 in logEff<Runtime>("Y")
                      from _3 in logEff<Runtime>($"{s * x}")
                      select s * x;
+
+        var effect1 = from e in effect.Head
+                      from _2 in logEff<Runtime>("Done")
+                      select e;
+                      
         
-        var result = effect.RunMany(Runtime.New());
+        var result = effect1.RunMany(Runtime.New());
+        //var result = effect1.Run(Runtime.New());
 
         Console.WriteLine(result);  // [0, 10, 20, 30, 40]
     }
@@ -77,17 +83,12 @@ public static class DSLTests
         return m.Apply(Obj.Pure<Unit>(default));
     }
     */
-    
-    
-    static Eff<RT, Unit> logEff<RT>(string x)
-    {
-        var m = Transducer.map<RT, CoProduct<Error, Unit>>(_ =>
+
+
+    static Eff<RT, Unit> logEff<RT>(string x) =>
+        Eff<RT, Unit>(_ =>
         {
             Console.WriteLine(x);
-            return CoProduct.Right<Error, Unit>(default);
+            return default;
         });
-
-        return m.ToEff();
-    }
-
 }

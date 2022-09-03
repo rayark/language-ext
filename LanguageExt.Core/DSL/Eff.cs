@@ -17,19 +17,19 @@ public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Mor
     // Map
 
     public Eff<RT, B> Map<B>(Func<A, B> f) =>
-        new(Transducer.kleisli(Op, BiTransducer.mapRight<Error, A, B>(f)));
+        new(Transducer.compose(Op, Transducer.mapRight<Error, A, B>(f)));
 
     public Eff<RT, B> Map<B>(Transducer<A, B> f) =>
-        new(Transducer.kleisli(Op, BiTransducer.mapRight<Error, A, B>(f)));
+        new(Transducer.compose(Op, Transducer.mapRight<Error, A, B>(f)));
 
     // -----------------------------------------------------------------------------------------------------------------
     // BiMap
 
     public Eff<RT, B> BiMap<B>(Func<Error, Error> Left, Func<A, B> Right) =>
-        new(Transducer.kleisli(Op, BiTransducer.bimap(Left, Right)));
+        new(Transducer.compose(Op, Transducer.bimap(Left, Right)));
 
     public Eff<RT, B> BiMap<B>(Transducer<Error, Error> Left, Transducer<A, B> Right) =>
-        new(Transducer.kleisli(Op, BiTransducer.bimap(Left, Right)));
+        new(Transducer.compose(Op, Transducer.bimap(Left, Right)));
 
     // -----------------------------------------------------------------------------------------------------------------
     // Bind
@@ -145,7 +145,7 @@ public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Mor
 
     public Fin<A> Run(RT runtime)
     {
-        return Go(Op.Apply(runtime));
+        return Go(Op.Apply1(runtime));
 
         Fin<A> Go(Prim<CoProduct<Error, A>> ma) =>
             ma switch
@@ -153,7 +153,6 @@ public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Mor
                 PurePrim<CoProduct<Error, A>> {Value: CoProductRight<Error, A> r} => Fin<A>.Succ(r.Value),
                 PurePrim<CoProduct<Error, A>> {Value: CoProductLeft<Error, A> l} => Fin<A>.Fail(l.Value),
                 PurePrim<CoProduct<Error, A>> {Value: CoProductFail<Error, A> f} => Fin<A>.Fail(f.Value),
-                ManyPrim<CoProduct<Error, A>> m => m.IsEmpty ? Errors.Bottom : Go(m.Head),
                 FailPrim<CoProduct<Error, A>> f => Fin<A>.Fail(f.Value),
                 _ => throw new NotSupportedException()
             };
@@ -227,8 +226,8 @@ public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Mor
         obj.ToEff<RT, A>();
 
     public static implicit operator Eff<RT, A>(Error value) =>
-        new(Transducer.constant<RT, CoProduct<Error, A>>(CoProduct.Left<Error, A>(value)));
+        new(Transducer.constantLeft<RT, Error, A>(value));
 
     public static implicit operator Eff<RT, A>(A value) =>
-        new(Transducer.constant<RT, CoProduct<Error, A>>(CoProduct.Right<Error, A>(value)));
+        new(Transducer.constantRight<RT, Error, A>(value));
 }
