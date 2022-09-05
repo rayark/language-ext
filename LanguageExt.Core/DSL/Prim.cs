@@ -39,7 +39,7 @@ public static class Prim
                 PurePrim<CoProduct<Error, A>> {Value: CoProductRight<Error, A> r} => r.Value,
                 PurePrim<CoProduct<Error, A>> {Value: CoProductLeft<Error, A> l} => l.Value,
                 PurePrim<CoProduct<Error, A>> {Value: CoProductFail<Error, A> f} => f.Value,
-                ManyPrim<CoProduct<Error, A>> m => Go(m.Head),
+                ManyPrim<CoProduct<Error, A>> m => Go(m.Items.Head),
                 FailPrim<CoProduct<Error, A>> f => f.Value.Throw<Fin<A>>(),
                 _ => throw new NotSupportedException()
             };
@@ -55,7 +55,7 @@ public static class Prim
                 PurePrim<CoProduct<L, R>> {Value: CoProductRight<L, R> r} => r.Value,
                 PurePrim<CoProduct<L, R>> {Value: CoProductLeft<L, R> l} => l.Value,
                 PurePrim<CoProduct<L, R>> {Value: CoProductFail<L, R> f} => f.Value.Throw<Either<L, R>>(),
-                ManyPrim<CoProduct<L, R>> m => Go(m.Head),
+                ManyPrim<CoProduct<L, R>> m => Go(m.Items.Head),
                 FailPrim<CoProduct<L, R>> f => f.Value.Throw<Either<L, R>>(),
                 _ => throw new NotSupportedException()
             };
@@ -78,8 +78,8 @@ public abstract record Prim<A> : IDisposable
     public abstract bool IsMany { get; }
     public abstract bool IsEmpty { get; }
 
-    public abstract Prim<A> Head { get; }
-    public abstract Prim<A> Last { get; }
+    public abstract Option<A> Head { get; }
+    public abstract Option<A> Last { get; }
     public abstract Prim<A> Tail { get; }
     public abstract Prim<A> Skip(int amount);
     public abstract Prim<A> Take(int amount);
@@ -140,11 +140,11 @@ public sealed record FailPrim<A>(Error Value) : Prim<A>
     public override bool IsEmpty =>
         true;    
 
-    public override Prim<A> Head =>
-        this;
+    public override Option<A> Head =>
+        Option<A>.None;
 
-    public override Prim<A> Last =>
-        this;
+    public override Option<A> Last =>
+        Option<A>.None;
 
     public override Prim<A> Tail =>
         this;
@@ -215,11 +215,11 @@ public sealed record PurePrim<A>(A Value) : Prim<A>
     public override bool IsEmpty =>
         false;    
 
-    public override Prim<A> Head =>
-        this;
+    public override Option<A> Head =>
+        Value;
 
-    public override Prim<A> Last =>
-        this;
+    public override Option<A> Last =>
+        Value;
 
     public override Prim<A> Tail =>
         None;
@@ -300,15 +300,15 @@ public sealed record ManyPrim<A>(Seq<Prim<A>> Items) : Prim<A>
     public override bool IsEmpty =>
         Items.IsEmpty;    
 
-    public override Prim<A> Head =>
+    public override Option<A> Head =>
         Items.IsEmpty
-            ? None
-            : Items.Head;
+            ? Option<A>.None
+            : Items.Head.Head;
 
-    public override Prim<A> Last =>
+    public override Option<A> Last =>
         Items.IsEmpty
-            ? None
-            : Items.Last;
+            ? Option<A>.None
+            : Items.Last.Last;
 
     public override Prim<A> Tail =>
         Prim.Many(Items.Tail);

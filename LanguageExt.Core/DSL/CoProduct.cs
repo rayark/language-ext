@@ -23,13 +23,13 @@ public abstract record CoProduct<A, B>
     public abstract bool IsLeft { get; }
     public abstract bool IsError { get; }
 
-    public abstract TResult<CoProduct<S, T>> Transduce<X, Y, S, T>(
+    public abstract TResult<CoProduct<S, T>> Transform<X, Y, S, T>(
         CoProduct<S, T> seed, 
         BiTransducer<A, X, B, Y> transducer,
         Func<TState<S>, X, TResult<S>> reducerLeft,
         Func<TState<T>, Y, TResult<T>> reducerRight);
 
-    public abstract TResult<CoProduct<X, Y>> Transduce<X, Y>(BiTransducer<A, X, B, Y> transducer);
+    public abstract TResult<CoProduct<X, Y>> Transform<X, Y>(BiTransducer<A, X, B, Y> transducer);
 }
 
 public record CoProductLeft<A, B>(A Value) : CoProduct<A, B>
@@ -43,7 +43,7 @@ public record CoProductLeft<A, B>(A Value) : CoProduct<A, B>
     public override CoProduct<X, Y> BiMap<X, Y>(Func<A, X> Left, Func<B, Y> Right) =>
         new CoProductLeft<X, Y>(Left(Value));
 
-    public override TResult<CoProduct<S, T>> Transduce<X, Y, S, T>(
+    public override TResult<CoProduct<S, T>> Transform<X, Y, S, T>(
         CoProduct<S, T> seed,
         BiTransducer<A, X, B, Y> transducer,
         Func<TState<S>, X, TResult<S>> reducerLeft,
@@ -58,12 +58,12 @@ public record CoProductLeft<A, B>(A Value) : CoProduct<A, B>
             _ => throw new NotSupportedException()
         };
     
-    public override TResult<CoProduct<X, Y>> Transduce<X, Y>(BiTransducer<A, X, B, Y> transducer) =>
+    public override TResult<CoProduct<X, Y>> Transform<X, Y>(BiTransducer<A, X, B, Y> transducer) =>
         transducer.LeftTransducer
                   .Transform<Option<X>>(Obj.MapNoReduce)(TState<Option<X>>.Create(None), Value)
                   .Map(static ox => ox.ValueUnsafe())
-                  .Map(CoProduct.Left<X, Y>); 
-
+                  .Map(CoProduct.Left<X, Y>);
+    
     public override bool IsRight => false;
     public override bool IsLeft => true;
     public override bool IsError => false;
@@ -80,7 +80,7 @@ public record CoProductRight<A, B>(B Value) : CoProduct<A, B>
     public override CoProduct<X, Y> BiMap<X, Y>(Func<A, X> Left, Func<B, Y> Right) =>
         new CoProductRight<X, Y>(Right(Value));
 
-    public override TResult<CoProduct<S, T>> Transduce<X, Y, S, T>(
+    public override TResult<CoProduct<S, T>> Transform<X, Y, S, T>(
         CoProduct<S, T> seed,
         BiTransducer<A, X, B, Y> transducer,
         Func<TState<S>, X, TResult<S>> reducerLeft,
@@ -95,7 +95,7 @@ public record CoProductRight<A, B>(B Value) : CoProduct<A, B>
             _ => throw new NotSupportedException()
         };
     
-    public override TResult<CoProduct<X, Y>> Transduce<X, Y>(BiTransducer<A, X, B, Y> transducer) =>
+    public override TResult<CoProduct<X, Y>> Transform<X, Y>(BiTransducer<A, X, B, Y> transducer) =>
         transducer.RightTransducer
                   .Transform<Option<Y>>(Obj.MapNoReduce)(TState<Option<Y>>.Create(None), Value)
                   .Map(static oy => oy.ValueUnsafe())
@@ -117,7 +117,7 @@ public record CoProductFail<A, B>(Error Value) : CoProduct<A, B>
     public override CoProduct<X, Y> BiMap<X, Y>(Func<A, X> Left, Func<B, Y> Right) =>
         new CoProductFail<X, Y>(Value);
 
-    public override TResult<CoProduct<S, T>> Transduce<X, Y, S, T>(
+    public override TResult<CoProduct<S, T>> Transform<X, Y, S, T>(
         CoProduct<S, T> seed,
         BiTransducer<A, X, B, Y> transducer,
         Func<TState<S>, X, TResult<S>> reducerLeft,
@@ -128,7 +128,7 @@ public record CoProductFail<A, B>(Error Value) : CoProduct<A, B>
             _                        => TResult.Fail<CoProduct<S, T>>(Value)
         };
 
-    public override TResult<CoProduct<X, Y>> Transduce<X, Y>(BiTransducer<A, X, B, Y> transducer) =>
+    public override TResult<CoProduct<X, Y>> Transform<X, Y>(BiTransducer<A, X, B, Y> transducer) =>
         TResult.Fail<CoProduct<X, Y>>(Value);
 
     public override bool IsRight => false;

@@ -16,7 +16,7 @@ internal sealed record BiMapTransducer<X, Y, A, B>(Transducer<X, Y> Left, Transd
         Func<TState<S>, CoProduct<Y, B>, TResult<S>> reduce) =>
         (state, value) =>
         {
-            var res = value.Transduce(this);
+            var res = value.Transform(this);
             if (res.Faulted) return TResult.Fail<S>(res.ErrorUnsafe);
             if (res.Complete) return TResult.Complete<S>(state);
             return reduce(state, res.ValueUnsafe);

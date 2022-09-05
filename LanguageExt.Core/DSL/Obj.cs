@@ -21,7 +21,7 @@ public static class Obj
     public static Obj<CoProduct<Y, B>> BiMap<X, Y, A, B>(
         this Obj<CoProduct<X, A>> obj,
         BiTransducer<X, Y, A, B> transducer) =>
-        obj.Map(co => co.Transduce(transducer) switch
+        obj.Map(co => co.Transform(transducer) switch
         {
             var x when x.Faulted => CoProduct.Fail<Y, B>(x.ErrorUnsafe),
             var x => x.ValueUnsafe,

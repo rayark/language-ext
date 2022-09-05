@@ -21,3 +21,21 @@ internal sealed record MapRightTransducer2<X, A, B>(Func<A, B> Function) : Trans
         Func<TState<S>, CoProduct<X, B>, TResult<S>> reduce) =>
         (state, value) => reduce(state, value.RightMap(Function));
 }
+
+internal sealed record MapRightBackTransducer<X, A, B>(Transducer<A, B> Function) : Transducer<CoProduct<X, A>, B>
+{
+    public Func<TState<S>, CoProduct<X, A>, TResult<S>> Transform<S>(
+        Func<TState<S>, B, TResult<S>> reduce) =>
+        (state, value) => value is CoProductRight<X, A> r 
+            ? Function.Transform(reduce)(state, r.Value) 
+            : TResult.Continue(state.Value);
+}
+
+internal sealed record MapRightBackTransducer2<X, A, B>(Func<A, B> Function) : Transducer<CoProduct<X, A>, B>
+{
+    public Func<TState<S>, CoProduct<X, A>, TResult<S>> Transform<S>(
+        Func<TState<S>, B, TResult<S>> reduce) =>
+        (state, value) => value is CoProductRight<X, A> r 
+            ? reduce(state, Function(r.Value)) 
+            : TResult.Continue(state.Value);
+}

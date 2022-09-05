@@ -1,12 +1,13 @@
 ﻿using System;
 using LanguageExt.Common;
 using LanguageExt.DSL.Transducers;
+using static LanguageExt.DSL.Transducers.Transducer;
 
 namespace LanguageExt.DSL;
 
 public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Morphism) : IsTransducer<RT, CoProduct<Error, A>>
 {
-    public static readonly Eff<RT, A> Bottom = new(Transducer.constant<RT, CoProduct<Error, A>>(CoProduct.Fail<Error, A>(Errors.Bottom)));
+    public static readonly Eff<RT, A> Bottom = new(constant<RT, CoProduct<Error, A>>(CoProduct.Fail<Error, A>(Errors.Bottom)));
     
     internal Transducer<RT, CoProduct<Error, A>> Op => Morphism ?? Bottom.Morphism;
     
@@ -17,35 +18,41 @@ public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Mor
     // Map
 
     public Eff<RT, B> Map<B>(Func<A, B> f) =>
-        new(Transducer.compose(Op, Transducer.mapRight<Error, A, B>(f)));
+        new(compose(Op, mapRight<Error, A, B>(f)));
 
     public Eff<RT, B> Map<B>(Transducer<A, B> f) =>
-        new(Transducer.compose(Op, Transducer.mapRight<Error, A, B>(f)));
+        new(compose(Op, mapRight<Error, A, B>(f)));
 
     // -----------------------------------------------------------------------------------------------------------------
     // BiMap
 
     public Eff<RT, B> BiMap<B>(Func<Error, Error> Left, Func<A, B> Right) =>
-        new(Transducer.compose(Op, Transducer.bimap(Left, Right)));
+        new(compose(Op, bimap(Left, Right)));
 
     public Eff<RT, B> BiMap<B>(Transducer<Error, Error> Left, Transducer<A, B> Right) =>
-        new(Transducer.compose(Op, Transducer.bimap(Left, Right)));
+        new(compose(Op, bimap(Left, Right)));
 
     // -----------------------------------------------------------------------------------------------------------------
     // Bind
 
     public Eff<RT, B> Bind<B>(Func<A, Eff<RT, B>> f) =>
-        new(Transducer.bind<RT, Error, A, B, Eff<RT, B>>(Op, f));
+        new(bind<RT, Error, A, B, Eff<RT, B>>(Op, f));
 
     public Eff<RT, B> Bind<B>(Func<A, CoProduct<Error, B>> f) =>
-        new(Transducer.kleisli(Op, f));
+        new(bind(Op, f));
 
     public Eff<RT, B> Bind<B>(Func<A, Transducer<RT, CoProduct<Error, B>>> f) =>
-        new(Transducer.kleisli(Op, f));
+        new(bind(Op, f));
     
     public Eff<RT, B> Bind<B>(Transducer<A, Transducer<RT, CoProduct<Error, B>>> f) =>
-        new(Transducer.kleisli(Op, f));
-    
+        new(bind(Op, f));
+
+    public Eff<RT, B> Bind<B>(Transducer<Unit, B> f) =>
+        new(bind(Op, f));
+
+    public Eff<RT, B> Bind<B>(Func<A, Transducer<Unit, B>> f) =>
+        new(bind(Op, f));
+
     // -----------------------------------------------------------------------------------------------------------------
     // BiBind
 
@@ -74,24 +81,33 @@ public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Mor
 
     // -----------------------------------------------------------------------------------------------------------------
     // SelectMany
-    
+
     public Eff<RT, B> SelectMany<B>(Func<A, Eff<RT, B>> f) =>
-        new(Transducer.bind<RT, Error, A, B, Eff<RT, B>>(Op, f));
+        Bind(f);
 
     public Eff<RT, B> SelectMany<B>(Func<A, CoProduct<Error, B>> f) =>
-        new(Transducer.kleisli(Op, f));
+        Bind(f);
 
     public Eff<RT, B> SelectMany<B>(Func<A, Transducer<RT, CoProduct<Error, B>>> f) =>
-        new(Transducer.kleisli(Op, f));
-    
+        Bind(f);
+
     public Eff<RT, B> SelectMany<B>(Transducer<A, Transducer<RT, CoProduct<Error, B>>> f) =>
-        new(Transducer.kleisli(Op, f));
+        Bind(f);
+
+    public Eff<RT, B> SelectMany<B>(Transducer<Unit, B> f) =>
+        Bind(f);
+
+    public Eff<RT, B> SelectMany<B>(Func<A, Transducer<Unit, B>> f) =>
+        Bind(f);
 
     // -----------------------------------------------------------------------------------------------------------------
     // SelectMany
 
     public Eff<RT, C> SelectMany<B, C>(Func<A, Eff<RT, B>> f, Func<A, B, C> project) =>
         Bind(a => f(a).Map(b => project(a, b)));
+
+    public Eff<RT, C> SelectMany<B, C>(Func<A, Transducer<Unit, B>> f, Func<A, B, C> project) =>
+        new(bindMap(Op, f, project));
 
     /*
     public Eff<RT, C> SelectMany<B, C>(Func<A, CoProduct<Error, B>> f, Func<A, B, C> project) =>
@@ -108,10 +124,10 @@ public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Mor
     // Filtering
 
     public Eff<RT, A> Filter(Func<A, bool> f) =>
-        Map(Transducer.filter(f));
+        Map(filter(f));
 
     public Eff<RT, A> Where(Func<A, bool> f) =>
-        Map(Transducer.filter(f));
+        Map(filter(f));
 
     // -----------------------------------------------------------------------------------------------------------------
     // Many item processing
@@ -123,22 +139,22 @@ public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Mor
         Map(Transducer<A>.tail);
 
     public Eff<RT, A> Skip(int amount) =>
-        Map(Transducer.skip<A>(amount));
+        Map(skip<A>(amount));
 
     public Eff<RT, A> SkipWhile(Func<A, bool> predicate) =>
-        Map(Transducer.skipWhile(predicate));
+        Map(skipWhile(predicate));
 
     public Eff<RT, A> SkipUntil(Func<A, bool> predicate) =>
-        Map(Transducer.skipUntil(predicate));
+        Map(skipUntil(predicate));
 
     public Eff<RT, A> Take(int amount) =>
-        Map(Transducer.take<A>(amount));
+        Map(take<A>(amount));
 
     public Eff<RT, A> TakeWhile(Func<A, bool> predicate) =>
-        Map(Transducer.takeWhile(predicate));
+        Map(takeWhile(predicate));
 
     public Eff<RT, A> TakeUntil(Func<A, bool> predicate) =>
-        Map(Transducer.takeUntil(predicate));
+        Map(takeUntil(predicate));
     
     // -----------------------------------------------------------------------------------------------------------------
     // Run
@@ -226,8 +242,8 @@ public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Mor
         obj.ToEff<RT, A>();
 
     public static implicit operator Eff<RT, A>(Error value) =>
-        new(Transducer.constantLeft<RT, Error, A>(value));
+        new(constantLeft<RT, Error, A>(value));
 
     public static implicit operator Eff<RT, A>(A value) =>
-        new(Transducer.constantRight<RT, Error, A>(value));
+        new(constantRight<RT, Error, A>(value));
 }

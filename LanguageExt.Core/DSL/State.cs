@@ -96,13 +96,16 @@ public record TState<S>(S Value, object? This)
     TState(ConcurrentDictionary<object, IDisposable>? disps, S value, object? @this) : this(value, @this) =>
         this.disps = disps;
 
-    public TState<S> SetValue(S value) =>
-        new(disps, value, This);
+    public TState<T> SetValue<T>(T value) =>
+        new (disps, value, This);
 
     public TState<S> SetValue(TResult<S> value) =>
         value.Continue
             ? new(disps, value.ValueUnsafe, This)
             : this;
+
+    public TState<T> SetValue<T>(TResult<T> value) =>
+        new(disps, value.ValueUnsafe, This);
 
     public TState<S> SetThis(object @this) =>
         new(disps, Value, @this);

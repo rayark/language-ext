@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Generic;
+using LanguageExt.Common;
 using static LanguageExt.Prelude;
 
 namespace LanguageExt.DSL.Transducers;
@@ -59,6 +60,12 @@ public static class Transducer
     /// <returns>Transducer that when invoked with `unit` will run the supplied transducer with the constant value `x`</returns>
     public static Transducer<Unit, B> Inject<A, B>(this Transducer<A, B> mf, A x) =>
         inject(x, mf);
+
+    /// <summary>
+    /// Ignores the result of the transducer
+    /// </summary>
+    public static Transducer<A, Unit> Ignore<A, B>(this Transducer<A, B> mf) =>
+        ignore(mf);
     
     /// <summary>
     /// Apply an argument to a transducer
@@ -98,6 +105,21 @@ public static class Transducer
     public static Transducer<Unit, B> inject<A, B>(A x, Transducer<A, B> mf) =>
         compose(constant<Unit, A>(x), mf);
 
+    /// <summary>
+    /// Ignores the result of the transducer
+    /// </summary>
+    public static Transducer<A, Unit> ignore<A, B>(Transducer<A, B> mf) =>
+        compose(mf, constant<B, Unit>(default));
+
+    public static Transducer<A, B> scope1<A, B>(Transducer<A, B> t) =>
+        new ScopeTransducer<A, B>(t);
+
+    public static Transducer<A, Seq<B>> scope<A, B>(Transducer<A, B> t) =>
+        new ScopeManyTransducer<A, B>(t);
+
+    public static Transducer<A, Seq<B>> scope<A, B>(Transducer<A, CoProduct<Error, B>> t) =>
+        new ScopeManyTransducer2<A, B>(t);
+
     public static Transducer<A, C> compose<A, B, C>(Transducer<A, B> tab, Transducer<B, C> tbc) =>
         new ComposeTransducer<A, B, C>(tab, tbc);
 
@@ -130,6 +152,24 @@ public static class Transducer
     
     public static Transducer<CoProduct<X, A>, CoProduct<Y, A>> mapLeft<X, Y, A>(Transducer<X, Y> f) =>
         new MapLeftTransducer<X, Y, A>(f);
+    
+    public static Transducer<CoProduct<X, A>, B> mapRightValue<X, A, B>(Func<A, B> f) =>
+        new MapRightBackTransducer2<X, A, B>(f);
+    
+    public static Transducer<CoProduct<X, A>, B> mapRightValue<X, A, B>(Transducer<A, B> f) =>
+        new MapRightBackTransducer<X, A, B>(f);
+    
+    public static Transducer<CoProduct<X, A>, Y> mapLeftValue<X, Y, A>(Func<X, Y> f) =>
+        new MapLeftBackTransducer2<X, Y, A>(f);
+    
+    public static Transducer<CoProduct<X, A>, Y> mapLeftValue<X, Y, A>(Transducer<X, Y> f) =>
+        new MapLeftBackTransducer<X, Y, A>(f);
+    
+    public static Transducer<A, B> flatten<A, B>(Transducer<A, Transducer<A, B>> f) =>
+        new FlattenTransducer<A, B>(f);
+    
+    public static Transducer<A, B> flatten<A, B>(Transducer<A, Transducer<Unit, B>> f) =>
+        new FlattenTransducer2<A, B>(f);
     
     public static Transducer<A, A> filter<A>(Func<A, bool> f) =>
         new FilterTransducer<A>(f);
@@ -193,11 +233,42 @@ public static class Transducer
         Func<E, CoProduct<X, A>> first,
         BiTransducer<X, X, A, B> second) =>
         new BiKleisliTransducer<E, X, X, A, B>(map(first), second);
-
+    
     public static Transducer<E, CoProduct<X, B>> bind<E, X, A, B, MB>(
         Transducer<E, CoProduct<X, A>> first,
         Func<A, MB> second) where MB : IsTransducer<E, CoProduct<X, B>> =>
         new KleisliTransducer2<E, X, A, B>(first, map<A, Transducer<E, CoProduct<X, B>>>(a => second(a).ToTransducer()));
+
+     public static Transducer<RT, CoProduct<E, B>> bind<RT, E, A, B>(
+         Transducer<RT, CoProduct<E, A>> op, 
+         Func<A, CoProduct<E, B>> f) =>
+         compose(op, mapRightValue<E, A, CoProduct<E, B>>(f));
+
+     public static Transducer<RT, CoProduct<E, B>> bind<RT, E, A, B>(
+         Transducer<RT, CoProduct<E, A>> op,
+         Func<A, Transducer<RT, CoProduct<E, B>>> f) =>
+         flatten(compose(op, mapRightValue<E, A, Transducer<RT, CoProduct<E, B>>>(f)));
+    
+     public static Transducer<RT, CoProduct<E, B>> bind<RT, E, A, B>(
+         Transducer<RT, CoProduct<E, A>> op,
+         Transducer<A, Transducer<RT, CoProduct<E, B>>> f) =>
+         flatten(compose(op, mapRightValue<E, A, Transducer<RT, CoProduct<E, B>>>(f)));
+
+     public static Transducer<RT, CoProduct<E, B>> bind<RT, E, A, B>(
+         Transducer<RT, CoProduct<E, A>> op,
+         Transducer<Unit, B> f) =>
+         compose(compose(ignore(op), f), right<E, B>());
+
+     public static Transducer<RT, CoProduct<E, B>> bind<RT, E, A, B>(
+         Transducer<RT, CoProduct<E, A>> op,
+         Func<A, Transducer<Unit, B>> f) =>
+         compose(flatten(compose(op, mapRightValue<E, A, Transducer<Unit, B>>(f))), right<E, B>());
+     
+    public static Transducer<RT, CoProduct<E, C>> bindMap<RT, E, A, B, C>(
+        Transducer<RT, CoProduct<E, A>> first,
+        Func<A, Transducer<Unit, B>> second,
+        Func<A, B, C> third) =>
+        new BindMapTransducer<RT, E, A, B, C>(first, second, third);
     
     public static Transducer<A, CoProduct<X, A>> right<X, A>() =>
         map<A, CoProduct<X, A>>(CoProduct.Right<X, A>);

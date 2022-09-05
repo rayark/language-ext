@@ -17,6 +17,7 @@ using static LanguageExt.DSL.Prelude;
 namespace TestBed;
 
 using LanguageExt.DSL;
+using P = LanguageExt.Prelude;
 
 public static class DSLTests
 {
@@ -52,21 +53,23 @@ public static class DSLTests
     public static void Test2()
     {
         var seconds = Observable.Interval(TimeSpan.FromSeconds(1)).Take(5);
+        var items = P.Seq(10, 20, 30);
 
         var effect = from s  in map(seconds)
                      from _1 in logEff<Runtime>("X")
-                     from x  in SuccessEff<Runtime, int>(10)
+                     from x  in map(items)                      //SuccessEff<Runtime, int>(10)
                      from _2 in logEff<Runtime>("Y")
                      from _3 in logEff<Runtime>($"{s * x}")
                      select s * x;
 
-        var effect1 = from e in effect.Head
-                      from _2 in logEff<Runtime>("Done")
+        var effect1 = from _1 in logEff<Runtime>("START")
+                      from e in scope1(effect)
+                      from _2 in logEff<Runtime>("DONE")
                       select e;
                       
         
-        var result = effect1.RunMany(Runtime.New());
-        //var result = effect1.Run(Runtime.New());
+        //var result = effect1.RunMany(Runtime.New());
+        var result = effect1.Run(Runtime.New());
 
         Console.WriteLine(result);  // [0, 10, 20, 30, 40]
     }
