@@ -18,10 +18,10 @@ public static partial class Prelude
                    Fail: CoProduct.Left<Error, A>)));
 
     public static Eff<RT, A> scope1<RT, A>(Eff<RT, A> ma) =>
-        new(Transducer.scope1(ma.Op));
+        new(Transducer.scope1(ma.Morphism));
 
     public static Eff<RT, Seq<A>> scope<RT, A>(Eff<RT, A> ma) =>
-        new(compose(Transducer.scope(ma.Op), right<Error, Seq<A>>()));
+        new(compose(Transducer.scope(ma.Morphism), right<Error, Seq<A>>()));
     
     public static Eff<RT, A> use<RT, A>(Eff<RT, A> ma) where A : IDisposable =>
         ma.Map(TransducerD<A>.use);

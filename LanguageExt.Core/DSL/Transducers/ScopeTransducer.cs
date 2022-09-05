@@ -23,7 +23,7 @@ internal sealed record ScopeManyTransducer<A, B>(Transducer<A, B> Function) : Tr
     public Func<TState<S>, A, TResult<S>> Transform<S>(Func<TState<S>, Seq<B>, TResult<S>> reducer) =>
         (state, value) =>
         {
-            var red = Function.Transform<Prim<B>>((s, v) => TResult.Continue(s.Value + v));
+            var red = Function.Transform<Prim<B>>((s, v) => TResult.Continue(s.Value + Prim.Pure(v)));
             var res = red(state.SetValue(Prim<B>.None), value);
             if (res.Faulted) return TResult.Fail<S>(res.ErrorUnsafe);
             var items = ToSeq(res.ValueUnsafe);

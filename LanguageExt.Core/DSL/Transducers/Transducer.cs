@@ -173,7 +173,63 @@ public static class Transducer
     
     public static Transducer<A, A> filter<A>(Func<A, bool> f) =>
         new FilterTransducer<A>(f);
+    
+    public static Transducer<A, S> fold<S, A>(S state, Func<S, A, S> fold) =>
+        new FoldTransducer<S, A>(state, fold);
+    
+    public static Transducer<A, S> foldUntil<S, A>(S state, Func<S, A, S> fold, Func<S, bool> predicate) =>
+        new FoldUntilTransducer<S, A>(state, fold, predicate);
+    
+    public static Transducer<A, S> foldWhile<S, A>(S state, Func<S, A, S> fold, Func<S, bool> predicate) =>
+        new FoldWhileTransducer<S, A>(state, fold, predicate);
+    
+    public static Transducer<A, S> fold<S, A, B>(
+        Transducer<A, B> morphism, 
+        S state, 
+        Func<S, B, S> fold, 
+        Schedule schedule) =>
+        new ScheduleFoldTransducer<S, A, B>(morphism, state, fold, schedule);
+    
+    public static Transducer<A, S> foldUntil2<S, A, B>(
+        Transducer<A, B> morphism, 
+        S state, 
+        Func<S, B, S> fold, 
+        Func<S, bool> predicate, 
+        Schedule schedule) =>
+        new ScheduleFoldUntilTransducer2<S, A, B>(morphism, state, fold, predicate, schedule);
+    
+    public static Transducer<A, S> foldWhile2<S, A, B>(
+        Transducer<A, B> morphism, 
+        S state, 
+        Func<S, B, S> fold, 
+        Func<S, bool> predicate, 
+        Schedule schedule) =>
+        new ScheduleFoldWhileTransducer2<S, A, B>(morphism, state, fold, predicate, schedule);
+    
+    public static Transducer<A, S> foldUntil<S, A, B>(
+        Transducer<A, B> morphism, 
+        S state, 
+        Func<S, B, S> fold, 
+        Func<B, bool> predicate, 
+        Schedule schedule) =>
+        new ScheduleFoldUntilTransducer<S, A, B>(morphism, state, fold, predicate, schedule);
+    
+    public static Transducer<A, S> foldWhile<S, A, B>(
+        Transducer<A, B> morphism, 
+        S state, 
+        Func<S, B, S> fold, 
+        Func<B, bool> predicate, 
+        Schedule schedule) =>
+        new ScheduleFoldWhileTransducer<S, A, B>(morphism, state, fold, predicate, schedule);
 
+    public static Transducer<A, B> choice<A, B>(Transducer<A, B> first, Transducer<A, B> second) =>
+        new ChoiceTransducer<A, B>(first, second);
+
+    public static Transducer<A, CoProduct<X, B>> choice<X, A, B>(
+        Transducer<A, CoProduct<X, B>> first, 
+        Transducer<A, CoProduct<X, B>> second) =>
+        new ChoiceTransducer<X, A, B>(first, second);
+    
     public static Transducer<A, A> use<A>(Action<A> dispose) => 
         new UseTransducer2<A>(dispose);
     
@@ -259,7 +315,7 @@ public static class Transducer
          Transducer<Unit, B> f) =>
          compose(compose(ignore(op), f), right<E, B>());
 
-     public static Transducer<RT, CoProduct<E, B>> bind<RT, E, A, B>(
+     public static Transducer<RT, CoProduct<E, B>> bindProduce<RT, E, A, B>(
          Transducer<RT, CoProduct<E, A>> op,
          Func<A, Transducer<Unit, B>> f) =>
          compose(flatten(compose(op, mapRightValue<E, A, Transducer<Unit, B>>(f))), right<E, B>());
@@ -275,4 +331,13 @@ public static class Transducer
     
     public static Transducer<X, CoProduct<X, A>> left<X, A>() =>
         map<X, CoProduct<X, A>>(CoProduct.Left<X, A>);
+
+    public static Transducer<A, B> schedule<A, B>(Transducer<A, B> morphism, Schedule schedule, Func<B, bool> pred) =>
+        new ScheduleTransducer<A, B>(morphism, schedule, pred);
+
+    /// <summary>
+    /// Yields the values in the primitive
+    /// </summary>
+    public static Transducer<Unit, A> prim<A>(Prim<A> p) =>
+        new PrimTransducer<A>(p);
 }

@@ -23,32 +23,32 @@ public static class DSLTests
 {
     public static void Main()
     {
+        Test1();
         Test2();
-        //Test1();
     }
  
-    /*public static void Test1()
+    public static void Test1()
     {
         var seconds = Observable.Interval(TimeSpan.FromSeconds(1)).Take(5);
+        var items = P.Seq(10, 20, 30);
 
-        var morphism = from s in map<Error, long>(seconds)
-                       from _1 in log("X")
-                       from x in Right<Error, int>(10)
-                       from _2 in log("Y")
-                       select s * x;
-        
-        var effect = morphism.ToEither();
-        var result = effect.MatchMany(Left: e => 0, Right: r => r);
+        var effect = from s  in map(seconds)
+                     from _1 in logEither<Error>("SECOND")
+                     from x  in map(items)
+                     from _3 in logEither<Error>($"{s * x}")
+                     select s * x;
 
-        Console.WriteLine(result);  // [0, 10, 20, 30, 40]
+        var effect1 = from _1 in logEither<Error>("START for Either<Error, long>")
+                      from e in scope(effect)
+                      from _2 in logEither<Error>("DONE")
+                      select e;
+                      
         
-        var xxx = from x in Right<Error, string?>(null)
-                  from y in Right<Error, string?>(null)
-                  select x + y;
-        
-        //var result = effect.MatchMany(Left: _ => 0, Right: r => r);
-        //var result = effect.Run(Runtime.New());
-    }*/
+        //var result = effect1.RunMany(Runtime.New());
+        var result = effect1.Match(Left: x => default, Right: x => x); 
+
+        Console.WriteLine(result);
+    }
  
     public static void Test2()
     {
@@ -56,14 +56,13 @@ public static class DSLTests
         var items = P.Seq(10, 20, 30);
 
         var effect = from s  in map(seconds)
-                     from _1 in logEff<Runtime>("X")
-                     from x  in map(items)                      //SuccessEff<Runtime, int>(10)
-                     from _2 in logEff<Runtime>("Y")
+                     from _1 in logEff<Runtime>("SECOND")
+                     from x  in map(items)
                      from _3 in logEff<Runtime>($"{s * x}")
                      select s * x;
 
-        var effect1 = from _1 in logEff<Runtime>("START")
-                      from e in scope1(effect)
+        var effect1 = from _1 in logEff<Runtime>("START for Eff<RT, long>")
+                      from e in scope(effect)
                       from _2 in logEff<Runtime>("DONE")
                       select e;
                       
@@ -74,22 +73,15 @@ public static class DSLTests
         Console.WriteLine(result);  // [0, 10, 20, 30, 40]
     }
 
-    /*
-    static Either<Error, Unit> log(string x)
-    {
-        var m = Morphism.function<Unit, CoProduct<Error, Unit>>(_ =>
-        {
-            Console.WriteLine(x);
-            return CoProduct.Right<Error, Unit>(default);
-        });
-
-        return m.Apply(Obj.Pure<Unit>(default));
-    }
-    */
-
-
     static Eff<RT, Unit> logEff<RT>(string x) =>
         Eff<RT, Unit>(_ =>
+        {
+            Console.WriteLine(x);
+            return default;
+        });
+
+    static Either<L, Unit> logEither<L>(string x) =>
+        RightLazy<L, Unit>(() =>
         {
             Console.WriteLine(x);
             return default;

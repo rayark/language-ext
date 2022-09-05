@@ -5,11 +5,11 @@ using static LanguageExt.DSL.Transducers.Transducer;
 
 namespace LanguageExt.DSL;
 
-public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Morphism) : IsTransducer<RT, CoProduct<Error, A>>
+public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> MorphismUnsafe) : IsTransducer<RT, CoProduct<Error, A>>
 {
     public static readonly Eff<RT, A> Bottom = new(constant<RT, CoProduct<Error, A>>(CoProduct.Fail<Error, A>(Errors.Bottom)));
     
-    internal Transducer<RT, CoProduct<Error, A>> Op => Morphism ?? Bottom.Morphism;
+    public Transducer<RT, CoProduct<Error, A>> Morphism => MorphismUnsafe ?? Bottom.Morphism;
     
     public Transducer<RT, CoProduct<Error, A>> ToTransducer() => 
         Morphism;
@@ -18,40 +18,40 @@ public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Mor
     // Map
 
     public Eff<RT, B> Map<B>(Func<A, B> f) =>
-        new(compose(Op, mapRight<Error, A, B>(f)));
+        new(compose(Morphism, mapRight<Error, A, B>(f)));
 
     public Eff<RT, B> Map<B>(Transducer<A, B> f) =>
-        new(compose(Op, mapRight<Error, A, B>(f)));
+        new(compose(Morphism, mapRight<Error, A, B>(f)));
 
     // -----------------------------------------------------------------------------------------------------------------
     // BiMap
 
     public Eff<RT, B> BiMap<B>(Func<Error, Error> Left, Func<A, B> Right) =>
-        new(compose(Op, bimap(Left, Right)));
+        new(compose(Morphism, bimap(Left, Right)));
 
     public Eff<RT, B> BiMap<B>(Transducer<Error, Error> Left, Transducer<A, B> Right) =>
-        new(compose(Op, bimap(Left, Right)));
+        new(compose(Morphism, bimap(Left, Right)));
 
     // -----------------------------------------------------------------------------------------------------------------
     // Bind
 
     public Eff<RT, B> Bind<B>(Func<A, Eff<RT, B>> f) =>
-        new(bind<RT, Error, A, B, Eff<RT, B>>(Op, f));
+        new(bind<RT, Error, A, B, Eff<RT, B>>(Morphism, f));
 
     public Eff<RT, B> Bind<B>(Func<A, CoProduct<Error, B>> f) =>
-        new(bind(Op, f));
+        new(bind(Morphism, f));
 
     public Eff<RT, B> Bind<B>(Func<A, Transducer<RT, CoProduct<Error, B>>> f) =>
-        new(bind(Op, f));
+        new(bind(Morphism, f));
     
     public Eff<RT, B> Bind<B>(Transducer<A, Transducer<RT, CoProduct<Error, B>>> f) =>
-        new(bind(Op, f));
+        new(bind(Morphism, f));
 
     public Eff<RT, B> Bind<B>(Transducer<Unit, B> f) =>
-        new(bind(Op, f));
+        new(bind(Morphism, f));
 
     public Eff<RT, B> Bind<B>(Func<A, Transducer<Unit, B>> f) =>
-        new(bind(Op, f));
+        new(bindProduce(Morphism, f));
 
     // -----------------------------------------------------------------------------------------------------------------
     // BiBind
@@ -107,18 +107,7 @@ public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Mor
         Bind(a => f(a).Map(b => project(a, b)));
 
     public Eff<RT, C> SelectMany<B, C>(Func<A, Transducer<Unit, B>> f, Func<A, B, C> project) =>
-        new(bindMap(Op, f, project));
-
-    /*
-    public Eff<RT, C> SelectMany<B, C>(Func<A, CoProduct<Error, B>> f, Func<A, B, C> project) =>
-        Bind(a => f(a).Map(b => project(a, b)));
-
-    public Eff<RT, C> SelectMany<B, C>(Func<A, Transducer<RT, CoProduct<Error, B>>> f, Func<A, Func<B, C>> project) =>
-        Bind(a => f(a).Map(b => project(a, b)));
-    
-    public Eff<RT, C> SelectMany<B, C>(Transducer<A, Transducer<RT, CoProduct<Error, B>>> f, Func<A, Func<B, C>> project) =>
-        Bind(a => f(a).Map(b => project(a, b)));
-        */
+        new(bindMap(Morphism, f, project));
 
     // -----------------------------------------------------------------------------------------------------------------
     // Filtering
@@ -161,7 +150,7 @@ public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Mor
 
     public Fin<A> Run(RT runtime)
     {
-        return Go(Op.Apply1(runtime));
+        return Go(Morphism.Apply1(runtime));
 
         Fin<A> Go(Prim<CoProduct<Error, A>> ma) =>
             ma switch
@@ -169,6 +158,7 @@ public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Mor
                 PurePrim<CoProduct<Error, A>> {Value: CoProductRight<Error, A> r} => Fin<A>.Succ(r.Value),
                 PurePrim<CoProduct<Error, A>> {Value: CoProductLeft<Error, A> l} => Fin<A>.Fail(l.Value),
                 PurePrim<CoProduct<Error, A>> {Value: CoProductFail<Error, A> f} => Fin<A>.Fail(f.Value),
+                ManyPrim<CoProduct<Error, A>> m => Go(m.Items.Head),
                 FailPrim<CoProduct<Error, A>> f => Fin<A>.Fail(f.Value),
                 _ => throw new NotSupportedException()
             };
@@ -176,7 +166,7 @@ public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Mor
     
     public Fin<Seq<A>> RunMany(RT runtime)
     {
-        return Go(Op.Apply(runtime));
+        return Go(Morphism.Apply(runtime));
 
         Fin<Seq<A>> Go(Prim<CoProduct<Error, A>> ma) =>
             ma switch
@@ -193,50 +183,45 @@ public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> Mor
     // -----------------------------------------------------------------------------------------------------------------
     // Repeat
 
-    /*
+    
     public Eff<RT, A> Repeat(Schedule schedule) =>
-        Op.Repeat(schedule);
+        new(Morphism.Repeat(schedule));
 
     public Eff<RT, A> RepeatWhile(Schedule schedule, Func<A, bool> pred) =>
-        Op.RepeatWhile(schedule, pred);
+        new(Morphism.RepeatWhile(schedule, pred));
 
     public Eff<RT, A> RepeatUntil(Schedule schedule, Func<A, bool> pred) =>
-        Op.RepeatUntil(schedule, pred);
-        */
+        new(Morphism.RepeatUntil(schedule, pred));
     
     // -----------------------------------------------------------------------------------------------------------------
     // Retry
 
-    /*
     public Eff<RT, A> Retry(Schedule schedule) =>
-        Op.Retry(schedule);
+        new(Morphism.Retry(schedule));
 
     public Eff<RT, A> RetryWhile(Schedule schedule, Func<Error, bool> pred) =>
-        Op.RetryWhile(schedule, pred);
+        new(Morphism.RetryWhile(schedule, pred));
 
     public Eff<RT, A> RetryUntil(Schedule schedule, Func<Error, bool> pred) =>
-        Op.RetryUntil(schedule, pred);
-        */
+        new(Morphism.RetryUntil(schedule, pred));
     
     // -----------------------------------------------------------------------------------------------------------------
     // Folding
 
-    /*
     public Eff<RT, S> Fold<S>(Schedule schedule, S state, Func<S, A, S> fold)=>
-        Op.Fold(schedule, state, fold);
+        new(Morphism.Fold(schedule, state, fold));
 
     public Eff<RT, S> FoldWhile<S>(Schedule schedule, S state, Func<S, A, S> fold, Func<A, bool> pred)=>
-        Op.FoldWhile(schedule, state, fold, pred);
+        new(Morphism.FoldWhile(schedule, state, fold, pred));
 
     public Eff<RT, S> FoldUntil<S>(Schedule schedule, S state, Func<S, A, S> fold, Func<A, bool> pred)=>
-        Op.FoldWhile(schedule, state, fold, pred);
-        */
+        new(Morphism.FoldUntil(schedule, state, fold, pred));
 
     // -----------------------------------------------------------------------------------------------------------------
     // Operators
     
-    //public static Eff<RT, A> operator |(Eff<RT, A> ma, Eff<RT, A> mb) =>
-    //    Transducer.map<RT, CoProduct<Error, A>>(rt => Obj.Choice(ma.Op.Apply(rt), mb.Op.Apply(rt)));
+    public static Eff<RT, A> operator |(Eff<RT, A> ma, Eff<RT, A> mb) =>
+        new(choice(ma.Morphism, mb.Morphism));
     
     public static implicit operator Eff<RT, A>(CoProduct<Error, A> obj) =>
         obj.ToEff<RT, A>();
