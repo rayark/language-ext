@@ -4,29 +4,40 @@ using System.Collections.Concurrent;
 using System.Threading;
 using LanguageExt.DSL.Transducers;
 
-namespace LanguageExt.DSL;
+namespace LanguageExt.DSL.Transducers;
 
-public record State<RT>(RT Runtime, object? This)
+public record TState<S>(S Value, object? This)
 {
     int resource;
     ConcurrentDictionary<object, IDisposable>? disps;
 
-    public static State<RT> Create(RT runtime) =>
-        new(null, runtime, null);
+    public static TState<S> Create(S value) =>
+        new(value, null);
 
-    State(ConcurrentDictionary<object, IDisposable>? disps, RT runtime, object? @this) : this(runtime, @this) =>
+    TState(ConcurrentDictionary<object, IDisposable>? disps, S value, object? @this) : this(value, @this) =>
         this.disps = disps;
 
-    public State<NRT> LocalRuntime<NRT>(Func<RT, NRT> f) =>
-        new(disps, f(Runtime), This);
+    public TState<S> Scope() =>
+        new(null, Value, This);
 
-    public State<RT> SetThis(object @this) =>
-        new(disps, Runtime, @this);
+    public TState<T> SetValue<T>(T value) =>
+        new (disps, value, This);
 
-    public State<RT> LocalResources() =>
-        new(null, Runtime, This);
+    public TState<S> SetValue(TResult<S> value) =>
+        value.Continue
+            ? new(disps, value.ValueUnsafe, This)
+            : this;
 
-    public Unit Use(object key, IDisposable d)
+    public TState<T> SetValue<T>(TResult<T> value) =>
+        new(disps, value.ValueUnsafe, This);
+
+    public TState<S> SetThis(object @this) =>
+        new(disps, Value, @this);
+
+    public TState<S> LocalResources() =>
+        new(null, Value, This);
+
+    public Unit Use<A>(A key, IDisposable d)
     {
         SpinWait sw = default;
         while (true)
@@ -43,7 +54,7 @@ public record State<RT>(RT Runtime, object? This)
         }
     }
 
-    public Unit Release(object key)
+    public Unit Release<A>(A key)
     {
         SpinWait sw = default;
         while (true)
@@ -52,7 +63,7 @@ public record State<RT>(RT Runtime, object? This)
             {
                 disps = disps ?? new ConcurrentDictionary<object, IDisposable>();
                 disps.TryRemove(key, out var d);
-                d.Dispose();
+                d?.Dispose();
                 resource = 0;
                 return default;
             }
@@ -83,4 +94,7 @@ public record State<RT>(RT Runtime, object? This)
             sw.SpinOnce();
         }
     }
+
+    public static implicit operator S(TState<S> state) =>
+        state.Value;
 }

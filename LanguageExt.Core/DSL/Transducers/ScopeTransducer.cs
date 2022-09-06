@@ -11,7 +11,17 @@ internal sealed record ScopeTransducer<A, B>(Transducer<A, B> Function) : Transd
         (state, value) =>
         {
             var red = Function.Transform<Option<B>>((_, v) => TResult.Continue(Some(v)));
-            var res = red(state.SetValue(Option<B>.None), value);
+            var nstate = state.Scope().SetValue(Option<B>.None);
+            TResult<Option<B>>? res;
+            try
+            {
+                res = red(nstate, value);
+                if (res.Faulted) return TResult.Fail<S>(res.ErrorUnsafe);
+            }
+            finally
+            {
+                nstate.CleanUp();
+            }            
             if (res.Faulted) return TResult.Fail<S>(res.ErrorUnsafe);
             if(res.ValueUnsafe.IsNone) return TResult.Fail<S>(Errors.Bottom);
             return reducer(state, (B)res.ValueUnsafe);
@@ -24,8 +34,17 @@ internal sealed record ScopeManyTransducer<A, B>(Transducer<A, B> Function) : Tr
         (state, value) =>
         {
             var red = Function.Transform<Prim<B>>((s, v) => TResult.Continue(s.Value + Prim.Pure(v)));
-            var res = red(state.SetValue(Prim<B>.None), value);
-            if (res.Faulted) return TResult.Fail<S>(res.ErrorUnsafe);
+            var nstate = state.Scope().SetValue(Prim<B>.None);
+            TResult<Prim<B>>? res;
+            try
+            {
+                res = red(nstate, value);
+                if (res.Faulted) return TResult.Fail<S>(res.ErrorUnsafe);
+            }
+            finally
+            {
+                nstate.CleanUp();
+            }
             var items = ToSeq(res.ValueUnsafe);
             return items.Match(
                 Succ: xs => reducer(state, xs),
@@ -54,8 +73,17 @@ internal sealed record ScopeManyTransducer2<A, B>(Transducer<A, CoProduct<Error,
                 CoProductFail<Error, B> f => TResult.Fail<Prim<B>>(f.Value),
                 _ => throw new NotSupportedException()
             });
-            var res = red(state.SetValue(Prim<B>.None), value);
-            if (res.Faulted) return TResult.Fail<S>(res.ErrorUnsafe);
+            var nstate = state.Scope().SetValue(Prim<B>.None);
+            TResult<Prim<B>>? res;
+            try
+            {
+                res = red(nstate, value);
+                if (res.Faulted) return TResult.Fail<S>(res.ErrorUnsafe);
+            }
+            finally
+            {
+                nstate.CleanUp();
+            }
             var items = ToSeq(res.ValueUnsafe);
             return items.Match(
                 Succ: xs => reducer(state, xs),

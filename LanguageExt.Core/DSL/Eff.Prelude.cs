@@ -28,9 +28,6 @@ public static partial class Prelude
 
     public static Eff<RT, A> use<RT, A>(Eff<RT, A> ma, Func<A, Unit> release) =>
         ma.Map(Transducer.use(release));
-
-    public static Eff<RT, Unit> release<RT, A>(Eff<RT, A> ma) =>
-        ma.Map(Transducer<A>.release);
     
     public static Eff<RT, A> ToEff<RT, A>(this Transducer<RT, CoProduct<Error, A>> ma) =>
         new(ma);

@@ -21,9 +21,6 @@ public static partial class Prelude
 
     public static Either<L, A> use<L, A>(Either<L, A> ma, Func<A, Unit> release) =>
         ma.Map(Transducer.use(release));
-
-    public static Either<L, Unit> release<L, A>(Either<L, A> ma) =>
-        ma.Map(Transducer<A>.release);
     
     public static Either<L, A> ToEither<L, A>(this Transducer<Unit, CoProduct<L, A>> ma) =>
         new(ma);

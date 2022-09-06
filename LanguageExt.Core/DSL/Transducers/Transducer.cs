@@ -66,7 +66,7 @@ public static class Transducer
     /// </summary>
     public static Transducer<A, Unit> Ignore<A, B>(this Transducer<A, B> mf) =>
         ignore(mf);
-    
+
     /// <summary>
     /// Apply an argument to a transducer
     /// </summary>
@@ -74,11 +74,27 @@ public static class Transducer
     /// <param name="x">Argument</param>
     /// <param name="mf">Transducer</param>
     /// <returns>`PrimPure<B> | PrimMany<B> | PrimFail<B>`</returns>
-    public static Prim<B> apply<A, B>(A x, Transducer<A, B> mf) =>
-        #nullable disable
-        mf.Transform<Prim<B>>(static (s, x) => TResult.Continue(s.Value + x))(TState<Prim<B>>.Create(Prim<B>.None), x)
-          .Match(Complete: identity, Continue: identity, Fail: Prim.Fail<B>);
-        #nullable enable
+    public static Prim<B> apply<A, B>(A x, Transducer<A, B> mf)
+    {
+        var state = TState<Prim<B>>.Create(Prim<B>.None);
+        try
+        {
+#nullable disable
+            return mf.Transform<Prim<B>>(static (s, x) => TResult.Continue(s.Value + x))(state, x)
+                     .Match(Complete: identity, 
+                            Continue: identity, 
+                            Fail: Prim.Fail<B>);
+#nullable enable
+        }
+        catch (Exception e)
+        {
+            return Prim.Fail<B>(e);
+        }
+        finally
+        {
+            state.CleanUp();
+        }
+    }
 
     /// <summary>
     /// Apply an argument to a transducer
@@ -87,11 +103,27 @@ public static class Transducer
     /// <param name="x">Argument</param>
     /// <param name="mf">Transducer</param>
     /// <returns>`PrimPure<B> | PrimFail<B>`</returns>
-    public static Prim<B> apply1<A, B>(A x, Transducer<A, B> mf) =>
-        #nullable disable
-        mf.Transform<Prim<B>>(static (_, x) => TResult.Continue(Prim.Pure(x)))(TState<Prim<B>>.Create(Prim<B>.None), x)
-          .Match(Complete: identity, Continue: identity, Fail: Prim.Fail<B>);
-        #nullable enable    
+    public static Prim<B> apply1<A, B>(A x, Transducer<A, B> mf)
+    {
+        var state = TState<Prim<B>>.Create(Prim<B>.None);
+        try
+        {
+#nullable disable
+            return mf.Transform<Prim<B>>(static (_, x) => TResult.Continue(Prim.Pure(x)))(state, x)
+                     .Match(Complete: identity, 
+                            Continue: identity, 
+                            Fail: Prim.Fail<B>);
+#nullable enable
+        }
+        catch (Exception e)
+        {
+            return Prim.Fail<B>(e);
+        }
+        finally
+        {
+            state.CleanUp();
+        }
+    }
 
     /// <summary>
     /// Composes a constant transducer that yields `x` with the supplied transducer `mf` 
