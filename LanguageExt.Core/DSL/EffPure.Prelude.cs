@@ -18,8 +18,8 @@ public static partial class Prelude
     /// <typeparam name="A">Bound value type</typeparam>
     /// <returns>Synchronous IO monad that captures the effect</returns>
     [Pure, MethodImpl(Opt.Default)]
-    public static Eff<RT, A> EffMaybe<RT, A>(Func<RT, Fin<A>> f) =>
-        new(map<RT, CoProduct<Error, A>>(rt => f(rt)
+    public static Eff<A> EffMaybe<A>(Func<DefaultRuntime, Fin<A>> f) =>
+        new(map<DefaultRuntime, CoProduct<Error, A>>(rt => f(rt)
             .Match(Succ: CoProduct.Right<Error, A>,
                 Fail: CoProduct.Left<Error, A>)));
 
@@ -29,33 +29,33 @@ public static partial class Prelude
     /// <param name="f">Function to capture the effect</param>
     /// <typeparam name="A">Bound value type</typeparam>
     /// <returns>Synchronous IO monad that captures the effect</returns>
-    public static Eff<RT, A> Eff<RT, A>(Func<RT, A> f) =>
-        new(map<RT, CoProduct<Error, A>>(rt => CoProduct.Right<Error, A>(f(rt))));
+    public static Eff<A> Eff<A>(Func<DefaultRuntime, A> f) =>
+        new(map<DefaultRuntime, CoProduct<Error, A>>(rt => CoProduct.Right<Error, A>(f(rt))));
     
-    public static Eff<RT, A> SuccessEff<RT, A>(A value) =>
-        new(constant<RT, CoProduct<Error, A>>(CoProduct.Right<Error, A>(value)));
+    public static Eff<A> SuccessEff<A>(A value) =>
+        new(constant<DefaultRuntime, CoProduct<Error, A>>(CoProduct.Right<Error, A>(value)));
     
-    public static Eff<RT, A> FailEff<RT, A>(Error value) =>
-        new(constant<RT, CoProduct<Error, A>>(CoProduct.Left<Error, A>(value)));
+    public static Eff<A> FailEff<A>(Error value) =>
+        new(constant<DefaultRuntime, CoProduct<Error, A>>(CoProduct.Left<Error, A>(value)));
 
-    public static Eff<RT, RT> runtime<RT>() =>
-        new(map<RT, CoProduct<Error, RT>>(CoProduct.Right<Error, RT>));
+    public static Eff<DefaultRuntime> runtime() =>
+        new(map<DefaultRuntime, CoProduct<Error, DefaultRuntime>>(CoProduct.Right<Error, DefaultRuntime>));
 
-    public static Eff<OuterRT, A> localEff<OuterRT, InnerRT, A>(Func<OuterRT, InnerRT> f, Eff<InnerRT, A> ma) =>
-        new(map<OuterRT, CoProduct<Error, A>>(rt => ma.Run(f(rt))
+    public static Eff<A> localEff<A>(Func<DefaultRuntime, DefaultRuntime> f, Eff<A> ma) =>
+        new(map<DefaultRuntime, CoProduct<Error, A>>(rt => ma.Run(f(rt))
             .Match(Succ: CoProduct.Right<Error, A>,
                    Fail: CoProduct.Left<Error, A>)));
 
-    public static Eff<RT, A> scope1<RT, A>(Eff<RT, A> ma) =>
+    public static Eff<A> scope1<A>(Eff<A> ma) =>
         new(Transducer.scope1(ma.Morphism));
 
-    public static Eff<RT, Seq<A>> scope<RT, A>(Eff<RT, A> ma) =>
+    public static Eff<Seq<A>> scope<A>(Eff<A> ma) =>
         new(compose(Transducer.scope(ma.Morphism), right<Error, Seq<A>>()));
     
-    public static Eff<RT, A> use<RT, A>(Eff<RT, A> ma) where A : IDisposable =>
+    public static Eff<A> use<A>(Eff<A> ma) where A : IDisposable =>
         ma.Map(TransducerD<A>.use);
 
-    public static Eff<RT, A> use<RT, A>(Eff<RT, A> ma, Func<A, Unit> release) =>
+    public static Eff<A> use<A>(Eff<A> ma, Func<A, Unit> release) =>
         ma.Map(Transducer.use(release));
     
 }

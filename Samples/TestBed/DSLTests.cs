@@ -33,9 +33,9 @@ public static class DSLTests
         var items = new [] { 10, 20, 30 };
 
         var effect = from r  in use(DisposeMe.NewEither())
-                     from s  in map(seconds)
+                     from s  in each(seconds)
                      from _1 in logEither<Error>("SECOND")
-                     from x  in map(items)
+                     from x  in each(items)
                      from _3 in logEither<Error>($"{s * x}")
                      select s * x;
 
@@ -57,27 +57,27 @@ public static class DSLTests
         var seconds = Observable.Interval(TimeSpan.FromSeconds(1)).Take(5);
         var items = new [] { 10, 20, 30 };
 
-        var effect = from s  in map(seconds)
-                     from _1 in logEff<Runtime>("SECOND")
-                     from x  in map(items)
+        var effect = from s  in each(seconds)
+                     from _1 in logEff("SECOND")
+                     from x  in each(items)
                      from r  in use(DisposeMe.NewEff())
-                     from _2 in logEff<Runtime>($"{s * x}")
+                     from _2 in logEff($"{s * x}")
                      from _3 in release(r)
                      select s * x;
 
-        var effect1 = from _1 in logEff<Runtime>("START for Eff<RT, long>")
+        var effect1 = from _1 in logEff("START for Eff<RT, long>")
                       from e in scope(effect)
-                      from _2 in logEff<Runtime>("DONE")
+                      from _2 in logEff("DONE")
                       select e;
         
         //var result = effect1.RunMany(Runtime.New());
-        var result = effect1.Run(Runtime.New());
+        var result = effect1.Run();
 
         Console.WriteLine(result); 
     }
 
-    static Eff<RT, Unit> logEff<RT>(string x) =>
-        Eff<RT, Unit>(_ =>
+    static Eff<Unit> logEff(string x) =>
+        Eff<Unit>(_ =>
         {
             Console.WriteLine(x);
             return default;
@@ -102,7 +102,7 @@ public static class DSLTests
         }
 
         public static Either<Error, DisposeMe> NewEither() => new DisposeMe();
-        public static Eff<Runtime, DisposeMe> NewEff() => new DisposeMe();
+        public static Eff<DisposeMe> NewEff() => new DisposeMe();
         
         public void Dispose() =>
             Console.WriteLine($"RELEASE {Id}");
