@@ -29,6 +29,7 @@ public static class Prim
     public static Prim<A> Flatten<A>(this Prim<Prim<A>> mma) =>
         mma.Bind(LanguageExt.Prelude.identity);
 
+    /*
     public static Fin<A> ToFin<A>(this Prim<CoProduct<Error, A>> value)
     {
         return Go(value);
@@ -60,6 +61,7 @@ public static class Prim
                 _ => throw new NotSupportedException()
             };
     }
+    */
 }
 
 public abstract record Prim<A> : IDisposable
@@ -85,6 +87,8 @@ public abstract record Prim<A> : IDisposable
     public abstract Prim<A> Take(int amount);
     public abstract bool ForAll(Func<A, bool> f);
     public abstract bool Exists(Func<A, bool> f);
+
+    public abstract Fin<Seq<A>> ToFin();
     
     /// <summary>
     /// Dispose
@@ -154,7 +158,10 @@ public sealed record FailPrim<A>(Error Value) : Prim<A>
 
     public override Prim<A> Take(int amount) =>
         this;
-    
+
+    public override Fin<Seq<A>> ToFin() =>
+        Value;
+ 
     /// <summary>
     /// Dispose
     /// </summary>
@@ -230,6 +237,9 @@ public sealed record PurePrim<A>(A Value) : Prim<A>
     public override Prim<A> Take(int amount) =>
         amount == 0 ? this : None;
     
+    public override Fin<Seq<A>> ToFin() =>
+        LanguageExt.Prelude.Seq1(Value);
+
     /// <summary>
     /// Dispose
     /// </summary>
@@ -272,7 +282,7 @@ public sealed record ManyPrim<A>(Seq<Prim<A>> Items) : Prim<A>
         rhs switch
         {
             _ when Items.IsEmpty => rhs,
-            PurePrim<A> p                     => Prim.Many(Items.Add(rhs)),
+            PurePrim<A>                       => Prim.Many(Items.Add(rhs)),
             ManyPrim<A> {Items.IsEmpty: true} => this,
             ManyPrim<A> p                     => Prim.Many(Items + p.Items),
             FailPrim<A> p                     => p,
@@ -318,6 +328,11 @@ public sealed record ManyPrim<A>(Seq<Prim<A>> Items) : Prim<A>
 
     public override Prim<A> Take(int amount) =>
         Prim.Many(Items.Skip(amount));
+    
+    public override Fin<Seq<A>> ToFin() =>
+        Items.Map(static i => i.ToFin())
+             .Sequence()
+             .Map(static i => i.Flatten());
 
     /// <summary>
     /// Dispose

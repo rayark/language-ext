@@ -27,46 +27,8 @@ public static class TransducerD<A> where A : IDisposable
     public static Transducer<A, A> use = new UseTransducer<A>();
 }
 
-public static class Transducer
+public static partial class Transducer
 {
-    /// <summary>
-    /// Apply an argument to a transducer
-    /// </summary>
-    /// <remarks>Collects zero or more results</remarks>
-    /// <param name="mf">Transducer</param>
-    /// <param name="ma">Argument</param>
-    /// <returns>`PrimPure<B> | PrimMany<B> | PrimFail<B>`</returns>
-    public static Prim<B> Apply<A, B>(this Transducer<A, B> mf, A ma) =>
-        apply(ma, mf);
-
-    /// <summary>
-    /// Apply an argument to a transducer
-    /// </summary>
-    /// <remarks>Collects zero or one results</remarks>
-    /// <param name="mf">Transducer</param>
-    /// <param name="ma">Argument</param>
-    /// <returns>`PrimPure<B> | PrimFail<B>`</returns>
-    public static Prim<B> Apply1<A, B>(this Transducer<A, B> mf, A ma) =>
-        apply1(ma, mf);
-
-    /// <summary>
-    /// Composes a constant transducer that yields `x` with the supplied transducer `mf` 
-    /// </summary>
-    /// <remarks>
-    /// Allows for a value to be injected into a composition without loses the transducer type (for further composition)
-    /// </remarks>
-    /// <param name="mf">Transducer</param>
-    /// <param name="ma">Argument</param>
-    /// <returns>Transducer that when invoked with `unit` will run the supplied transducer with the constant value `x`</returns>
-    public static Transducer<Unit, B> Inject<A, B>(this Transducer<A, B> mf, A x) =>
-        inject(x, mf);
-
-    /// <summary>
-    /// Ignores the result of the transducer
-    /// </summary>
-    public static Transducer<A, Unit> Ignore<A, B>(this Transducer<A, B> mf) =>
-        ignore(mf);
-
     /// <summary>
     /// Apply an argument to a transducer
     /// </summary>
@@ -202,6 +164,12 @@ public static class Transducer
     
     public static Transducer<A, B> flatten<A, B>(Transducer<A, Transducer<Unit, B>> f) =>
         new FlattenTransducer2<A, B>(f);
+    
+    public static Transducer<A, B> flatten<A, B>(Transducer<Unit, Transducer<A, B>> f) =>
+        new FlattenTransducer3<A, B>(f);
+    
+    public static Transducer<Unit, B> flatten<B>(Transducer<Unit, Transducer<Unit, B>> f) =>
+        new FlattenTransducer<Unit, B>(f);
     
     public static Transducer<A, A> filter<A>(Func<A, bool> f) =>
         new FilterTransducer<A>(f);

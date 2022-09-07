@@ -7,12 +7,13 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading;
 using LanguageExt.Common;
-using LanguageExt.Sys.Live;
+using LanguageExt.DSL.Transducers;
+using static LanguageExt.DSL.Transducers.Transducer;
 using static LanguageExt.DSL.Prelude;
+using Unit = LanguageExt.Unit;
 
 namespace TestBed;
 
@@ -32,22 +33,22 @@ public static class DSLTests
         var seconds = Observable.Interval(TimeSpan.FromSeconds(1)).Take(5);
         var items = new [] { 10, 20, 30 };
 
-        var effect = from r  in use(DisposeMe.NewEither())
+        var effect = from r  in use(DisposeMe.New)
                      from s  in each(seconds)
-                     from _1 in logEither<Error>("SECOND")
+                     from _1 in log("SECOND")
                      from x  in each(items)
-                     from _3 in logEither<Error>($"{s * x}")
+                     from _3 in log($"{s * x}")
                      select s * x;
 
-        var effect1 = from _1 in logEither<Error>("START for Either<Error, long>")
-                      from r  in use(DisposeMe.NewEither())
+        var effect1 = from _1 in logEither("START for Either<Error, long>")
+                      from r  in use(DisposeMe.New)
                       from e in scope(effect)
-                      from _2 in logEither<Error>("DONE")
+                      from _2 in log("DONE")
                       select e;
                       
         
-        //var result = effect1.RunMany(Runtime.New());
-        var result = effect1.Match(Left: x => default, Right: x => x); 
+        var result = effect1.Match(Left: _ => default, Right: x => x);
+        //var result = effect1.Apply(default);
 
         Console.WriteLine(result);
     }
@@ -58,38 +59,46 @@ public static class DSLTests
         var items = new [] { 10, 20, 30 };
 
         var effect = from s  in each(seconds)
-                     from _1 in logEff("SECOND")
+                     from _1 in log("SECOND")
                      from x  in each(items)
-                     from r  in use(DisposeMe.NewEff())
-                     from _2 in logEff($"{s * x}")
+                     from r  in use(DisposeMe.New)
+                     from _2 in log($"{s * x}")
                      from _3 in release(r)
                      select s * x;
 
         var effect1 = from _1 in logEff("START for Eff<RT, long>")
                       from e in scope(effect)
-                      from _2 in logEff("DONE")
+                      from _2 in log("DONE")
                       select e;
         
-        //var result = effect1.RunMany(Runtime.New());
+        //var result = effect1.RunMany();
         var result = effect1.Run();
+        //var result = effect1.Apply(default);
 
         Console.WriteLine(result); 
     }
 
+    static Transducer<Unit, Unit> log(string x) =>
+        map<Unit, Unit>(_ =>
+        {
+            Console.WriteLine(x);
+            return default;
+        });
+    
     static Eff<Unit> logEff(string x) =>
         Eff<Unit>(_ =>
         {
             Console.WriteLine(x);
             return default;
         });
-
-    static Either<L, Unit> logEither<L>(string x) =>
-        RightLazy<L, Unit>(() =>
+    
+    static Either<Error, Unit> logEither(string x) =>
+        RightLazy<Error, Unit>(() =>
         {
             Console.WriteLine(x);
             return default;
         });
-
+    
     class DisposeMe : IDisposable
     {
         static volatile int idCount;
@@ -101,8 +110,8 @@ public static class DSLTests
             Console.WriteLine($"USE {Id}");
         }
 
-        public static Either<Error, DisposeMe> NewEither() => new DisposeMe();
-        public static Eff<DisposeMe> NewEff() => new DisposeMe();
+        public static readonly Transducer<Unit, DisposeMe> New =
+            map<Unit, DisposeMe>(_ => new());
         
         public void Dispose() =>
             Console.WriteLine($"RELEASE {Id}");
