@@ -50,7 +50,7 @@ public static partial class Prelude
         new(Transducer.scope1(ma.Morphism));
 
     public static Eff<RT, Seq<A>> scope<RT, A>(Eff<RT, A> ma) =>
-        new(compose(Transducer.scope(ma.Morphism), right<Error, Seq<A>>()));
+        new(Transducer.scope(ma.Morphism));
     
     public static Eff<RT, A> use<RT, A>(Eff<RT, A> ma) where A : IDisposable =>
         ma.Map(TransducerD<A>.use);

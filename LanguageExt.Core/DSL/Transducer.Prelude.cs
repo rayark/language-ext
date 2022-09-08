@@ -19,6 +19,12 @@ public static partial class Prelude
     public static Transducer<Unit, A> use<A>(Transducer<Unit, A> disposable, Func<A, Unit> release) =>
         compose(disposable, Transducer.use(release));
     
+    public static Transducer<Unit, A> use<A>(Func<Unit, A> disposable) where A : IDisposable =>
+        use(map(disposable));
+
+    public static Transducer<Unit, A> use<A>(Func<Unit, A> disposable, Func<A, Unit> release) =>
+        use(map(disposable), release);
+    
     public static Transducer<Unit, Unit> release<A>(A resource) =>
         compose(constant<Unit, A>(resource), Transducer<A>.release);
 }

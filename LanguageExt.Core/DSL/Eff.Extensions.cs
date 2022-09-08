@@ -51,7 +51,7 @@ public static partial class Prelude
         Func<A, Eff<RT, B>> bind,
         Func<A, B, C> project)
     {
-        var ta = compose(map<RT, Unit>(_ => default), compose(ma, right<Error, A>()));
+        var ta = compose(map<RT, Unit>(_ => default), compose(ma, TransducerStatic2<Error, A>.right));
         return ta.ToEff().SelectMany(bind, project);
     }
 

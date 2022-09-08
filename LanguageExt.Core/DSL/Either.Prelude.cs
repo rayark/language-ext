@@ -12,9 +12,8 @@ public static partial class Prelude
     public static Either<L, A> scope1<L, A>(Either<L, A> ma) =>
         new(Transducer.scope1(ma.Morphism));
 
-    // TODO: Generalise for `L`
-    public static Either<Error, Seq<A>> scope<A>(Either<Error, A> ma) =>
-        new(compose(Transducer.scope(ma.Morphism), right<Error, Seq<A>>()));
+    public static Either<L, Seq<A>> scope<L, A>(Either<L, A> ma) =>
+        new(Transducer.scope(ma.Morphism));
     
     public static Either<L, A> use<L, A>(Either<L, A> ma) where A : IDisposable =>
         ma.Map(TransducerD<A>.use);
@@ -77,7 +76,7 @@ public static partial class Prelude
         Func<A, Either<L, B>> bind,
         Func<A, B, C> project)
     {
-        var ta = compose(ma, right<L, A>());
+        var ta = compose(ma, TransducerStatic2<L, A>.right);
         return ta.ToEither().SelectMany(bind, project);
     }
     public static Transducer<Unit, CoProduct<L, B>> Bind<L, A, B>(

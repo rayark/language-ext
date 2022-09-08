@@ -14,7 +14,7 @@ public abstract record TResult<A>
     public abstract TResult<B> Map<B>(Func<A, B> f);
 }
 
-public sealed record TResultComplete<A>(A Value) : TResult<A>
+public record TResultComplete<A>(A Value) : TResult<A>
 {
     public override bool Complete => true;
     public override bool Continue => false;
@@ -59,6 +59,21 @@ public sealed record TResultFail<A>(Error Error) : TResult<A>
         new TResultFail<B>(Error);
 }
 
+public sealed record TResultAlt<X, A>(X Alt) : TResult<A>
+{
+    public override bool Complete => true;
+    public override bool Continue => false;
+    public override bool Faulted => true;
+    public override A ValueUnsafe => throw new InvalidOperationException();
+    public override Error ErrorUnsafe => throw new InvalidOperationException(); 
+
+    public override B Match<B>(Func<A, B> Complete, Func<A, B> Continue, Func<Error, B> Fail) =>
+        throw new InvalidOperationException();
+
+    public override TResult<B> Map<B>(Func<A, B> f) =>
+        new TResultAlt<X, B>(Alt);
+}
+
 public static class TResult
 {
     public static TResult<A> Complete<A>(A value) =>
@@ -69,4 +84,7 @@ public static class TResult
     
     public static TResult<A> Fail<A>(Error value) =>
         new TResultFail<A>(value);
+    
+    public static TResult<A> Alt<X, A>(X value) =>
+        new TResultAlt<X, A>(value);
 }

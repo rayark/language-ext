@@ -111,11 +111,41 @@ public static partial class Transducer
     public static Transducer<A, Seq<B>> scope<A, B>(Transducer<A, B> t) =>
         new ScopeManyTransducer<A, B>(t);
 
-    public static Transducer<A, Seq<B>> scope<A, B>(Transducer<A, CoProduct<Error, B>> t) =>
-        new ScopeManyTransducer2<A, B>(t);
+    public static Transducer<A, CoProduct<X, B>> scope1<X, A, B>(Transducer<A, CoProduct<X, B>> t) =>
+        new ScopeManyTransducer<X, A, B>(t);
+
+    public static Transducer<A, CoProduct<X, Seq<B>>> scope<X, A, B>(Transducer<A, CoProduct<X, B>> t) =>
+        new ScopeManyTransducer2<X, A, B>(t);
 
     public static Transducer<A, C> compose<A, B, C>(Transducer<A, B> tab, Transducer<B, C> tbc) =>
         new ComposeTransducer<A, B, C>(tab, tbc);
+
+    public static Transducer<A, D> compose<A, B, C, D>(Transducer<A, B> t1, Transducer<B, C> t2, Transducer<C, D> t3) =>
+        new ComposeTransducer<A, B, C, D>(t1, t2, t3);
+
+    public static Transducer<A, E> compose<A, B, C, D, E>(
+        Transducer<A, B> t1, 
+        Transducer<B, C> t2, 
+        Transducer<C, D> t3, 
+        Transducer<D, E> t4) =>
+        new ComposeTransducer<A, B, C, D, E>(t1, t2, t3, t4);
+
+    public static Transducer<A, F> compose<A, B, C, D, E, F>(
+        Transducer<A, B> t1, 
+        Transducer<B, C> t2, 
+        Transducer<C, D> t3,
+        Transducer<D, E> t4,
+        Transducer<E, F> t5) =>
+        new ComposeTransducer<A, B, C, D, E, F>(t1, t2, t3, t4, t5);
+
+    public static Transducer<A, G> compose<A, B, C, D, E, F, G>(
+        Transducer<A, B> t1, 
+        Transducer<B, C> t2, 
+        Transducer<C, D> t3,
+        Transducer<D, E> t4,
+        Transducer<E, F> t5,
+        Transducer<F, G> t6) =>
+        new ComposeTransducer<A, B, C, D, E, F, G>(t1, t2, t3, t4, t5, t6);
 
     public static Transducer<A, B> constant<A, B>(B @const) =>
         new ConstantTransducer<A, B>(@const);
@@ -134,6 +164,30 @@ public static partial class Transducer
     
     public static Transducer<CoProduct<X, A>, CoProduct<Y, B>> bimap<X, Y, A, B>(Transducer<X, Y> Left, Transducer<A, B> Right) =>
         new BiMapTransducer<X, Y, A, B>(Left, Right);
+
+    /// <summary>
+    /// Transducer that extracts the right value from the co-product (if possible)
+    /// </summary>
+    public static Transducer<CoProduct<A, B>, B> rightValue<A, B>() =>
+        TransducerStatic2<A, B>.rightValue;
+    
+    /// <summary>
+    /// Transducer that extracts the left value from the co-product (if possible)
+    /// </summary>
+    public static Transducer<CoProduct<A, B>, A> leftValue<A, B>() =>
+        TransducerStatic2<A, B>.leftValue;
+    
+    /// <summary>
+    /// Transducer that makes a co-product from the right value
+    /// </summary>
+    public static Transducer<B, CoProduct<A, B>> right<A, B>() =>
+        TransducerStatic2<A, B>.right;
+    
+    /// <summary>
+    /// Transducer that makes a co-product from the left value
+    /// </summary>
+    public static Transducer<A, CoProduct<A, B>> left<A, B>() =>
+        TransducerStatic2<A, B>.left;
     
     public static Transducer<CoProduct<X, A>, CoProduct<X, B>> mapRight<X, A, B>(Func<A, B> f) =>
         new MapRightTransducer2<X, A, B>(f);
@@ -257,43 +311,37 @@ public static partial class Transducer
     public static Transducer<E, CoProduct<X, B>> kleisli<E, X, A, B>(
         Transducer<E, CoProduct<X, A>> first,
         Transducer<A, CoProduct<X, B>> second) =>
-        new KleisliTransducer<E, X, A, B>(first, second);
+        compose(first, TransducerStatic2<X, A>.rightValue, second);
 
     public static Transducer<E, CoProduct<X, B>> kleisli<E, X, A, B>(
         Transducer<E, CoProduct<X, A>> first,
         Func<A, CoProduct<X, B>> second) =>
-        new KleisliTransducer<E, X, A, B>(first, map(second));
+        compose(first, TransducerStatic2<X, A>.rightValue, map(second));
+
+    public static Transducer<E, CoProduct<X, B>> kleisli<E, X, A, B>(
+        Func<E, CoProduct<X, A>> first,
+        Func<A, CoProduct<X, B>> second) =>
+        compose(map(first), TransducerStatic2<X, A>.rightValue, map(second));
 
     public static Transducer<E, CoProduct<X, B>> kleisli<E, X, A, B>(
         Transducer<E, CoProduct<X, A>> first,
         Transducer<A, Transducer<E, CoProduct<X, B>>> second) =>
-        new KleisliTransducer2<E, X, A, B>(first, second);
+        flatten(compose(first, TransducerStatic2<X, A>.rightValue, second));
 
     public static Transducer<E, CoProduct<X, B>> kleisli<E, X, A, B>(
         Transducer<E, CoProduct<X, A>> first,
         Func<A, Transducer<E, CoProduct<X, B>>> second) =>
-        new KleisliTransducer2<E, X, A, B>(first, map(second));
-
-    public static Transducer<E, CoProduct<X, B>> kleisli<E, X, A, B>(
-        Func<E, CoProduct<X, A>> first,
-        Func<A, CoProduct<X, B>> second) =>
-        new KleisliTransducer<E, X, A, B>(map(first), map(second));
-
-    
-    public static Transducer<E, CoProduct<X, B>> kleisli<E, X, A, B>(
-        Transducer<E, CoProduct<X, A>> first,
-        BiTransducer<X, X, A, B> second) =>
-        new BiKleisliTransducer<E, X, X, A, B>(first, second);
-
-    public static Transducer<E, CoProduct<X, B>> kleisli<E, X, A, B>(
-        Func<E, CoProduct<X, A>> first,
-        BiTransducer<X, X, A, B> second) =>
-        new BiKleisliTransducer<E, X, X, A, B>(map(first), second);
+        flatten(compose(first, TransducerStatic2<X, A>.rightValue, map(second)));
     
     public static Transducer<E, CoProduct<X, B>> bind<E, X, A, B, MB>(
         Transducer<E, CoProduct<X, A>> first,
         Func<A, MB> second) where MB : IsTransducer<E, CoProduct<X, B>> =>
-        new KleisliTransducer2<E, X, A, B>(first, map<A, Transducer<E, CoProduct<X, B>>>(a => second(a).ToTransducer()));
+        flatten(
+            compose(
+                first, 
+                rightValue<X, A>(),
+                map(second), 
+                ToTransducer<MB, E, CoProduct<X, B>>.Default));
 
      public static Transducer<RT, CoProduct<E, B>> bind<RT, E, A, B>(
          Transducer<RT, CoProduct<E, A>> op, 
@@ -313,24 +361,18 @@ public static partial class Transducer
      public static Transducer<RT, CoProduct<E, B>> bind<RT, E, A, B>(
          Transducer<RT, CoProduct<E, A>> op,
          Transducer<Unit, B> f) =>
-         compose(compose(ignore(op), f), right<E, B>());
+         compose(compose(ignore(op), f), TransducerStatic2<E, B>.right);
 
      public static Transducer<RT, CoProduct<E, B>> bindProduce<RT, E, A, B>(
          Transducer<RT, CoProduct<E, A>> op,
          Func<A, Transducer<Unit, B>> f) =>
-         compose(flatten(compose(op, mapRightValue<E, A, Transducer<Unit, B>>(f))), right<E, B>());
+         compose(flatten(compose(op, mapRightValue<E, A, Transducer<Unit, B>>(f))), TransducerStatic2<E, B>.right);
      
     public static Transducer<RT, CoProduct<E, C>> bindMap<RT, E, A, B, C>(
         Transducer<RT, CoProduct<E, A>> first,
         Func<A, Transducer<Unit, B>> second,
         Func<A, B, C> third) =>
         new BindMapTransducer<RT, E, A, B, C>(first, second, third);
-    
-    public static Transducer<A, CoProduct<X, A>> right<X, A>() =>
-        map<A, CoProduct<X, A>>(CoProduct.Right<X, A>);
-    
-    public static Transducer<X, CoProduct<X, A>> left<X, A>() =>
-        map<X, CoProduct<X, A>>(CoProduct.Left<X, A>);
 
     public static Transducer<A, B> schedule<A, B>(Transducer<A, B> morphism, Schedule schedule, Func<B, bool> pred) =>
         new ScheduleTransducer<A, B>(morphism, schedule, pred);

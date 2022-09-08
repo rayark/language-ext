@@ -17,6 +17,7 @@ internal sealed record ScopeTransducer<A, B>(Transducer<A, B> Function) : Transd
             {
                 res = red(nstate, value);
                 if (res.Faulted) return TResult.Fail<S>(res.ErrorUnsafe);
+                if (res.Complete) return TResult.Complete(state.Value);
             }
             finally
             {
@@ -33,69 +34,93 @@ internal sealed record ScopeManyTransducer<A, B>(Transducer<A, B> Function) : Tr
     public Func<TState<S>, A, TResult<S>> Transform<S>(Func<TState<S>, Seq<B>, TResult<S>> reducer) =>
         (state, value) =>
         {
-            var red = Function.Transform<Prim<B>>((s, v) => TResult.Continue(s.Value + Prim.Pure(v)));
-            var nstate = state.Scope().SetValue(Prim<B>.None);
-            TResult<Prim<B>>? res;
+            var red = Function.Transform<Seq<B>>((s, v) => TResult.Continue(s.Value.Add(v)));
+            var nstate = state.Scope().SetValue(Seq<B>());
+            TResult<Seq<B>>? res;
             try
             {
                 res = red(nstate, value);
                 if (res.Faulted) return TResult.Fail<S>(res.ErrorUnsafe);
+                if (res.Complete) return TResult.Complete(state.Value);
+                return reducer(state, res.ValueUnsafe);
             }
             finally
             {
                 nstate.CleanUp();
             }
-            var items = ToSeq(res.ValueUnsafe);
-            return items.Match(
-                Succ: xs => reducer(state, xs),
-                Fail: TResult.Fail<S>); 
         };
-    
-    Fin<Seq<X>> ToSeq<X>(Prim<X> ma) =>
-        ma switch
-        {
-            PurePrim<X> v => Fin<Seq<X>>.Succ(Seq1(v.Value)),
-            ManyPrim<X> m => m.Items.Sequence(ToSeq).Map(static x => x.Flatten()),
-            FailPrim<X> f => Fin<Seq<X>>.Fail(f.Value),
-            _ => throw new NotSupportedException()
-        };    
 }
 
-internal sealed record ScopeManyTransducer2<A, B>(Transducer<A, CoProduct<Error, B>> Function) : Transducer<A, Seq<B>>
+internal sealed record ScopeManyTransducer<X, A, B>(Transducer<A, CoProduct<X, B>> Function) : Transducer<A, CoProduct<X, B>>
 {
-    public Func<TState<S>, A, TResult<S>> Transform<S>(Func<TState<S>, Seq<B>, TResult<S>> reducer) =>
+    readonly record struct Collector(X? Left, bool IsLeft, B? Value)
+    {
+        public static readonly Collector Default = new (default, default, default);
+    }
+
+    public Func<TState<S>, A, TResult<S>> Transform<S>(Func<TState<S>, CoProduct<X, B>, TResult<S>> reducer) =>
         (state, value) =>
         {
-            var red = Function.Transform<Prim<B>>((s, v) => v switch
-            {
-                CoProductRight<Error, B> r => TResult.Continue(s.Value + Prim.Pure(r.Value)),
-                CoProductLeft<Error, B> l => TResult.Fail<Prim<B>>(l.Value),
-                CoProductFail<Error, B> f => TResult.Fail<Prim<B>>(f.Value),
-                _ => throw new NotSupportedException()
-            });
-            var nstate = state.Scope().SetValue(Prim<B>.None);
-            TResult<Prim<B>>? res;
+            var red = Function.Transform<Collector>((s, v) =>
+                (s.Value, v) switch
+                {
+                    ({IsLeft: false} os, CoProductRight<X, B> r) => TResult.Continue(os with { Value =  r.Value }),
+                    (var os, CoProductLeft<X, B> l) => TResult.Complete(os with { IsLeft = true, Left = l.Value }),
+                    (_, CoProductFail<X, B> f) => TResult.Fail<Collector>(f.Value),
+                    _ => throw new NotSupportedException()
+                });
+            
+            var nstate = state.Scope().SetValue(Collector.Default);
+            TResult<Collector>? res;
             try
             {
+                #nullable disable
                 res = red(nstate, value);
                 if (res.Faulted) return TResult.Fail<S>(res.ErrorUnsafe);
+                if (res.ValueUnsafe.IsLeft) return reducer(state, CoProduct.Left<X, B>(res.ValueUnsafe.Left));
+                if (res.Complete) return TResult.Complete(state.Value);
+                return reducer(state, CoProduct.Right<X, B>(res.ValueUnsafe.Value));
+                #nullable enable
             }
             finally
             {
                 nstate.CleanUp();
             }
-            var items = ToSeq(res.ValueUnsafe);
-            return items.Match(
-                Succ: xs => reducer(state, xs),
-                Fail: TResult.Fail<S>); 
         };
-    
-    Fin<Seq<X>> ToSeq<X>(Prim<X> ma) =>
-        ma switch
+}
+
+internal sealed record ScopeManyTransducer2<X, A, B>(Transducer<A, CoProduct<X, B>> Function) : Transducer<A, CoProduct<X, Seq<B>>>
+{
+    readonly record struct Collector(X? Left, bool IsLeft, Seq<B> Values)
+    {
+        public static readonly Collector Default = new (default, default, default);
+    }
+
+    public Func<TState<S>, A, TResult<S>> Transform<S>(Func<TState<S>, CoProduct<X, Seq<B>>, TResult<S>> reducer) =>
+        (state, value) =>
         {
-            PurePrim<X> v => Fin<Seq<X>>.Succ(Seq1(v.Value)),
-            ManyPrim<X> m => m.Items.Sequence(ToSeq).Map(static x => x.Flatten()),
-            FailPrim<X> f => Fin<Seq<X>>.Fail(f.Value),
-            _ => throw new NotSupportedException()
-        };    
+            var red = Function.Transform<Collector>((s, v) =>
+                (s.Value, v) switch
+                {
+                    ({IsLeft: false} os, CoProductRight<X, B> r) => TResult.Continue(os with { Values = os.Values.Add(r.Value)}),
+                    (_, CoProductLeft<X, B> l) => TResult.Complete(new Collector(IsLeft: true, Left: l.Value, Values: Seq<B>())),
+                    (_, CoProductFail<X, B> f) => TResult.Fail<Collector>(f.Value),
+                    _ => throw new NotSupportedException()
+                });
+            
+            var nstate = state.Scope().SetValue(Collector.Default);
+            TResult<Collector>? res;
+            try
+            {
+                res = red(nstate, value);
+                if (res.Faulted) return TResult.Fail<S>(res.ErrorUnsafe);
+                if (res.ValueUnsafe.IsLeft && res.ValueUnsafe.Left != null) return reducer(state, CoProduct.Left<X, Seq<B>>(res.ValueUnsafe.Left));
+                if (res.Complete) return TResult.Complete(state.Value);
+                return reducer(state, CoProduct.Right<X, Seq<B>>(res.ValueUnsafe.Values));
+            }
+            finally
+            {
+                nstate.CleanUp();
+            }
+        };
 }
