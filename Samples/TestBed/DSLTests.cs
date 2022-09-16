@@ -33,8 +33,7 @@ public static class DSLTests
         var seconds = Observable.Interval(TimeSpan.FromSeconds(1)).Take(5);
         var items = new [] { 10, 20, 30 };
 
-        var effect = from __ in failEither
-                     from r  in use(DisposeMe.New)
+        var effect = from r  in use(DisposeMe.New)
                      from s  in each(seconds)
                      from _1 in log("SECOND")
                      from x  in each(items)
@@ -63,8 +62,7 @@ public static class DSLTests
         var seconds = Observable.Interval(TimeSpan.FromSeconds(1)).Take(5);
         var items = new [] { 10, 20, 30 };
 
-        var effect = from __ in failEff
-                     from s  in each(seconds)
+        var effect = from s  in each(seconds)
                      from _1 in log("SECOND")
                      from x  in each(items)
                      from r  in use(DisposeMe.New)
