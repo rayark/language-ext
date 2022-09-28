@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using LanguageExt.DSL.Transducers;
 
 namespace LanguageExt.DSL;
@@ -47,12 +48,12 @@ internal static class ScheduleM
             p => p is CoProductLeft<X, B> l && !pred(l.Value));
 
 
-    public static Transducer<A, S> Fold<S, A, B>(
+    /*public static Transducer<A, S> Fold<S, A, B>(
         this Transducer<A, B> ma,
         Schedule schedule,
         S state,
         Func<S, B, S> fold) =>
-        Transducer.fold(ma, state, fold, schedule);
+        Transducer.fold(ma, state, fold, schedule);*/
 
     public static Transducer<A, S> FoldWhile<S, A, B>(
         this Transducer<A, B> ma,

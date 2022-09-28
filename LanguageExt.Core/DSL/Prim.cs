@@ -85,6 +85,7 @@ public abstract record Prim<A> : IDisposable
     public abstract Prim<A> Tail { get; }
     public abstract Prim<A> Skip(int amount);
     public abstract Prim<A> Take(int amount);
+    public abstract Prim<(A First, B Second)> Zip<B>(Prim<B> second);
     public abstract bool ForAll(Func<A, bool> f);
     public abstract bool Exists(Func<A, bool> f);
 
@@ -121,6 +122,9 @@ public sealed record FailPrim<A>(Error Value) : Prim<A>
     
     public override bool Exists(Func<A, bool> f) => 
         false;
+
+    public override Prim<(A First, B Second)> Zip<B>(Prim<B> second) =>
+        Prim.Fail<(A, B)>(Value);
  
     public override Prim<A> Append(Prim<A> rhs) =>
         rhs switch
@@ -193,6 +197,16 @@ public sealed record PurePrim<A>(A Value) : Prim<A>
     
     public override bool Exists(Func<A, bool> f) => 
         f(Value);
+
+    public override Prim<(A First, B Second)> Zip<B>(Prim<B> second) =>
+        second switch
+        {
+            PurePrim<B> p => Prim.Pure((Value, p.Value)),
+            FailPrim<B> f => Prim.Fail<(A, B)>(f.Value),
+            ManyPrim<B> {Items.IsEmpty: true} => Prim.Many(LanguageExt.Prelude.Seq<Prim<(A, B)>>()),
+            ManyPrim<B> m => Prim.Many<(A, B)>(m.Items.Map(pv => pv.Map(v => (Value, v)))),
+            _ => throw new NotSupportedException()
+        };
 
     public override Unit Iter(Action<A> f)
     {
@@ -295,6 +309,15 @@ public sealed record ManyPrim<A>(Seq<Prim<A>> Items) : Prim<A>
     public override bool Exists(Func<A, bool> f) => 
         Items.Exists(x => x.Exists(f));
   
+    public override Prim<(A First, B Second)> Zip<B>(Prim<B> second) =>
+        second switch
+        {
+            _ when Items.IsEmpty => Prim.Many(LanguageExt.Prelude.Seq<Prim<(A, B)>>()),
+            PurePrim<B> p => Prim.Many<(A, B)>(Items.Map(pv => pv.Map(v => (v, p.Value)))),
+            FailPrim<B> f => Prim.Fail<(A, B)>(f.Value),
+            var any => Prim.Many<(A, B)>(Items.Map(px => px.Zip(any))),
+        };
+    
     public override Unit Iter(Action<A> f) => 
         Items.Iter(p => p.Iter(f));
  

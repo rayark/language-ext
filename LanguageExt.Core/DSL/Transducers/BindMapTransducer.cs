@@ -1,18 +1,27 @@
 ﻿#nullable enable
 using System;
-using LanguageExt.Common;
 
 namespace LanguageExt.DSL.Transducers;
 
-internal sealed record BindMapTransducer<RT, E, A, B, C>(
-    Transducer<RT, CoProduct<E, A>> First,
+#if !NET_STANDARD
+internal sealed record BindTransducer<F, A> : Transducer<K<F, A>, A>
+{
+    public static readonly Transducer<K<F, A>, A> Default = new BindTransducer<F, A>();
+    
+    public Func<TState<S>, K<F, A>, TResult<S>> Transform<S>(Func<TState<S>, A, TResult<S>> reduce) =>
+        (state, value) => value.Transform(reduce)(state, default);
+}
+#endif
+
+internal sealed record BindMapTransducer<E, X, A, B, C>(
+    Transducer<E, CoProduct<X, A>> First,
     Func<A, Transducer<Unit, B>> Second,
     Func<A, B, C> Third) :
-    Transducer<RT, CoProduct<E, C>>
+    Transducer<E, CoProduct<X, C>>
 {
-    public Func<TState<S>, RT, TResult<S>> Transform<S>(Func<TState<S>, CoProduct<E, C>, TResult<S>> reduce) =>
+    public Func<TState<S>, E, TResult<S>> Transform<S>(Func<TState<S>, CoProduct<X, C>, TResult<S>> reduce) =>
         (s1, rt) =>
-            Transducer.compose(First, Transducer.mapRightValue<E, A, A>(static x => x)).Transform<S>(
+            Transducer.compose(First, Transducer.mapRightValue<X, A, A>(static x => x)).Transform<S>(
                 (s2, a) =>
-                    Second(a).Transform<S>((s3, b) => reduce(s3, CoProduct.Right<E, C>(Third(a, b))))(s2, default))(s1, rt);
+                    Second(a).Transform<S>((s3, b) => reduce(s3, CoProduct.Right<X, C>(Third(a, b))))(s2, default))(s1, rt);
 }

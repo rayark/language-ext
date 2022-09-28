@@ -147,6 +147,39 @@ public static partial class Transducer
         Transducer<F, G> t6) =>
         new ComposeTransducer<A, B, C, D, E, F, G>(t1, t2, t3, t4, t5, t6);
 
+    public static Transducer<A, H> compose<A, B, C, D, E, F, G, H>(
+        Transducer<A, B> t1, 
+        Transducer<B, C> t2, 
+        Transducer<C, D> t3,
+        Transducer<D, E> t4,
+        Transducer<E, F> t5,
+        Transducer<F, G> t6,
+        Transducer<G, H> t7) =>
+        new ComposeTransducer<A, B, C, D, E, F, G, H>(t1, t2, t3, t4, t5, t6, t7);
+
+    public static Transducer<A, I> compose<A, B, C, D, E, F, G, H, I>(
+        Transducer<A, B> t1, 
+        Transducer<B, C> t2, 
+        Transducer<C, D> t3,
+        Transducer<D, E> t4,
+        Transducer<E, F> t5,
+        Transducer<F, G> t6,
+        Transducer<G, H> t7,
+        Transducer<H, I> t8) =>
+        new ComposeTransducer<A, B, C, D, E, F, G, H, I>(t1, t2, t3, t4, t5, t6, t7, t8);
+
+    public static Transducer<A, J> compose<A, B, C, D, E, F, G, H, I, J>(
+        Transducer<A, B> t1, 
+        Transducer<B, C> t2, 
+        Transducer<C, D> t3,
+        Transducer<D, E> t4,
+        Transducer<E, F> t5,
+        Transducer<F, G> t6,
+        Transducer<G, H> t7,
+        Transducer<H, I> t8,
+        Transducer<I, J> t9) =>
+        new ComposeTransducer<A, B, C, D, E, F, G, H, I, J>(t1, t2, t3, t4, t5, t6, t7, t8, t9);
+
     public static Transducer<A, B> constant<A, B>(B @const) =>
         new ConstantTransducer<A, B>(@const);
     
@@ -156,9 +189,12 @@ public static partial class Transducer
     public static Transducer<X, CoProduct<A, B>> constantLeft<X, A, B>(A @const) =>
         new ConstantLeftTransducer<X, A, B>(@const);
     
+    public static Transducer<X, CoProduct<A, B>> constantFail<X, A, B>(Error @const) =>
+        new ConstantFailTransducer<X, A, B>(@const);
+    
     public static Transducer<A, B> map<A, B>(Func<A, B> f) =>
         new MapTransducer<A, B>(f);
-    
+ 
     public static Transducer<CoProduct<X, A>, CoProduct<Y, B>> bimap<X, Y, A, B>(Func<X, Y> Left, Func<A, B> Right) =>
         new BiMapTransducer2<X, Y, A, B>(Left, Right);
     
@@ -236,14 +272,7 @@ public static partial class Transducer
     
     public static Transducer<A, S> foldWhile<S, A>(S state, Func<S, A, S> fold, Func<S, bool> predicate) =>
         new FoldWhileTransducer<S, A>(state, fold, predicate);
-    
-    public static Transducer<A, S> fold<S, A, B>(
-        Transducer<A, B> morphism, 
-        S state, 
-        Func<S, B, S> fold, 
-        Schedule schedule) =>
-        new ScheduleFoldTransducer<S, A, B>(morphism, state, fold, schedule);
-    
+
     public static Transducer<A, S> foldUntil2<S, A, B>(
         Transducer<A, B> morphism, 
         S state, 
@@ -274,7 +303,7 @@ public static partial class Transducer
         Func<S, B, S> fold, 
         Func<B, bool> predicate, 
         Schedule schedule) =>
-        new ScheduleFoldWhileTransducer<S, A, B>(morphism, state, fold, predicate, schedule);
+        new ScheduleFoldWhileTransducer<S, A, B>(morphism, state, fold, predicate, schedule);    
 
     public static Transducer<A, B> choice<A, B>(Transducer<A, B> first, Transducer<A, B> second) =>
         new ChoiceTransducer<A, B>(first, second);
@@ -332,6 +361,22 @@ public static partial class Transducer
         Transducer<E, CoProduct<X, A>> first,
         Func<A, Transducer<E, CoProduct<X, B>>> second) =>
         flatten(compose(first, TransducerStatic2<X, A>.rightValue, map(second)));
+
+    public static Transducer<E, B> match<E, X, A, B>(
+        Transducer<E, CoProduct<X, A>> M,
+        Transducer<X, B> Left,
+        Transducer<A, B> Right) =>
+        new MatchTransducer<E, X, A, B>(M, Left, Right);
+
+    public static Transducer<E, B> match<E, X, A, B>(
+        Transducer<E, CoProduct<X, A>> M,
+        Func<X, B> Left,
+        Func<A, B> Right) =>
+        new MatchTransducer2<E, X, A, B>(M, Left, Right);
+    
+    public static Transducer<MA, Transducer<E, CoProduct<X, A>>> toTransducer<MA, E, X, A>()
+        where MA : IsTransducer<E, CoProduct<X, A>> =>
+        ToTransducer<MA, E, CoProduct<X, A>>.Default;
     
     public static Transducer<E, CoProduct<X, B>> bind<E, X, A, B, MB>(
         Transducer<E, CoProduct<X, A>> first,
@@ -341,7 +386,7 @@ public static partial class Transducer
                 first, 
                 rightValue<X, A>(),
                 map(second), 
-                ToTransducer<MB, E, CoProduct<X, B>>.Default));
+                toTransducer<MB, E, X, B>()));
 
      public static Transducer<RT, CoProduct<E, B>> bind<RT, E, A, B>(
          Transducer<RT, CoProduct<E, A>> op, 
@@ -374,12 +419,262 @@ public static partial class Transducer
         Func<A, B, C> third) =>
         new BindMapTransducer<RT, E, A, B, C>(first, second, third);
 
+    
     public static Transducer<A, B> schedule<A, B>(Transducer<A, B> morphism, Schedule schedule, Func<B, bool> pred) =>
         new ScheduleTransducer<A, B>(morphism, schedule, pred);
-
+    
     /// <summary>
     /// Yields the values in the primitive
     /// </summary>
     public static Transducer<Unit, A> prim<A>(Prim<A> p) =>
         new PrimTransducer<A>(p);
+
+    public static Transducer<(A, B), (X, Y)> pair<A, B, X, Y>(Transducer<A, X> first, Transducer<B, Y> second) =>
+        new PairTransducer<A, B, X, Y>(first, second);
+
+    public static Transducer<A, (A, A)> mkPair<A>() =>
+        MakePairTransducer<A>.Default;
+        
+#if !NET_STANDARD
+
+    public static Transducer<K<M, A>, A> bindT<M, A>() =>
+        BindTransducer<M, A>.Default;
+
+    public static Transducer<E, CoProduct<X, K<M, B>>> bindT<E, X, M, A, B>(
+        Transducer<E, CoProduct<X, K<M, A>>> op,
+        Func<A, CoProduct<X, K<M, B>>> f) =>
+        compose(
+            op,
+            rightValue<X, K<M, A>>(),
+            bindT<M, A>(),
+            map(f));
+    
+    public static Transducer<E, CoProduct<X, K<M, B>>> bindT<E, X, M, A, B>(
+        Transducer<E, CoProduct<X, K<M, A>>> op,
+        Func<A, Transducer<E, CoProduct<X, K<M, B>>>> f) =>
+        flatten(
+            compose(
+                op,
+                rightValue<X, K<M, A>>(),
+                bindT<M, A>(),
+                map(f)));
+    
+    public static Transducer<E, K<F, S>> foldT<S, F, E, A>(
+        Transducer<E, K<F, A>> morphism, 
+        S state, 
+        Func<S, A, S> fold, 
+        Schedule schedule) where F : Applicative<F> =>
+        new ScheduleFoldTTransducer<S, F, E, A>(morphism, state, fold, schedule);
+
+    public static Transducer<E, K<F, S>> foldUntilT2<S, F, E, A>(
+        Transducer<E, K<F, A>> morphism,
+        S state,
+        Func<S, A, S> fold,
+        Func<S, bool> predicate,
+        Schedule schedule) where F : Applicative<F> =>
+        new ScheduleFoldUntilTTransducer2<S, F, E, A>(morphism, state, fold, predicate, schedule);
+    
+    public static Transducer<E, K<F, S>> foldWhileT2<S, F, E, A>(
+        Transducer<E, K<F, A>> morphism,
+        S state,
+        Func<S, A, S> fold,
+        Func<S, bool> predicate,
+        Schedule schedule) where F : Applicative<F> =>
+        foldUntilT2(morphism, state, fold, not(predicate), schedule);
+
+    public static Transducer<E, K<F, S>> foldUntilT<S, F, E, A>(
+        Transducer<E, K<F, A>> morphism,
+        S state,
+        Func<S, A, S> fold,
+        Func<A, bool> predicate,
+        Schedule schedule) where F : Applicative<F> =>
+        new ScheduleFoldUntilTTransducer<S, F, E, A>(morphism, state, fold, predicate, schedule);    
+
+    public static Transducer<E, K<F, S>> foldWhileT<S, F, E, A>(
+        Transducer<E, K<F, A>> morphism,
+        S state,
+        Func<S, A, S> fold,
+        Func<A, bool> predicate,
+        Schedule schedule) where F : Applicative<F> =>
+        foldUntilT(morphism, state, fold, not(predicate), schedule);    
+
+    /*public static Transducer<E, K<F, S>> fold<S, F, E, A>(
+        Transducer<E, A> morphism,
+        S state,
+        Func<S, A, S> fold,
+        Schedule schedule) where F : Applicative<F>  =>
+        new ScheduleFoldTransducer<S, E, A>(morphism, state, fold, schedule);*/  
+
+    public static Transducer<E, K<F, E, S>> foldT<S, F, E, A>(
+        Transducer<E, K<F, E, A>> morphism, 
+        S state, 
+        Func<S, A, S> fold, 
+        Schedule schedule) where F : ApplicativeE<F> =>
+        new ScheduleFoldTTransducer2<S, F, E, A>(morphism, state, fold, schedule);
+
+    public static Transducer<E, K<F, E, S>> foldUntilT2<S, F, E, A>(
+        Transducer<E, K<F, E, A>> morphism,
+        S state,
+        Func<S, A, S> fold,
+        Func<S, bool> predicate,
+        Schedule schedule) where F : ApplicativeE<F> =>
+        new ScheduleFoldUntilTTransducer2E<S, F, E, A>(morphism, state, fold, predicate, schedule);
+    
+    public static Transducer<E, K<F, E, S>> foldWhileT2<S, F, E, A>(
+        Transducer<E, K<F, E, A>> morphism,
+        S state,
+        Func<S, A, S> fold,
+        Func<S, bool> predicate,
+        Schedule schedule) where F : ApplicativeE<F> =>
+        foldUntilT2(morphism, state, fold, not(predicate), schedule);
+
+    public static Transducer<E, K<F, E, S>> foldUntilT<S, F, E, A>(
+        Transducer<E, K<F, E, A>> morphism,
+        S state,
+        Func<S, A, S> fold,
+        Func<A, bool> predicate,
+        Schedule schedule) where F : ApplicativeE<F> =>
+        new ScheduleFoldUntilTTransducer3<S, F, E, A>(morphism, state, fold, predicate, schedule);    
+
+    public static Transducer<E, K<F, E, S>> foldWhileT<S, F, E, A>(
+        Transducer<E, K<F, E, A>> morphism,
+        S state,
+        Func<S, A, S> fold,
+        Func<A, bool> predicate,
+        Schedule schedule) where F : ApplicativeE<F> =>
+        foldUntilT(morphism, state, fold, not(predicate), schedule);    
+
+    public static Transducer<E, K<F, E, S>> fold<S, F, E, A>(
+        Transducer<E, K<F, E, A>> morphism,
+        S state,
+        Func<S, A, S> fold,
+        Schedule schedule) where F : ApplicativeE<F> =>
+        new ScheduleFoldTTransducer2<S, F, E, A>(morphism, state, fold, schedule);    
+    
+    public static Transducer<E, K<F, A>> scheduleT<F, E, A>(
+        Transducer<E, K<F, A>> morphism, 
+        Schedule schedule, 
+        Func<A, bool> pred) where F : Applicative<F> =>
+        new ScheduleTTransducer<F, E, A>(morphism, schedule, pred);
+    
+    public static Transducer<E, K<F, E, A>> scheduleT<F, E, A>(
+        Transducer<E, K<F, E, A>> morphism, 
+        Schedule schedule, 
+        Func<A, bool> pred) where F : ApplicativeE<F> =>
+        new ScheduleTTransducer2<F, E, A>(morphism, schedule, pred);
+
+        
+    /*
+    public static Transducer<E, K<F, CoProduct<X, S>>> bifoldT<S, F, E, X, A>(
+        Transducer<E, K<F, CoProduct<X, A>>> morphism, 
+        S state, 
+        Func<S, CoProduct<X, A>, S> fold, 
+        Schedule schedule) where F : Bi<X>.Applicative<F> =>
+        new BiScheduleFoldTTransducer<S, F, E, X, A>(morphism, state, fold, schedule);
+    
+    public static Transducer<E, K<F, E, CoProduct<X, S>>> bifoldT<S, F, E, X, A>(
+        Transducer<E, K<F, E, CoProduct<X, A>>> morphism, 
+        S state, 
+        Func<S, CoProduct<X, A>, S> fold, 
+        Schedule schedule) where F : Bi<X>.Applicative<F, E> =>
+        new BiScheduleFoldTTransducer2<S, F, E, X, A>(morphism, state, fold, schedule);
+
+    public static Transducer<E, K<F, CoProduct<X, S>>> bifoldUntilT2<S, F, E, X, A>(
+        Transducer<E, K<F, CoProduct<X, A>>> morphism,
+        S state,
+        Func<S, CoProduct<X, A>, S> fold,
+        Func<S, bool> predicate,
+        Schedule schedule) where F : Bi<X>.Applicative<F> =>
+        new BiScheduleFoldUntilTTransducer2<S, F, E, X, A>(morphism, state, fold, predicate, schedule);
+
+    public static Transducer<E, K<F, E, CoProduct<X, S>>> bifoldUntilT2<S, F, E, X, A>(
+        Transducer<E, K<F, E, CoProduct<X, A>>> morphism,
+        S state,
+        Func<S, CoProduct<X, A>, S> fold,
+        Func<S, bool> predicate,
+        Schedule schedule) where F : Bi<X>.Applicative<F, E> =>
+        new BiScheduleFoldUntilTTransducer2E<S, F, E, X, A>(morphism, state, fold, predicate, schedule);
+    
+    public static Transducer<E, K<F, CoProduct<X, S>>> bifoldWhileT2<S, F, E, X, A>(
+        Transducer<E, K<F, CoProduct<X, A>>> morphism,
+        S state,
+        Func<S, CoProduct<X, A>, S> fold,
+        Func<S, bool> predicate,
+        Schedule schedule) where F : Bi<X>.Applicative<F> =>
+        bifoldUntilT2(morphism, state, fold, not(predicate), schedule);
+    
+    public static Transducer<E, K<F, E, CoProduct<X, S>>> bifoldWhileT2<S, F, E, X, A>(
+        Transducer<E, K<F, E, CoProduct<X, A>>> morphism,
+        S state,
+        Func<S, CoProduct<X, A>, S> fold,
+        Func<S, bool> predicate,
+        Schedule schedule) where F : Bi<X>.Applicative<F, E> =>
+        bifoldUntilT2(morphism, state, fold, not(predicate), schedule);
+
+    public static Transducer<E, K<F, CoProduct<X, S>>> bifoldUntilT<S, F, E, X, A>(
+        Transducer<E, K<F, CoProduct<X, A>>> morphism,
+        S state,
+        Func<S, CoProduct<X, A>, S> fold,
+        Func<CoProduct<X, A>, bool> predicate,
+        Schedule schedule) where F : Bi<X>.Applicative<F> =>
+        new BiScheduleFoldUntilTTransducer<S, F, E, X, A>(morphism, state, fold, predicate, schedule);    
+
+    public static Transducer<E, K<F, E, CoProduct<X, S>>> bifoldUntilT<S, F, E, X, A>(
+        Transducer<E, K<F, E, CoProduct<X, A>>> morphism,
+        S state,
+        Func<S, CoProduct<X, A>, S> fold,
+        Func<CoProduct<X, A>, bool> predicate,
+        Schedule schedule) where F : Bi<X>.Applicative<F, E> =>
+        new BiScheduleFoldUntilTTransducer3<S, F, E, X, A>(morphism, state, fold, predicate, schedule);    
+
+    public static Transducer<E, K<F, E, CoProduct<X, S>>> bifoldWhileT<S, F, E, X, A>(
+        Transducer<E, K<F, E, CoProduct<X, A>>> morphism,
+        S state,
+        Func<S, CoProduct<X, A>, S> fold,
+        Func<CoProduct<X, A>, bool> predicate,
+        Schedule schedule) where F : Bi<X>.Applicative<F, E> =>
+        bifoldUntilT(morphism, state, fold, not(predicate), schedule);    
+
+    public static Transducer<E, K<F, CoProduct<X, S>>> bifoldWhileT<S, F, E, X, A>(
+        Transducer<E, K<F, CoProduct<X, A>>> morphism,
+        S state,
+        Func<S, CoProduct<X, A>, S> fold,
+        Func<CoProduct<X, A>, bool> predicate,
+        Schedule schedule) where F : Bi<X>.Applicative<F> =>
+        bifoldUntilT(morphism, state, fold, not(predicate), schedule);    
+
+    public static Transducer<E, K<F, E, CoProduct<X, S>>> bifold<S, F, E, X, A>(
+        Transducer<E, K<F, E, CoProduct<X, A>>> morphism,
+        S state,
+        Func<S, CoProduct<X, A>, S> fold,
+        Schedule schedule) where F : Bi<X>.Applicative<F, E> =>
+        new BiScheduleFoldTTransducer2<S, F, E, X, A>(morphism, state, fold, schedule); 
+    
+    public static Transducer<E, K<F, CoProduct<X, A>>> bischeduleT<F, E, X, A>(
+        Transducer<E, K<F, CoProduct<X, A>>> morphism, 
+        Schedule schedule, 
+        Func<CoProduct<X, A>, bool> pred) where F : Bi<X>.Applicative<F> =>
+        new BiScheduleTTransducer<F, E, X, A>(morphism, schedule, pred);
+    
+    public static Transducer<E, K<F, E, CoProduct<X, A>>> bischeduleT<F, E, X, A>(
+        Transducer<E, K<F, E, CoProduct<X, A>>> morphism, 
+        Schedule schedule, 
+        Func<CoProduct<X, A>, bool> pred) where F : Bi<X>.Applicative<F, E> =>
+        new BiScheduleTTransducer2<F, E, X, A>(morphism, schedule, pred);
+        */
+    
+    public static Transducer<E, CoProduct<X, K<M, B>>> bindProduceT<E, X, M, A, B>(
+        Transducer<E, CoProduct<X, K<M, A>>> op,
+        Func<A, Transducer<Unit, K<M, B>>> f) =>
+        compose(
+            flatten(
+                compose(
+                    op, 
+                    rightValue<X, K<M, A>>(),
+                    bindT<M, A>(),
+                    map(f))), 
+            right<X, K<M, B>>());    
+#endif
+
+    
 }

@@ -8,28 +8,17 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Net.Sockets;
 using LanguageExt;
 using System.Text;
 using LanguageExt.Sys;
 using LanguageExt.Pipes;
 using LanguageExt.Sys.IO;
 using System.Reactive.Linq;
-using System.Reactive.Subjects;
-using System.Threading;
 using LanguageExt.Sys.Live;
 using System.Threading.Tasks;
-using LanguageExt.ClassInstances;
 using LanguageExt.Common;
 using LanguageExt.Effects.Traits;
-using LanguageExt.Sys.Traits;
 using TestBed;
 using static LanguageExt.Prelude;
 using static LanguageExt.Pipes.Proxy;

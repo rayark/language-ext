@@ -7,17 +7,92 @@ using static LanguageExt.DSL.Transducers.Transducer;
 
 namespace LanguageExt.DSL;
 
-public readonly record struct Either<L, A>(Transducer<Unit, CoProduct<L, A>> MorphismUnsafe) : IsTransducer<Unit, CoProduct<L, A>>
+#if !NET_STANDARD
+public record Either<L> : Monad<Either<L>>
+{
+    public static Transducer<Unit, B> Match<A, B>(K<Either<L>, A> fa, Func<L, B> Left, Func<A, B> Right) =>
+        fa is Either<L, A> ea // TODO: Bit of a hack, think of a compile-time check for this
+            ? match(ea.Morphism, Left, Right)
+            : throw new NotSupportedException();
+
+    public static Transducer<Unit, B> Match<A, B>(K<Either<L>, A> fa, Transducer<L, B> Left, Transducer<A, B> Right) =>
+        fa is Either<L, A> ea // TODO: Bit of a hack, think of a compile-time check for this
+            ? match(ea.Morphism, Left, Right)
+            : throw new NotSupportedException();
+
+    public static K<Either<Y>, B> BiMap<Y, A, B>(K<Either<L>, A> fa, Func<L, Y> Left, Func<A, B> Right) =>
+        fa is Either<L, A> ea // TODO: Bit of a hack, think of a compile-time check for this
+            ? new Either<Y, B>(compose(ea.Morphism, bimap(Left, Right)))
+            : Either<Y>.Fail<B>(Errors.Bottom);
+
+    public static K<Either<Y>, B> BiMap<Y, A, B>(K<Either<L>, A> fa, Transducer<L, Y> Left, Transducer<A, B> Right) =>
+        fa is Either<L, A> ea // TODO: Bit of a hack, think of a compile-time check for this
+            ? new Either<Y, B>(compose(ea.Morphism, bimap(Left, Right)))
+            : Either<Y>.Fail<B>(Errors.Bottom);
+
+    public static K<Either<L>, B> Map<A, B>(K<Either<L>, A> fa, Func<A, B> f) =>
+        new Either<L, B>(compose(fa, map(f), right<L, B>()));
+
+    public static K<Either<L>, B> Map<A, B>(K<Either<L>, A> fa, Transducer<A, B> f) =>
+        new Either<L, B>(compose(fa, f, right<L, B>()));
+
+    public static K<Either<L>, A> Pure<A>(A value) =>
+        new Either<L, A>(constant<Unit, CoProduct<L, A>>(CoProduct.Right<L, A>(value)));
+
+    public static K<Either<L>, A> Left<A>(L value) =>
+        new Either<L, A>(constant<Unit, CoProduct<L, A>>(CoProduct.Left<L, A>(value)));
+
+    public static K<Either<L>, A> Fail<A>(Error value) =>
+        new Either<L, A>(constant<Unit, CoProduct<L, A>>(CoProduct.Fail<L, A>(value)));
+
+    public static K<Either<L>, A> Lift<A>(CoProduct<L, A> value) =>
+        value switch
+        {
+            CoProductRight<L, A> r => Pure<A>(r.Value),
+            CoProductLeft<L, A> l => Left<A>(l.Value),
+            CoProductFail<L, A> f => Fail<A>(f.Value),
+            _ => throw new NotSupportedException()
+        };
+
+    public static K<Either<L>, B> Apply<A, B>(K<Either<L>, Func<A, B>> ff, K<Either<L>, A> fa) =>
+        new Either<L, B>(
+            compose(
+                mkPair<Unit>(),
+                pair(ff, fa),
+                map<(Func<A, B> f, A x), B>(p => p.f(p.x)),
+                right<L, B>()));
+
+    public static K<Either<L>, A> Lift<A>(Transducer<Unit, A> f) =>
+        new Either<L, A>(compose(f, right<L, A>()));
+
+    public static K<Either<L>, B> Bind<A, B>(K<Either<L>, A> ma, Func<A, K<Either<L>, B>> f) =>
+        new Either<L, B>(compose(flatten(compose(ma, map(f))), right<L, B>()));
+}
+#endif
+
+public readonly record struct Either<L, A>(Transducer<Unit, CoProduct<L, A>> MorphismUnsafe) : 
+    IsTransducer<Unit, CoProduct<L, A>>
+#if !NET_STANDARD
+    , K<Either<L>, A>
+#endif
 {
     public static readonly Either<L, A> Bottom = 
-        new(Transducer.constant<Unit, CoProduct<L, A>>(CoProduct.Fail<L, A>(Errors.Bottom)));
+        new(constant<Unit, CoProduct<L, A>>(CoProduct.Fail<L, A>(Errors.Bottom)));
     
-    public Transducer<Unit, CoProduct<L, A>> Morphism => MorphismUnsafe ?? Bottom.MorphismUnsafe;
+    static State<Unit> NilState => 
+        new (default, null);
 
-    static State<Unit> NilState => new (default, null);
+    // -----------------------------------------------------------------------------------------------------------------
+    // Transducer 
+
+    public Transducer<Unit, CoProduct<L, A>> Morphism => 
+        MorphismUnsafe ?? Bottom.MorphismUnsafe;
 
     public Transducer<Unit, CoProduct<L, A>> ToTransducer() => 
         Morphism;
+
+    public Func<TState<S>, Unit, TResult<S>> Transform<S>(Func<TState<S>, A, TResult<S>> reduce) =>
+        compose(Morphism, rightValue<L, A>()).Transform(reduce);
 
     // -----------------------------------------------------------------------------------------------------------------
     // Map

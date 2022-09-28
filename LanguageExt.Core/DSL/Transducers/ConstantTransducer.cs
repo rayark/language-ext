@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using System;
+using LanguageExt.Common;
 
 namespace LanguageExt.DSL.Transducers;
 
@@ -19,4 +20,10 @@ internal sealed record ConstantLeftTransducer<X, A, B>(A Constant) : Transducer<
 {
     public Func<TState<S>, X, TResult<S>> Transform<S>(Func<TState<S>, CoProduct<A, B>, TResult<S>> reducer) =>
         (state, _) => reducer(state, CoProduct.Left<A, B>(Constant));
+}
+
+internal sealed record ConstantFailTransducer<X, A, B>(Error Constant) : Transducer<X, CoProduct<A, B>>
+{
+    public Func<TState<S>, X, TResult<S>> Transform<S>(Func<TState<S>, CoProduct<A, B>, TResult<S>> reducer) =>
+        (state, _) => reducer(state, CoProduct.Fail<A, B>(Constant));
 }

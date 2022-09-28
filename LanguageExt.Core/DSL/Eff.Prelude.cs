@@ -33,10 +33,10 @@ public static partial class Prelude
         new(map<RT, CoProduct<Error, A>>(rt => CoProduct.Right<Error, A>(f(rt))));
     
     public static Eff<RT, A> SuccessEff<RT, A>(A value) =>
-        new(constant<RT, CoProduct<Error, A>>(CoProduct.Right<Error, A>(value)));
+        new(constantRight<RT, Error, A>(value));
     
     public static Eff<RT, A> FailEff<RT, A>(Error value) =>
-        new(constant<RT, CoProduct<Error, A>>(CoProduct.Left<Error, A>(value)));
+        new(constantLeft<RT, Error, A>(value));
 
     public static Eff<RT, RT> runtime<RT>() =>
         new(map<RT, CoProduct<Error, RT>>(CoProduct.Right<Error, RT>));

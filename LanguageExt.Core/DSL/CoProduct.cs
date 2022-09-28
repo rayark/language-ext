@@ -14,7 +14,7 @@ public static class CoProduct
     public static CoProduct<A, B> Right<A, B>(B value) => new CoProductRight<A, B>(value);
 }
 
-public abstract record CoProduct<A, B>
+public abstract record CoProduct<A, B> : Transducer<CoProduct<A, B>, B>
 {
     public abstract CoProduct<X, B> LeftMap<X>(Func<A, X> Left);
     public abstract CoProduct<A, Y> RightMap<Y>(Func<B, Y> Right);
@@ -24,12 +24,21 @@ public abstract record CoProduct<A, B>
     public abstract bool IsError { get; }
 
     public abstract TResult<CoProduct<S, T>> Transform<X, Y, S, T>(
-        CoProduct<S, T> seed, 
+        CoProduct<S, T> seed,
         BiTransducer<A, X, B, Y> transducer,
         Func<TState<S>, X, TResult<S>> reducerLeft,
         Func<TState<T>, Y, TResult<T>> reducerRight);
 
     public abstract TResult<CoProduct<X, Y>> Transform<X, Y>(BiTransducer<A, X, B, Y> transducer);
+
+    public Func<TState<S>, CoProduct<A, B>, TResult<S>> Transform<S>(Func<TState<S>, B, TResult<S>> reducer) =>
+        (state, value) => value switch
+        {
+            CoProductRight<A, B> r => reducer(state, r.Value),
+            CoProductLeft<A, B> => TResult.Complete(state.Value),
+            CoProductFail<A, B> f => TResult.Fail<S>(f.Value),
+            _ => throw new NotImplementedException()
+        };
 }
 
 public record CoProductLeft<A, B>(A Value) : CoProduct<A, B>

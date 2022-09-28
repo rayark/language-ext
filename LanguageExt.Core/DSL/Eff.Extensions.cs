@@ -16,7 +16,7 @@ public static partial class Prelude
         new(constant<RT, CoProduct<Error, A>>(ma));
 
     public static Eff<RT, B> Apply<RT, A, B>(this Eff<RT, Func<A, B>> ff, Eff<RT, A> fa) =>
-        ff.Bind(fa.Map);
+        ff.Bind(x => fa.Map(x));
 
     public static Eff<RT, Func<B, C>> Apply<RT, A, B, C>(this Eff<RT, Func<A, B, C>> ff, Eff<RT, A> fa) =>
         ff.Map(LanguageExt.Prelude.curry).Apply(fa);

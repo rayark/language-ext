@@ -1,7 +1,4 @@
 ﻿#nullable enable
-using System;
-using System.Collections.Generic;
-using LanguageExt.Common;
 using static LanguageExt.Prelude;
 
 namespace LanguageExt.DSL.Transducers;
@@ -31,4 +28,5 @@ public static class TransducerStatic2<X, Y>
     /// </summary>
     public static readonly Transducer<X, CoProduct<X, Y>> left =
         Transducer.map<X, CoProduct<X, Y>>(CoProduct.Left<X, Y>);
+
 }

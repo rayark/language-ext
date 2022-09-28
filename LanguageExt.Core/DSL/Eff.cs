@@ -5,15 +5,55 @@ using static LanguageExt.DSL.Transducers.Transducer;
 
 namespace LanguageExt.DSL;
 
-public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> MorphismUnsafe) : IsTransducer<RT, CoProduct<Error, A>>
+#if !NET_STANDARD
+public record Eff : MonadReader<Eff>
+{
+    public static K<Eff, E, B> Map<E, A, B>(K<Eff, E, A> fa, Func<A, B> f) =>
+        new Eff<E, B>(compose(fa, map(f), right<Error, B>()));
+
+    public static K<Eff, E, B> Map<E, A, B>(K<Eff, E, A> fa, Transducer<A, B> f) =>
+        new Eff<E, B>(compose(fa, f, right<Error, B>()));
+
+    public static K<Eff, E, A> Pure<E, A>(A value) =>
+        new Eff<E, A>(constant<E, CoProduct<Error, A>>(CoProduct.Right<Error, A>(value)));
+
+    public static K<Eff, E, B> Apply<E, A, B>(K<Eff, E, Func<A, B>> ff, K<Eff, E, A> fa) =>
+        new Eff<E, B>(
+            compose(
+                mkPair<E>(),
+                pair(ff, fa),
+                map<(Func<A, B> f, A x), B>(p => p.f(p.x)),
+                right<Error, B>()));
+
+    public static K<Eff, E, A> Lift<E, A>(Transducer<E, A> f) =>
+        new Eff<E, A>(compose(f, right<Error, A>()));
+
+    public static K<Eff, E, B> Bind<E, A, B>(K<Eff, E, A> ma, Func<A, K<Eff, E, B>> f) =>
+        new Eff<E, B>(compose(flatten(compose(ma, map(f))), right<Error, B>()));
+}
+#endif
+
+
+public readonly record struct Eff<RT, A>(Transducer<RT, CoProduct<Error, A>> MorphismUnsafe) : 
+    IsTransducer<RT, CoProduct<Error, A>>
+#if !NET_STANDARD
+    ,K<Eff, RT, A>
+#endif
 {
     public static readonly Eff<RT, A> Bottom = new(constant<RT, CoProduct<Error, A>>(CoProduct.Fail<Error, A>(Errors.Bottom)));
     
-    public Transducer<RT, CoProduct<Error, A>> Morphism => MorphismUnsafe ?? Bottom.Morphism;
+    // -----------------------------------------------------------------------------------------------------------------
+    // Transducer 
+
+    public Transducer<RT, CoProduct<Error, A>> Morphism => 
+        MorphismUnsafe ?? Bottom.Morphism;
     
     public Transducer<RT, CoProduct<Error, A>> ToTransducer() => 
         Morphism;
-
+    
+    public Func<TState<S>, RT, TResult<S>> Transform<S>(Func<TState<S>, A, TResult<S>> reduce) => 
+        compose(Morphism, rightValue<Error, A>()).Transform(reduce);
+    
     // -----------------------------------------------------------------------------------------------------------------
     // Map
 

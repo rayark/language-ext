@@ -42,7 +42,7 @@ public static class DSLTests
 
         var effect1 = from _1 in log("START for Either<Error, long>")
                       from r  in use(DisposeMe.New)
-                      from e in scope(effect)
+                      from e in scope1(effect)
                       from _2 in logEither("DONE")
                       select e;
                       
@@ -66,7 +66,7 @@ public static class DSLTests
                      from _1 in log("SECOND")
                      from x  in each(items)
                      from r  in use(DisposeMe.New)
-                     from _2 in log($"{s * x}")
+                     from _2 in logEff($"{s * x}")
                      from _3 in release(r)
                      select s * x;
 

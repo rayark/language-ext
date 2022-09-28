@@ -69,3 +69,4 @@ internal sealed record Apply2Transducer<E, A, B, C>(
             return TResult.Complete(state.Value);
         };
 }
+
