@@ -20,3 +20,10 @@ internal sealed record FlattenTransducer3<A, B>(Transducer<Unit, Transducer<A, B
     public Func<TState<S>, A, TResult<S>> Transform<S>(Func<TState<S>, B, TResult<S>> reduce) =>
         (state, value) => Function.Transform<S>((s, v) => v.Transform(reduce)(s, value))(state, default);
 }
+
+
+internal sealed record FlattenTransducer4<A, B>(Func<A, Transducer<A, B>> Function) : Transducer<A, B>
+{
+    public Func<TState<S>, A, TResult<S>> Transform<S>(Func<TState<S>, B, TResult<S>> reduce) =>
+        (state, value) => Function(value).Transform(reduce)(state, value);
+}

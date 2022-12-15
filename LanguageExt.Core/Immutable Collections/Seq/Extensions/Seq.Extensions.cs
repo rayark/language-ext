@@ -476,8 +476,11 @@ public static partial class SeqExtensions
     /// <param name="list">sequence</param>
     /// <returns>A new sequence with all duplicate values removed</returns>
     [Pure]
-    public static Seq<T> Distinct<T, K>(this Seq<T> list, Func<T, K> keySelector, Option<Func<K, K, bool>> compare = default(Option<Func<K, K, bool>>)) =>
-        toSeq(Enumerable.Distinct(list, new EqCompare<T>((a, b) => compare.IfNone(default(EqDefault<K>).Equals)(keySelector(a), keySelector(b)), a => keySelector(a)?.GetHashCode() ?? 0)));
+    public static Seq<T> Distinct<T, K>(this Seq<T> list, Func<T, K> keySelector, Option<Func<K, K, bool>> compare = default) =>
+        toSeq(Enumerable.Distinct(list, 
+            new EqCompare<T>(
+                (a, b) => compare.IfNone(default(EqDefault<K>).Equals)(keySelector(a), keySelector(b)), 
+                a => compare.Match(Some: _  => 0, None: () => default(EqDefault<K>).GetHashCode(keySelector(a))))));
 
     /// <summary>
     /// The tails function returns all final segments of the argument, longest first. For example:

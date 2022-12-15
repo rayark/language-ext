@@ -28,6 +28,239 @@ public static class Test
         EitherT<Error, Eff, RT, A>.Lift(ma);
 }
 
+public readonly record struct EitherT<L, M, A>(K<M, K<Either<L>, A>> monad) :
+    IsTransducer<Unit, K<Either<L>, A>>,
+    K<M, A>
+    where M : Monad<M>
+{
+    public static readonly EitherT<L, M, A> Bottom =
+        Lift(CoProduct.Fail<L, A>(Errors.Bottom));
+    
+    static State<Unit> NilState => new (default, null);
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // Transducer 
+
+    public static EitherT<L, M, A> Right(A value) =>
+        new(M.Pure(Either<L>.Pure(value)));
+    
+    public static EitherT<L, M, A> Left(L value) =>
+        new(M.Pure(Either<L>.Left<A>(value)));
+    
+    public static EitherT<L, M, A> Lift(CoProduct<L, A> value) =>
+        new(M.Pure(Either<L>.Lift(value)));
+    
+    public static EitherT<L, M, A> Lift(Either<L, A> value) =>
+        new(M.Pure(Either<L>.Lift(value)));
+    
+    public static EitherT<L, M, A> Lift(K<M, A> ma) =>
+        new(M.Map(ma, Either<L>.Pure));
+    
+    public Transducer<Unit, K<Either<L>, A>> ToTransducer() => 
+        monad;
+
+    public Func<TState<S>, Unit, TResult<S>> Transform<S>(Func<TState<S>, A, TResult<S>> reduce) =>
+        flatten(monad).Transform(reduce);
+    
+    // -----------------------------------------------------------------------------------------------------------------
+    // Map
+
+    public EitherT<L, M, B> Map<B>(Func<A, B> f) =>
+        BiMap(static x => x, f);
+
+    public EitherT<L, M, B> Map<B>(Transducer<A, B> f) =>
+        BiMap(Transducer<L>.identity, f);
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // BiMap
+
+    public EitherT<X, M, B> BiMap<X, B>(Func<L, X> Left, Func<A, B> Right) =>
+        new(M.Map(monad, ea => Either<L>.BiMap(ea, Left, Right)));
+
+    public EitherT<X, M, B> BiMap<X, B>(Transducer<L, X> Left, Transducer<A, B> Right) =>
+        new(M.Map(monad, ea => Either<L>.BiMap(ea, Left, Right)));
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // Bind
+
+    public EitherT<L, M, B> BindT<B>(Func<A, Either<L, B>> f) =>
+        new(M.Bind(monad, ea => M.Pure(Either<L>.Bind(ea, x => f(x)))));
+
+    public EitherT<L, M, B> Bind<B>(Func<A, EitherT<L, M, B>> f) =>
+        new(M.Map(M.Bind(Match(Left: EitherT<L, M, B>.Left, f), x => x), Either<L>.Pure));
+
+    //public EitherT<L, M, B> BindT<B>(Func<A, CoProduct<L, Monad<M, B>>> f) =>
+    //    new(bindT(Morphism, f));
+
+    //public EitherT<L, M, B> BindT<B>(Func<A, Transducer<Unit, CoProduct<L, Monad<M, B>>>> f) =>
+    //    new(bindT(Morphism, f));
+    
+    //public EitherT<L, M, B> BindT<B>(Transducer<Unit, Monad<M, B>> f) =>
+    //    new(bind(Morphism, f));
+
+    //public EitherT<L, M, B> BindT<B>(Func<A, Transducer<Unit, Monad<M, B>>> f) =>
+    //    new(bindProduceT(Morphism, f));
+    
+    // -----------------------------------------------------------------------------------------------------------------
+    // BiBind
+
+    /*public EitherT<M, B> BiBind<M, B>(Func<L, EitherT<M, B>> Left, Func<A, EitherT<M, B>> Right) =>
+        new(Transducer.bikleisli<EitherT<M, B>, Unit, L, M, A, B>(Morphism, Left, Right));
+    
+    public EitherT<M, B> BiBind<M, B>(Func<L, CoProduct<M, B>> Left, Func<A, CoProduct<M, B>> Right) =>
+        new(Transducer.bikleisli(Morphism, Left, Right));
+
+    public EitherT<M, B> BiBind<M, B>(Transducer<L, CoProduct<M, B>> Left, Transducer<A, CoProduct<M, B>> Right) =>
+        new(Transducer.bikleisli(Morphism, Left, Right));
+
+    public EitherT<M, B> BiBind<M, B>(
+        Transducer<L, Transducer<Unit, CoProduct<M, B>>> Left,
+        Transducer<A, Transducer<Unit, CoProduct<M, B>>> Right) =>
+            new(Transducer.bikleisli(Morphism, Left, Right));*/
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // Select
+
+    public EitherT<L, M, B> Select<B>(Func<A, B> f) =>
+        Map(f);
+
+    public EitherT<L, M, B> Select<B>(Transducer<A, B> f) =>
+        Map(f);
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // SelectMany
+    
+    public EitherT<L, M, B> SelectMany<B>(Func<A, Either<L, B>> f) =>
+        BindT(f);
+
+    public EitherT<L, M, B> SelectMany<B>(Func<A, EitherT<L, M, B>> f) =>
+        Bind(f);
+
+    //public EitherT<L, M, B> SelectMany<B>(Func<A, CoProduct<L, Monad<M, B>>> f) =>
+    //    BindT(f);
+
+    //public EitherT<L, M, B> SelectMany<B>(Func<A, Transducer<Unit, CoProduct<L, Monad<M, B>>>> f) =>
+    //    BindT(f);
+
+    //public EitherT<L, M, B> SelectMany<B>(Transducer<Unit, Monad<M, B>> f) =>
+    //    BindT(f);
+
+    //public EitherT<L, M, B> SelectMany<B>(Func<A, Transducer<Unit, Monad<M, B>>> f) =>
+    //    BindT(f);
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // SelectMany
+
+    public EitherT<L, M, C> SelectMany<B, C>(Func<A, Either<L, B>> f, Func<A, B, C> project) =>
+        BindT(a => f(a).Map(b => project(a, b)));
+
+    public EitherT<L, M, C> SelectMany<B, C>(Func<A, EitherT<L, M, B>> f, Func<A, B, C> project) =>
+        Bind(a => f(a).Map(b => project(a, b)));
+
+    //public EitherT<L, M, C> SelectMany<B, C>(Func<A, Transducer<Unit, Monad<M, B>>> f, Func<A, B, C> project) =>
+    //    new(bindMapT(Morphism, f, project));
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // Filtering
+
+    public EitherT<L, M, A> Filter(Func<A, bool> f) =>
+        Map(filter(f));
+
+    public EitherT<L, M, A> Where(Func<A, bool> f) =>
+        Map(filter(f));
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // Many item processing
+    
+    public EitherT<L, M, A> Head =>
+        Map(Transducer<A>.head);
+
+    public EitherT<L, M, A> Tail =>
+        Map(Transducer<A>.tail);
+
+    public EitherT<L, M, A> Skip(int amount) =>
+        Map(skip<A>(amount));
+
+    public EitherT<L, M, A> SkipWhile(Func<A, bool> predicate) =>
+        Map(skipWhile(predicate));
+
+    public EitherT<L, M, A> SkipUntil(Func<A, bool> predicate) =>
+        Map(skipUntil(predicate));
+
+    public EitherT<L, M, A> Take(int amount) =>
+        Map(take<A>(amount));
+
+    public EitherT<L, M, A> TakeWhile(Func<A, bool> predicate) =>
+        Map(takeWhile(predicate));
+
+    public EitherT<L, M, A> TakeUntil(Func<A, bool> predicate) =>
+        Map(takeUntil(predicate));
+    
+    // -----------------------------------------------------------------------------------------------------------------
+    // Matching
+
+    public K<M, B> Match<B>(Func<L, B> Left, Func<A, B> Right) =>
+        M.Bind(monad, ea => M.Lift(Either<L>.Match(ea, Left, Right)));
+    
+    // -----------------------------------------------------------------------------------------------------------------
+    // Repeat
+
+    /*public EitherT<L, M, A> Repeat(Schedule schedule) =>
+        new(M.Lift(monad.RepeatT(schedule)));
+
+    public EitherT<L, M, A> RepeatWhile(Schedule schedule, Func<A, bool> pred) =>
+        new(M.Lift(monad.RepeatWhileT(schedule, pred)));
+
+    public EitherT<L, M, A> RepeatUntil(Schedule schedule, Func<A, bool> pred) =>
+        new(M.Lift(monad.RepeatUntilT(schedule, pred)));
+    
+    // -----------------------------------------------------------------------------------------------------------------
+    // Retry
+
+    public EitherT<L, M, A> Retry(Schedule schedule) =>
+        new(M.Lift(monad.RetryT(schedule)));
+
+    public EitherT<L, M, A> RetryWhile(Schedule schedule, Func<L, bool> pred) =>
+        new(M.Lift(monad.RetryWhileT(schedule, pred)));
+
+    public EitherT<L, M, A> RetryUntil(Schedule schedule, Func<L, bool> pred) =>
+        new(M.Lift(monad.RetryUntilT(schedule, pred)));*/
+    
+    // -----------------------------------------------------------------------------------------------------------------
+    // Folding
+    //
+    //public EitherT<L, M, S> Fold<S>(Schedule schedule, S state, Func<S, A, S> fold) =>
+    //    new(M.Lift(monad.FoldT<S, M, A>(schedule, state,
+    //        (s, p) => p is CoProductRight<L, A> r ? fold(s, r.Value) : s)));
+//
+    //public EitherT<L, M, S> FoldWhile<S>(Schedule schedule, S state, Func<S, A, S> fold, Func<A, bool> pred) =>
+    //    new(M.Lift(monad.FoldWhileT(schedule, state,
+    //        (s, p) => p is CoProductRight<L, A> r ? fold(s, r.Value) : s,
+    //        p => p is CoProductRight<L, A> r && pred(r.Value))));
+
+    //public EitherT<L, M, S> FoldUntil<S>(Schedule schedule, S state, Func<S, A, S> fold, Func<A, bool> pred) =>
+    //    FoldWhile(schedule, state, fold, not(pred));
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // Operators
+    
+    public static EitherT<L, M, A> operator |(EitherT<L, M, A> ma, EitherT<L, M, A> mb) =>
+        new(M.Lift(choice(ma.monad, mb.monad)));
+
+    public static implicit operator EitherT<L, M, A>(Either<L, A> value) =>
+        Lift(value);
+    
+    public static implicit operator EitherT<L, M, A>(CoProduct<L, A> value) =>
+        Lift(value);
+    
+    public static implicit operator EitherT<L, M, A>(L value) =>
+        Left(value);
+
+    public static implicit operator EitherT<L, M, A>(A value) =>
+        Right(value);
+}
+
+
 public readonly record struct EitherT<L, M, E, A>(K<M, E, K<Either<L>, A>> monad) :
     IsTransducer<E, K<Either<L>, A>>,
     K<M, E, A>
@@ -259,5 +492,6 @@ public readonly record struct EitherT<L, M, E, A>(K<M, E, K<Either<L>, A>> monad
     public static implicit operator EitherT<L, M, E, A>(A value) =>
         Right(value);
 }
+
 
 #endif
