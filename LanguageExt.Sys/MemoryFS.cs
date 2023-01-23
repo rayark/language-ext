@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using LanguageExt.ClassInstances;
 using LanguageExt.UnsafeValueAccess;
 using static LanguageExt.Prelude;
+using Array = System.Array;
 
 namespace LanguageExt.Sys
 {
@@ -265,6 +266,9 @@ namespace LanguageExt.Sys
                 ? f.Data
                 : throw new FileNotFoundException("File not found", path);
 
+        internal Stream Open(string path, FileMode mode, FileAccess access) =>
+            new FileEntryStream(this, path, mode, access);
+        
         internal string GetText(string path) =>
             Encoding.UTF8.GetString(GetFile(path));
 
@@ -427,6 +431,121 @@ namespace LanguageExt.Sys
                 new FileEntry(name, CreationTime, LastAccessTime, LastWriteTime, Data);
         }
 
+        class FileEntryStream : Stream
+        {
+            readonly MemoryFS fs;
+            readonly string path;
+            readonly bool canWrite;
+            MemoryStream stream;
+
+            public FileEntryStream(MemoryFS fs, string path, FileMode mode, FileAccess access)
+            {
+                this.fs = fs;
+                this.path = path;
+                this.canWrite = access is FileAccess.Write or FileAccess.ReadWrite;
+                stream = new MemoryStream();
+
+                var exists = fs.Exists(path);
+                if (exists)
+                {
+                    switch (mode)
+                    {
+                        case FileMode.Append:
+                        {
+                            var data = fs.GetFile(path);
+                            stream.Write(data, 0, data.Length);
+                            break;
+                        }
+                        case FileMode.Create:
+                        {
+                            break;
+                        }
+                        case FileMode.Open:
+                        {
+                            var data = fs.GetFile(path);
+                            stream.Write(data, 0, data.Length);
+                            stream.Position = 0;
+                            break;
+                        }
+                        case FileMode.Truncate:
+                        {
+                            break;
+                        }
+                        case FileMode.CreateNew:
+                        {
+                            throw new IOException("File already exists");
+                        }
+                        case FileMode.OpenOrCreate:
+                        {
+                            var data = fs.GetFile(path);
+                            stream.Write(data, 0, data.Length);
+                            stream.Position = 0;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    switch (mode)
+                    {
+                        case FileMode.Open:
+                        {
+                            throw new FileNotFoundException("File not found", path);
+                        }
+                    }
+                }
+            }
+
+            public override void Flush()
+            {
+                stream.Flush();
+                if (canWrite) fs.PutFile(path, stream.ToArray(), true, DateTime.UtcNow);
+            }
+
+            public override int Read(byte[] buffer, int offset, int count) =>
+                stream.Read(buffer, offset, count);
+
+            public override long Seek(long offset, SeekOrigin origin) =>
+                stream.Seek(offset, origin);
+
+            public override void SetLength(long value)
+            {
+                if (canWrite)
+                {
+                    stream.SetLength(value);
+                    fs.PutFile(path, stream.ToArray(), true, DateTime.UtcNow);
+                }
+                else
+                {
+                    throw new IOException("File is read-only");
+                }
+            }
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                if (canWrite)
+                {
+                    stream.Write(buffer, offset, count);
+                    fs.PutFile(path, stream.ToArray(), true, DateTime.UtcNow);
+                }
+                else
+                {
+                    throw new IOException("File is read-only");
+                }
+            }
+
+            public override bool CanRead => true;
+            public override bool CanSeek => true;
+            public override bool CanWrite => canWrite;
+            public override long Length => stream.Length;
+
+            public override long Position
+            {
+                get => stream.Position;
+                set => stream.Position = value;
+            }
+        }
+
         class FolderEntry : Entry
         {
             readonly Map<OrdStringOrdinalIgnoreCase, string, Entry> Entries;
@@ -442,11 +561,21 @@ namespace LanguageExt.Sys
             {
                 var self = includeSelf && searchPattern.IsMatch(Name)
                                ? new [] {(parent.Add(Name), this)}
-                               : new (Seq<string>, FolderEntry)[0];
+                               : Array.Empty<(Seq<string>, FolderEntry)>();
 
-                var children = option == SearchOption.AllDirectories
-                                   ? Entries.Values.Choose(e => e is FolderEntry f ? Some(f.EnumerateFolders(parent.Add(Name), searchPattern, option, true)) : None).Bind(identity)
-                                   : new (Seq<string>, FolderEntry)[0];
+                var children = option switch
+                {
+                    SearchOption.AllDirectories => Entries.Values.Choose(e =>
+                        e is FolderEntry f
+                            ? Some(f.EnumerateFolders(parent.Add(Name), searchPattern, option, true))
+                            : None).Bind(identity),
+                    SearchOption.TopDirectoryOnly => Entries.Values.Choose(e =>
+                        e is FolderEntry f &&
+                        searchPattern.IsMatch(f.Name)
+                            ? Some((parent.Add(f.Name), f))
+                            : None),
+                    _ => Array.Empty<(Seq<string>, FolderEntry)>()
+                };
 
                 return self.Concat(children);
             }
@@ -455,9 +584,21 @@ namespace LanguageExt.Sys
             {
                 var files = Files.Bind(f => f.EnumerateFiles(parent.Add(Name), searchPattern, option));
 
-                var children = option == SearchOption.AllDirectories
-                                   ? Entries.Values.Choose(e => e is FolderEntry f ? Some(f.EnumerateFiles(parent.Add(Name), searchPattern, option)) : None).Bind(identity)
-                                   : new (Seq<string>, FileEntry) [0];
+                var children = option switch
+                {
+                    SearchOption.AllDirectories =>
+                        Entries.Values.Choose(e =>
+                                e is FolderEntry f
+                                    ? Some(f.EnumerateFiles(parent.Add(Name), searchPattern, option))
+                                    : None)
+                            .Bind(identity),
+                    SearchOption.TopDirectoryOnly => Entries.Values.Choose(e =>
+                        e is FileEntry f &&
+                        searchPattern.IsMatch(f.Name)
+                            ? Some((parent.Add(f.Name), f))
+                            : None),
+                    _ => Array.Empty<(Seq<string>, FileEntry)>()
+                };
 
                 return files.Concat(children);
             }
@@ -466,13 +607,24 @@ namespace LanguageExt.Sys
             {
                 var self = includeSelf && searchPattern.IsMatch(Name)
                                ? new [] {(parent.Add(Name), (Entry)this)}
-                               : new (Seq<string>, Entry)[0];
+                               : Array.Empty<(Seq<string>, Entry)>();
 
                 var files = Files.Bind(f => f.EnumerateEntries(parent.Add(Name), searchPattern, option, true));
 
-                var children = option == SearchOption.AllDirectories
-                                   ? Entries.Values.Choose(e => e is FolderEntry f ? Some(f.EnumerateEntries(parent.Add(Name), searchPattern, option, true)) : None).Bind(identity)
-                                   : new (Seq<string>, Entry) [0];
+                var children =
+                    option switch
+                    {
+                        SearchOption.AllDirectories => Entries.Values.Choose(e =>
+                            e is FolderEntry f
+                                ? Some(f.EnumerateEntries(parent.Add(Name), searchPattern, option, true))
+                                : None).Bind(identity),
+                        SearchOption.TopDirectoryOnly => Entries.Values.Choose(e =>
+                            searchPattern.IsMatch(e.Name)
+                                ? Some((parent.Add(e.Name), e))
+                                : None),
+                        _ => Array.Empty<(Seq<string>, Entry)>()
+                    };
+
 
                 return self.Concat(files).Concat(children);
             }

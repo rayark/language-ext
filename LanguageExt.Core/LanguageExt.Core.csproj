@@ -11,7 +11,7 @@
     <DefineConstants>NET_STANDARD</DefineConstants>
   </PropertyGroup>
   <PropertyGroup>
-    <PackageVersion>4.2.9</PackageVersion>
+    <PackageVersion>4.4.0</PackageVersion>
     <PackageId>LanguageExt.Core</PackageId>
     <Title>LanguageExt.Core</Title>
     <Authors>Paul Louth</Authors>
@@ -27,7 +27,7 @@
     <OutputType>library</OutputType>
     <AssemblyVersion>4.0.0.0</AssemblyVersion>
     <FileVersion>4.0.0.0</FileVersion>
-    <LangVersion>10</LangVersion>
+    <LangVersion>latest</LangVersion>
     <EnablePreviewFeatures>True</EnablePreviewFeatures>    
   </PropertyGroup>
   <ItemGroup>
@@ -46,7 +46,7 @@
     <None Remove="obj\**" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="[5.0.0,)" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="[6.0.0,)" />
     <PackageReference Include="System.Reactive" Version="5.0.0" />
     <PackageReference Include="System.Reflection.Emit" Version="[4.3.0,)" />
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="[4.5.4,)" />
