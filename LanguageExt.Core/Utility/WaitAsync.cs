@@ -121,7 +121,7 @@ namespace LanguageExt
         public static Task<IEnumerable<A>> All<A>(IEnumerable<Task<A>> vts) =>
             All(vts.ToArray()).Map(static ts => (IEnumerable<A>)ts);        
         
-        public static async Task<bool> WaitOneAsync(this WaitHandle handle, int millisecondsTimeout, CancellationToken cancellationToken)
+        public static async Task<bool> WaitOneAsync(this WaitHandle handle, int millisecondsTimeout, CancellationToken cancellationToken = default)
         {
             RegisteredWaitHandle registeredHandle  = null;
             var tokenRegistration = default(CancellationTokenRegistration);
@@ -131,7 +131,7 @@ namespace LanguageExt
                 
                 registeredHandle = ThreadPool.RegisterWaitForSingleObject(
                     handle,
-                    static (state, timedOut) => ((TaskCompletionSource<bool>)state).TrySetResult(!timedOut),
+                    static (state, timedOut) => ((TaskCompletionSource<bool>)state)?.TrySetResult(!timedOut),
                     tcs,
                     millisecondsTimeout,
                     true);

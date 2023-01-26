@@ -35,14 +35,14 @@ public static class DSLTests
 
         var effect = from r  in use(DisposeMe.New)
                      from s  in each(seconds)
-                     from _1 in log("SECOND")
+                     from _1 in logEither("SECOND")
                      from x  in each(items)
                      from _3 in log($"{s * x}")
                      select s * x;
 
         var effect1 = from _1 in log("START for Either<Error, long>")
                       from r  in use(DisposeMe.New)
-                      from e in scope1(effect)
+                      from e in scope(effect)
                       from _2 in logEither("DONE")
                       select e;
                       
@@ -55,6 +55,8 @@ public static class DSLTests
         //var result = effect1.Apply(default);
 
         Console.WriteLine(result);
+        Console.WriteLine();
+        Console.WriteLine("========");
     }
  
     public static void Test2()
