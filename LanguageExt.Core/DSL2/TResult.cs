@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using System;
+using System.Threading.Tasks;
 using LanguageExt.Common;
 
 namespace LanguageExt.DSL2;
@@ -22,6 +23,7 @@ public abstract record TResult<A>
     public virtual Error ErrorUnsafe => throw new InvalidOperationException("Can't call ErrorUnsafe on a TResult that succeeded");
     public abstract TResult<B> Map<B>(Func<A, B> f);
     public abstract TResult<B> Bind<B>(Func<A, TResult<B>> f);
+    public abstract ValueTask<TResult<B>> BindAsync<B>(Func<A, ValueTask<TResult<B>>> f);
 }
 public record TContinue<A>(A Value) : TResult<A>
 {
@@ -31,9 +33,12 @@ public record TContinue<A>(A Value) : TResult<A>
     public override A ValueUnsafe => Value;
 
     public override TResult<B> Map<B>(Func<A, B> f) =>
-        new TContinue<B>(f(Value));
+        TResult.Continue(f(Value));
 
     public override TResult<B> Bind<B>(Func<A, TResult<B>> f) =>
+        f(Value);
+
+    public override ValueTask<TResult<B>> BindAsync<B>(Func<A, ValueTask<TResult<B>>> f) =>
         f(Value);
 }
 public record TComplete<A>(A Value) : TResult<A>
@@ -44,9 +49,12 @@ public record TComplete<A>(A Value) : TResult<A>
     public override A ValueUnsafe => Value;
 
     public override TResult<B> Map<B>(Func<A, B> f) =>
-        new TComplete<B>(f(Value));
+        TResult.Complete(f(Value));
 
     public override TResult<B> Bind<B>(Func<A, TResult<B>> f) =>
+        f(Value);
+
+    public override ValueTask<TResult<B>> BindAsync<B>(Func<A, ValueTask<TResult<B>>> f) =>
         f(Value);
 }
 public record TCancelled<A> : TResult<A>
@@ -63,6 +71,9 @@ public record TCancelled<A> : TResult<A>
 
     public override TResult<B> Bind<B>(Func<A, TResult<B>> _) =>
         TCancelled<B>.Default;
+
+    public override ValueTask<TResult<B>> BindAsync<B>(Func<A, ValueTask<TResult<B>>> f) =>
+        new (TCancelled<B>.Default);
 }
 public record TNone<A> : TResult<A>
 {
@@ -77,6 +88,9 @@ public record TNone<A> : TResult<A>
 
     public override TResult<B> Bind<B>(Func<A, TResult<B>> _) =>
         TNone<B>.Default;
+
+    public override ValueTask<TResult<B>> BindAsync<B>(Func<A, ValueTask<TResult<B>>> f) =>
+        new (TNone<B>.Default);
 }
 public record TFail<A>(Error Error) : TResult<A>
 {
@@ -86,8 +100,11 @@ public record TFail<A>(Error Error) : TResult<A>
     public override Error ErrorUnsafe => Error;
 
     public override TResult<B> Map<B>(Func<A, B> _) =>
-        new TFail<B>(Error);
+        TResult.Fail<B>(Error);
 
     public override TResult<B> Bind<B>(Func<A, TResult<B>> _) =>
-        new TFail<B>(Error);
+        TResult.Fail<B>(Error);
+
+    public override ValueTask<TResult<B>> BindAsync<B>(Func<A, ValueTask<TResult<B>>> f) =>
+        new (TResult.Fail<B>(Error));
 }
