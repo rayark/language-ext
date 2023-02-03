@@ -279,11 +279,13 @@ namespace LanguageExt
         public static ValueTask<A> Plus<A>(this ValueTask<A> ma, ValueTask<A> mb) =>
             default(MValueTask<A>).Plus(ma, mb);
         
+        #if UNITY_NOT_IL2CPP
         /// <summary>
         /// Cast a ValueTask to a ValueTask<A> (may throw if underlying value doesn't exist)
         /// </summary>
         public static ValueTask<A> Cast<A>(this ValueTask source) => 
             new(source.AsTask().Cast<A>());
+        #endif
 
         public static async ValueTask<Unit> ToUnit(this ValueTask source)
         {

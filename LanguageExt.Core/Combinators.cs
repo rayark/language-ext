@@ -1,6 +1,6 @@
-﻿using System;
+﻿#if UNITY_NOT_IL2CPP
+using System;
 using static LanguageExt.Prelude;
-
 namespace LanguageExt
 {
     public static class CombinatorsDynamic
@@ -166,3 +166,4 @@ namespace LanguageExt
             x(z, y(z));
     }
 }
+#endif

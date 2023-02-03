@@ -279,6 +279,7 @@ namespace LanguageExt
         public static Task<A> PlusFirst<A>(this Task<A> ma, Task<A> mb) =>
             default(MTaskFirst<A>).Plus(ma, mb);
 
+#if UNITY_NOT_IL2CPP
         public static async Task<A> Cast<A>(this Task source)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
@@ -292,6 +293,7 @@ namespace LanguageExt
                 _ => default!
             };            
         }
+#endif
 
         public static async Task<Unit> ToUnit(this Task source)
         {
