@@ -1081,6 +1081,7 @@ namespace LanguageExt
                 ? 0
                 : 1;
 
+#if UNITY_NOT_IL2CPP
         /// <summary>
         /// Flips the left and right tagged values
         /// </summary>
@@ -1093,6 +1094,7 @@ namespace LanguageExt
                 EitherStatus.IsLeft  => Either<R, L>.Right(LeftValue),
                 _                    => Either<R, L>.Bottom
             };        
+#endif
 
         /// <summary>
         /// Iterate the Either

@@ -981,6 +981,7 @@ namespace LanguageExt
                 Left: _ => 0,
                 Bottom: () => 0);
 
+#if UNITY_NOT_IL2CPP
         /// <summary>
         /// Flips the left and right tagged values
         /// </summary>
@@ -1002,6 +1003,7 @@ namespace LanguageExt
                 };
             }
         }
+#endif
 
 
         /// <summary>
