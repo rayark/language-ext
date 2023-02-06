@@ -1,5 +1,10 @@
 ![lang-ext](https://raw.githubusercontent.com/louthy/language-ext/main/Images/banner.png)
 
+## Fork Notes
+
+This fork aims to hanldle Unity's IL2CPP compatibility.
+
+
 C# Functional Programming Language Extensions
 =============================================
 
